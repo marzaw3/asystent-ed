@@ -24,6 +24,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { background: var(--space); color: var(--ink); }
 body { font-family: var(--f-body); font-size: 17px; line-height: 1.55; }
 .app { max-width: 880px; margin: 0 auto; padding-inline: 16px; padding-block: 16px 56px; display: grid; gap: 16px; }
@@ -141,6 +142,23 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px soli
 .fb.bad .tag { color: var(--bad); }
 .xp-pop { font-family: var(--f-mono); color: var(--amber); }
 
+/* bohater: wybór postaci, plakietka w HUD, dymki */
+.heroes { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
+.hero-opt { display: grid; justify-items: center; gap: 6px; padding: 12px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); }
+.hero-opt:hover { border-color: var(--muted); }
+.hero-opt[aria-pressed="true"] { border-color: var(--amber); box-shadow: 0 0 0 1px var(--amber) inset; }
+.hero-opt b { font-family: var(--f-display); font-size: 17px; }
+.ava { display: block; flex: none; }
+.name-row { display: grid; gap: 4px; max-width: 320px; }
+.name-row label { font-family: var(--f-mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.name-row input { font: inherit; font-size: 19px; padding: 9px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); width: 100%; }
+.name-row input:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+.hero-tag { display: flex; align-items: center; gap: 8px; font-family: var(--f-display); font-weight: 700; font-size: 18px; }
+.say { display: flex; gap: 12px; align-items: flex-start; }
+.say .bubble { position: relative; background: var(--panel-2); border: 1px solid var(--cyan); border-radius: 10px; padding: 10px 14px; display: grid; gap: 2px; min-width: 0; }
+.say .bubble::before { content: ""; position: absolute; left: -7px; top: 18px; width: 12px; height: 12px; background: var(--panel-2); border-left: 1px solid var(--cyan); border-bottom: 1px solid var(--cyan); transform: rotate(45deg); }
+.say .bubble b { font-family: var(--f-display); font-size: 17px; color: var(--cyan); }
+
 .result-stars { font-size: 46px; letter-spacing: 6px; color: var(--line); }
 .result-stars .on { color: var(--amber); }
 ul.clean { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
@@ -156,6 +174,7 @@ a { color: var(--cyan); }
       <h1>Moduł 1 · Bezwładność</h1>
     </div>
     <div class="meters">
+      <div class="hero-tag" id="hudHero" hidden></div>
       <button class="glos-btn" id="glosBtn" aria-expanded="false" aria-controls="glossary">Słowniczek</button>
       <div class="meter"><span>XP</span><b id="xp">0</b></div>
       <div class="meter stars" id="hudStars" aria-label="Gwiazdki"><i>★</i><i>★</i><i>★</i></div>
@@ -190,6 +209,16 @@ a { color: var(--cyan); }
         <p>Statek musi wrócić na Ziemię. Zepsuł się komputer, który steruje silnikami. Żeby go naprawić, musisz zrozumieć, jak poruszają się ciała.</p>
         <p class="lead">Każdy moduł statku to jeden temat z działu „Dynamika”.</p>
       </div>
+      <div class="panel">
+        <span class="eyebrow">Załoga</span>
+        <h2>Wybierz bohatera</h2>
+        <div class="heroes" id="heroPick" role="group" aria-label="Bohater"></div>
+        <div class="name-row">
+          <label for="heroName">Jak ma na imię?</label>
+          <input id="heroName" maxlength="14" autocomplete="off" placeholder="Wpisz imię">
+        </div>
+        <div class="say" id="say-start" hidden></div>
+      </div>
       <div class="map" aria-label="Mapa modułów">
         <div class="node active"><span class="n">TEMAT 24 · S. 162</span><b>I zasada dynamiki, bezwładność</b></div>
         <div class="node locked"><span class="n">TEMAT 25 · S. 169</span><b>II zasada dynamiki</b></div>
@@ -204,6 +233,7 @@ a { color: var(--cyan); }
 
     <!-- LABORATORIUM -->
     <section id="scr-lab" hidden>
+      <div class="say" id="say-lab"></div>
       <div class="panel">
         <span class="eyebrow">Etap 0 · Laboratorium</span>
         <h2>Co zrobi skrzynia, gdy przestaniesz ją pchać?</h2>
@@ -256,6 +286,7 @@ a { color: var(--cyan); }
 
     <!-- KARTY POJĘĆ -->
     <section id="scr-cards" hidden>
+      <div class="say" id="say-cards" hidden></div>
       <div class="qhead"><span class="eyebrow">Etap · Pojęcia</span><span id="cCount"></span></div>
       <div class="dots" id="cDots" aria-hidden="true"></div>
       <div id="cBody">
@@ -292,6 +323,7 @@ a { color: var(--cyan); }
 
     <!-- QUIZ (etapy Pamiętam / Rozumiem / pytanie po dokowaniu) -->
     <section id="scr-quiz" hidden>
+      <div class="say" id="say-quiz" hidden></div>
       <div class="qhead"><span class="eyebrow" id="qStage"></span><span id="qCount"></span></div>
       <p class="retry" id="qRetry" hidden>Sprawdźmy to jeszcze raz, w innej sytuacji.</p>
       <h2 id="qText"></h2>
@@ -310,6 +342,7 @@ a { color: var(--cyan); }
 
     <!-- DOKOWANIE -->
     <section id="scr-dock" hidden>
+      <div class="say" id="say-dock"></div>
       <div class="panel">
         <span class="eyebrow">Etap ★★★ · Stosuję</span>
         <h2>Zadokuj Oriona przy stacji</h2>
@@ -335,11 +368,12 @@ a { color: var(--cyan); }
     <!-- RAPORT -->
     <section id="scr-end" hidden>
       <div class="panel">
-        <span class="eyebrow">Raport z naprawy</span>
+        <span class="eyebrow" id="endEyebrow">Raport z naprawy</span>
         <h2 id="endTitle">Moduł naprawiony</h2>
         <div class="result-stars" id="endStars"><i>★</i><i>★</i><i>★</i></div>
         <p id="endXp" class="xp-pop"></p>
       </div>
+      <div class="say" id="say-end"></div>
       <div class="panel">
         <h3>Pojęcia</h3>
         <ul class="terms" id="endTerms"></ul>
@@ -533,6 +567,59 @@ function toggleGlos(open) {
 $('#glosBtn').addEventListener('click', () => toggleGlos($('#glossary').hidden));
 $('#glosClose').addEventListener('click', () => toggleGlos(false));
 
+// ---------- bohater ----------
+// teksty bohatera bez form zależnych od płci; imię zawsze w mianowniku
+const HEROES = [
+  { id: 'astronautka', label: 'Astronautka', svg:
+    '<rect x="12" y="46" width="40" height="18" rx="9" fill="#ffb24a"/><circle cx="32" cy="28" r="21" fill="#dfe6f2"/><circle cx="32" cy="29" r="15" fill="#1d2a45"/>' +
+    '<circle cx="32" cy="28" r="11" fill="#8a4b2a"/><rect x="21" y="28" width="5" height="12" rx="2.5" fill="#8a4b2a"/><rect x="38" y="28" width="5" height="12" rx="2.5" fill="#8a4b2a"/>' +
+    '<circle cx="32" cy="32" r="8.5" fill="#f2c9a1"/><circle cx="29" cy="31" r="1.3" fill="#1d2a45"/><circle cx="35" cy="31" r="1.3" fill="#1d2a45"/>' +
+    '<path d="M29.5 35 q2.5 2 5 0" stroke="#1d2a45" stroke-width="1.5" fill="none" stroke-linecap="round"/>' },
+  { id: 'astronauta', label: 'Astronauta', svg:
+    '<rect x="12" y="46" width="40" height="18" rx="9" fill="#62d4e8"/><circle cx="32" cy="28" r="21" fill="#dfe6f2"/><circle cx="32" cy="29" r="15" fill="#1d2a45"/>' +
+    '<circle cx="32" cy="29" r="10" fill="#3a2a22"/>' +
+    '<circle cx="32" cy="32" r="8.5" fill="#d9a77c"/><circle cx="29" cy="31" r="1.3" fill="#1d2a45"/><circle cx="35" cy="31" r="1.3" fill="#1d2a45"/>' +
+    '<path d="M29.5 35 q2.5 2 5 0" stroke="#1d2a45" stroke-width="1.5" fill="none" stroke-linecap="round"/>' },
+  { id: 'robot', label: 'Robot', svg:
+    '<rect x="14" y="48" width="36" height="16" rx="5" fill="#74df93"/><line x1="32" y1="14" x2="32" y2="6" stroke="#9aabcb" stroke-width="3"/><circle cx="32" cy="6" r="3.5" fill="#ffb24a"/>' +
+    '<rect x="13" y="14" width="38" height="32" rx="7" fill="#9aabcb"/><rect x="17" y="18" width="30" height="24" rx="5" fill="#1d2a45"/>' +
+    '<circle cx="25" cy="27" r="4.5" fill="#62d4e8"/><circle cx="39" cy="27" r="4.5" fill="#62d4e8"/><rect x="24" y="35" width="16" height="3" rx="1.5" fill="#62d4e8"/>' },
+  { id: 'kot', label: 'Kosmiczny kot', svg:
+    '<rect x="12" y="48" width="40" height="16" rx="8" fill="#b79cff"/>' +
+    '<path d="M19 26 L20 10 L30 19 Z M45 26 L44 10 L34 19 Z" fill="#e8964a"/><path d="M21.5 21 L22 14 L27 18.5 Z M42.5 21 L42 14 L37 18.5 Z" fill="#f6c9a8"/>' +
+    '<circle cx="32" cy="31" r="14" fill="#e8964a"/><ellipse cx="26.5" cy="29" rx="2.2" ry="3" fill="#1d2a45"/><ellipse cx="37.5" cy="29" rx="2.2" ry="3" fill="#1d2a45"/>' +
+    '<path d="M30 34 h4 l-2 2.2 z" fill="#ff7d6e"/><path d="M20 34 h7 M20 37 l7 -1.5 M44 34 h-7 M44 37 l-7 -1.5" stroke="#1d2a45" stroke-width="1" stroke-linecap="round"/>' +
+    '<circle cx="32" cy="28" r="23" fill="none" stroke="#dfe6f2" stroke-width="2" opacity=".55"/>' },
+];
+const ava = (id, size) => `<svg class="ava" width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true">${HEROES.find(h => h.id === id).svg}</svg>`;
+const hero = (() => {
+  try { const h = JSON.parse(localStorage.getItem('orion-bohater') || 'null'); if (h && HEROES.some(x => x.id === h.id)) return { id: h.id, name: String(h.name || '').slice(0, 14) }; } catch {}
+  return { id: null, name: '' };
+})();
+const heroReady = () => !!(hero.id && hero.name);
+function saveHero() { try { localStorage.setItem('orion-bohater', JSON.stringify(hero)); } catch {} }
+function say(el, text) {
+  el.hidden = !heroReady(); if (el.hidden) return;
+  el.innerHTML = ava(hero.id, 56) + '<div class="bubble"><b></b><p></p></div>';
+  el.querySelector('b').textContent = hero.name; el.querySelector('p').textContent = text;
+}
+function heroRefresh() {
+  document.querySelectorAll('#heroPick .hero-opt').forEach(b => b.setAttribute('aria-pressed', b.dataset.hero === hero.id));
+  const tag = $('#hudHero'); tag.hidden = !heroReady();
+  if (heroReady()) { tag.innerHTML = ava(hero.id, 32) + '<span></span>'; tag.querySelector('span').textContent = hero.name; }
+  say($('#say-start'), 'Cześć! Lecę z Tobą. Razem naprawimy Oriona.');
+  $('#startBtn').disabled = !heroReady();
+}
+HEROES.forEach(h => {
+  const b = document.createElement('button'); b.className = 'hero-opt'; b.dataset.hero = h.id;
+  b.innerHTML = ava(h.id, 64) + '<b></b>'; b.querySelector('b').textContent = h.label;
+  b.addEventListener('click', () => { hero.id = h.id; saveHero(); heroRefresh(); });
+  $('#heroPick').append(b);
+});
+$('#heroName').value = hero.name;
+$('#heroName').addEventListener('input', e => { hero.name = e.target.value.trim().slice(0, 14); saveHero(); heroRefresh(); });
+heroRefresh();
+
 // ---------- stan gry ----------
 const S = { xp: 0, stars: { s1: false, s2: false, s3: false }, mis: {}, firstTry: 0, asked: 0, dockAttempts: 0, terms: {} };
 
@@ -631,6 +718,7 @@ const lab = { surf: 'hangar', x: 0, v: 0, push: false, wasPush: false, release: 
 
 function labStart() {
   show('lab'); setStep('lab');
+  say($('#say-lab'), 'Zanim naprawimy silniki, sprawdźmy, jak jeżdżą rzeczy. Pchnij skrzynię w trzech miejscach i patrz, co się dzieje.');
   runLoop((t, dt) => { labStep(dt); labDraw(); });
 }
 function labSetSurf(s) {
@@ -739,6 +827,7 @@ $('#labNext').addEventListener('click', () => cardsStart());
 const cards = { i: 0, phase: 0, sel: null, ready: false, answered: false, timer: null };
 function cardsStart() {
   stopLoop(); show('cards'); setStep('cards');
+  say($('#say-cards'), 'Teraz pojęcia. Przeczytaj kartę. Potem odpowiedz na pytanie.');
   cards.i = 0; cardShow(0);
 }
 function cardDots() {
@@ -1095,8 +1184,14 @@ function startStage(key) {
   const cfg = STAGES[key];
   st = { key, cfg, queue: cfg.ids.map(id => ({ id, original: true })), done: 0, firstTry: 0, spare: (cfg.spare || []).slice(), variants: JSON.parse(JSON.stringify(cfg.variants || {})), tries: {} };
   show('quiz'); setStep(key);
+  say($('#say-quiz'), STAGE_SAY[key]);
   nextQuestion();
 }
+const STAGE_SAY = {
+  s1: 'Sprawdźmy, co pamiętasz. Czytaj spokojnie i uważnie.',
+  s2: 'Teraz trudniej. Trzeba powiedzieć, co się stanie i dlaczego.',
+  s3: 'Statek stoi przy porcie. Zostało ostatnie pytanie!',
+};
 let cur = null;
 function nextQuestion() {
   if (!st.queue.length) return finishStage();
@@ -1211,7 +1306,7 @@ $('#qCheck').addEventListener('click', () => {
   }
   fb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 });
-$('#qNext').addEventListener('click', () => { stopLoop(); nextQuestion(); });
+$('#qNext').addEventListener('click', () => { stopLoop(); $('#say-quiz').hidden = true; nextQuestion(); });
 
 // kolejność etapów: lab → s1 → s2 → dokowanie → s3 (pytanie) → raport
 function finishStage() {
@@ -1227,6 +1322,7 @@ const dock = { x: 0, v: 0, fuel: 100, thr: 0, state: 'fly', still: 0, hint: 0 };
 const thr = { back: false, fwd: false };
 function dockStart() {
   show('dock'); setStep('s3');
+  say($('#say-dock'), 'Siadam za sterami. Pamiętaj: w kosmosie nic statku nie hamuje.');
   S.dockAttempts = 1; dockReset();
   runLoop((t, dt) => { dockStep(dt); dockDraw(); });
 }
@@ -1350,6 +1446,8 @@ function endScreen() {
   paintStars($('#endStars'), n);
   $('#endTitle').textContent = n === 3 ? 'Moduł naprawiony w 100%!' : n > 0 ? 'Moduł działa, ale trzeba go jeszcze dokręcić' : 'Moduł ruszył, ale trzeba do niego wrócić';
   $('#endXp').textContent = `Zdobyte XP: ${S.xp}`;
+  $('#endEyebrow').textContent = heroReady() ? `Raport z naprawy · kapitan ${hero.name}` : 'Raport z naprawy';
+  say($('#say-end'), n === 3 ? 'Udało się! Orion leci dalej. Moduł 2 już czeka.' : n > 0 ? 'Dobra robota! Kilka rzeczy jeszcze poprawimy.' : 'Nie poddajemy się. Spróbujmy jeszcze raz, krok po kroku.');
   const ul = $('#endMis'); ul.innerHTML = '';
   const ids = Object.keys(S.mis).sort((a, b) => S.mis[b] - S.mis[a]);
   if (!ids.length) { const li = document.createElement('li'); li.textContent = 'Nic! Wszystko dobrze za pierwszym razem.'; ul.append(li); }
@@ -1359,7 +1457,8 @@ function endScreen() {
   const tc = termCounts();
   const termTxt = ` Pojęcia: ${tc.ok} z ${GLOS.length} od razu, ${tc.retry} po powtórce` + (tc.weak.length ? `, do powtórki: ${tc.weak.join(', ')}.` : '.');
   const misTxt = ids.length ? ' Pojawiły się błędne przekonania: ' + ids.map(id => MIS[id].name).join('; ') + '. Warto o nich porozmawiać.' : ' Bez błędnych przekonań.';
-  $('#endParent').textContent = `Temat 24 (I zasada dynamiki, bezwładność). ${starTxt}. Poprawne za pierwszym razem: ${S.firstTry} z ${S.asked} zadań. Dokowanie: ${S.dockAttempts} ${S.dockAttempts === 1 ? 'próba' : S.dockAttempts < 5 ? 'próby' : 'prób'}.${termTxt}${misTxt} ${n === 3 ? 'Za 2 dni warto powtórzyć poziom, żeby temat był opanowany.' : 'Proponuję powtórzyć poziom jutro.'}`;
+  const heroTxt = heroReady() ? `Bohater w grze: ${hero.name} (${HEROES.find(h => h.id === hero.id).label}). ` : '';
+  $('#endParent').textContent = `${heroTxt}Temat 24 (I zasada dynamiki, bezwładność). ${starTxt}. Poprawne za pierwszym razem: ${S.firstTry} z ${S.asked} zadań. Dokowanie: ${S.dockAttempts} ${S.dockAttempts === 1 ? 'próba' : S.dockAttempts < 5 ? 'próby' : 'prób'}.${termTxt}${misTxt} ${n === 3 ? 'Za 2 dni warto powtórzyć poziom, żeby temat był opanowany.' : 'Proponuję powtórzyć poziom jutro.'}`;
   const best = load();
   if (!best || n > best.stars || (n === best.stars && S.xp > best.xp)) save({ stars: n, xp: S.xp, date: new Date().toISOString().slice(0, 10) });
 }
