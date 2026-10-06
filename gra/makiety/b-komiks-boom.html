@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Misja Orion — makieta B: BOOM! Komiks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Baloo+2:wght@500;700;800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<style>
+/* Makieta B: strona jest komiksem o misji. Kadry na papierze, raster w tle, onomatopeje wybuchają z kadrów. */
+:root {
+  --ink: #0d0a14;
+  --purple: #2a1050;
+  --yellow: #ffe14d;
+  --pink: #ff3d7f;
+  --cyan: #35e0ff;
+  --paper: #fff7e8;
+  --paper-2: #f3e7cf;
+  --f-display: "Bangers", "Impact", sans-serif;
+  --f-body: "Baloo 2", system-ui, sans-serif;
+  --line: 4px;
+  --shadow: 8px 8px 0 var(--ink);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--purple); }
+body {
+  margin: 0; color: var(--ink);
+  font-family: var(--f-body); font-size: 19px; line-height: 1.5; font-weight: 500;
+  background-color: var(--purple);
+  background-image: radial-gradient(circle, rgba(255,255,255,.14) 1.6px, transparent 1.8px);
+  background-size: 11px 11px;
+  overflow-x: hidden;
+}
+h1, h2, h3 { font-family: var(--f-display); font-weight: 400; line-height: .95; margin: 0; letter-spacing: .02em; }
+h1 { font-size: clamp(48px, 9vw, 120px); color: var(--yellow); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill;
+     text-shadow: 4px 4px 0 var(--ink), 8px 8px 0 var(--pink); }
+h2 { font-size: clamp(30px, 5vw, 48px); }
+h3 { font-size: 26px; }
+p { margin: 0; max-width: 60ch; }
+button { font: inherit; cursor: pointer; color: inherit; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 4px solid var(--cyan); outline-offset: 3px; }
+a { color: var(--purple); font-weight: 700; }
+
+/* HUD: belka tytułowa komiksu */
+.hud {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--yellow); border-bottom: var(--line) solid var(--ink);
+  box-shadow: 0 6px 0 var(--ink);
+}
+.hud-in { max-width: 1040px; margin: 0 auto; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
+.hud-title { font-family: var(--f-display); font-size: 28px; line-height: 1; letter-spacing: .03em; }
+.hud-title small { display: block; font-family: var(--f-body); font-weight: 700; font-size: 14px; letter-spacing: 0; }
+.hud-right { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.badge { display: flex; align-items: center; gap: 8px; background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 3px 12px 3px 4px; font-weight: 800; font-size: 16px; box-shadow: 3px 3px 0 var(--ink); }
+.badge .ava { width: 34px; height: 34px; }
+.xp { font-family: var(--f-display); font-size: 26px; background: var(--pink); color: var(--paper); border: 3px solid var(--ink); padding: 0 12px; box-shadow: 3px 3px 0 var(--ink); transform: rotate(-3deg); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; letter-spacing: .04em; }
+.xp b { font-weight: 400; }
+.stars { display: flex; gap: 2px; font-size: 28px; line-height: 1; color: var(--paper); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; }
+.stars i { font-style: normal; display: inline-block; }
+.stars i.on { color: var(--yellow); }
+.stages { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.stages button { font-family: var(--f-display); font-size: 17px; letter-spacing: .04em; padding: 2px 12px; background: var(--paper); border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+.stages button[aria-current="step"] { background: var(--cyan); }
+.stages li:nth-child(odd) button { transform: rotate(-1.5deg); }
+.stages li:nth-child(even) button { transform: rotate(1.5deg); }
+
+/* kadry */
+.page { max-width: 1040px; margin: 0 auto; padding: 32px 16px 80px; display: grid; gap: 28px; }
+.screen { display: grid; gap: 28px; }
+.panel {
+  position: relative; background: var(--paper); border: var(--line) solid var(--ink); box-shadow: var(--shadow);
+  padding: 22px 24px; display: grid; gap: 14px; min-width: 0;
+}
+.panel.tilt-l { transform: rotate(-1.2deg); }
+.panel.tilt-r { transform: rotate(1deg); }
+.panel.scene { overflow: visible; padding: 0; }
+.panel.quiet { background: var(--paper-2); box-shadow: 4px 4px 0 var(--ink); }
+.caption {
+  justify-self: start; font-family: var(--f-display); font-size: 20px; letter-spacing: .05em;
+  background: var(--ink); color: var(--yellow); padding: 2px 12px; transform: rotate(-2deg); margin-top: -34px; margin-left: -12px;
+}
+.lead { font-size: 21px; font-weight: 700; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+
+/* przyciski */
+.btn {
+  font-family: var(--f-display); font-size: 24px; letter-spacing: .05em; padding: 8px 24px;
+  background: var(--yellow); border: var(--line) solid var(--ink); box-shadow: 5px 5px 0 var(--ink);
+  transition: transform .08s, box-shadow .08s;
+}
+.btn:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--ink); }
+.btn:active, .btn.active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--ink); }
+.btn.pink { background: var(--pink); color: var(--paper); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
+.btn.cyan { background: var(--cyan); }
+.btn.ghost { background: var(--paper); }
+.btn.hold { min-width: 180px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; font-size: 30px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* dymek bohatera */
+.say { display: flex; gap: 14px; align-items: flex-start; }
+.say .ava { width: 86px; height: 86px; flex: none; filter: drop-shadow(4px 4px 0 var(--ink)); }
+.bubble { position: relative; background: #fff; border: var(--line) solid var(--ink); border-radius: 28px; padding: 12px 20px; font-weight: 700; font-size: 20px; max-width: 46ch; }
+.bubble::before { content: ""; position: absolute; left: -22px; top: 26px; border: 12px solid transparent; border-right: 16px solid var(--ink); border-left: 0; }
+.bubble::after { content: ""; position: absolute; left: -14px; top: 29px; border: 9px solid transparent; border-right: 12px solid #fff; border-left: 0; }
+
+/* bohaterowie */
+.heroes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 18px; }
+.hero-opt { display: grid; justify-items: center; gap: 6px; padding: 14px 10px 10px; background: #fff; border: var(--line) solid var(--ink); box-shadow: 5px 5px 0 var(--ink); transition: transform .1s; }
+.hero-opt:nth-child(1) { transform: rotate(-2deg); } .hero-opt:nth-child(2) { transform: rotate(1.5deg); } .hero-opt:nth-child(3) { transform: rotate(-1deg); }
+.hero-opt:hover { transform: rotate(0) scale(1.04); }
+.hero-opt[aria-pressed="true"] { background: var(--cyan); transform: rotate(0) scale(1.06); }
+.hero-opt .ava { width: 110px; height: 110px; }
+.hero-opt b { font-family: var(--f-display); font-size: 26px; font-weight: 400; letter-spacing: .04em; }
+.hero-opt span { font-size: 15px; }
+.name-row { display: grid; gap: 4px; max-width: 320px; }
+.name-row label { font-weight: 800; }
+.name-row input { font: inherit; font-size: 22px; font-weight: 700; padding: 8px 14px; border: var(--line) solid var(--ink); background: #fff; box-shadow: 4px 4px 0 var(--ink); width: 100%; }
+
+/* laboratorium */
+.seg { display: flex; flex-wrap: wrap; gap: 10px; }
+.seg button { font-family: var(--f-display); font-size: 20px; letter-spacing: .04em; padding: 4px 16px; background: #fff; border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--pink); color: var(--paper); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
+.scene-wrap { position: relative; }
+canvas.scene-canvas { display: block; width: 100%; height: auto; }
+.stickers { position: absolute; left: 10px; bottom: 10px; display: flex; flex-wrap: wrap; gap: 8px; pointer-events: none; }
+.sticker { background: var(--yellow); border: 3px solid var(--ink); padding: 2px 10px; font-size: 15px; font-weight: 800; line-height: 1.2; box-shadow: 3px 3px 0 var(--ink); }
+.sticker:nth-child(odd) { transform: rotate(-3deg); } .sticker:nth-child(even) { transform: rotate(2deg); }
+.sticker small { display: block; font-size: 11px; font-weight: 700; }
+.sticker b { font-family: var(--f-display); font-size: 20px; font-weight: 400; letter-spacing: .03em; }
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-weight: 700; }
+.checklist li { display: flex; gap: 10px; align-items: center; }
+.checklist li::before { content: ""; width: 22px; height: 22px; border: 3px solid var(--ink); background: #fff; flex: none; }
+.checklist li.ok::before { background: var(--cyan); box-shadow: inset 0 0 0 3px #fff; }
+
+/* pytanie */
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+.opt { position: relative; font-family: var(--f-display); font-size: 30px; letter-spacing: .04em; padding: 26px 16px; background: #fff; border: var(--line) solid var(--ink); box-shadow: 6px 6px 0 var(--ink); transition: transform .1s; }
+.opt:nth-child(1) { transform: rotate(-1.5deg); } .opt:nth-child(2) { transform: rotate(1deg); } .opt:nth-child(3) { transform: rotate(-.5deg); }
+.opt:hover:not(:disabled) { transform: rotate(0) translate(-2px, -2px); box-shadow: 8px 8px 0 var(--ink); }
+.opt.good { background: var(--yellow); }
+.opt.bad { background: var(--pink); color: var(--paper); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
+.opt:disabled { cursor: default; }
+
+/* raport */
+.result-stars { display: flex; gap: 6px; font-size: 84px; line-height: 1; color: var(--paper-2); -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; }
+.result-stars i { font-style: normal; display: inline-block; }
+.result-stars i.on { color: var(--yellow); }
+.ship-wrap { position: relative; background: var(--ink); padding: 0; overflow: hidden; }
+.ship-wrap svg { display: block; width: 100%; height: auto; }
+.terms { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-weight: 700; }
+.terms li { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: #fff; border: 3px solid var(--ink); padding: 6px 12px; }
+.terms li span { color: var(--purple); }
+
+/* onomatopeja: gwiazda-rozbłysk + tekst Bangers z obwódką */
+.ono { position: absolute; z-index: 5; pointer-events: none; display: grid; place-items: center; transform-origin: center; }
+.ono svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ono span { position: relative; font-family: var(--f-display); font-size: var(--ono-size, 64px); line-height: 1; color: var(--ono-color, var(--yellow)); -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; text-shadow: 5px 5px 0 var(--ink); letter-spacing: .03em; white-space: nowrap; transform: rotate(-8deg); }
+.mega { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; pointer-events: none; }
+.mega .ono { position: relative; width: min(80vw, 640px); aspect-ratio: 1; --ono-size: clamp(90px, 20vw, 220px); }
+#fx { position: fixed; inset: 0; z-index: 30; pointer-events: none; width: 100%; height: 100%; }
+
+@media (max-width: 640px) {
+  body { font-size: 17px; }
+  .panel { padding: 18px 16px; }
+  .say .ava { width: 64px; height: 64px; }
+  .hud-title { font-size: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+  .ono, .mega { display: none !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="hud">
+  <div class="hud-in">
+    <div class="hud-title">Misja Orion<small>Zeszyt 1: Bezwładność</small></div>
+    <div class="hud-right">
+      <div class="badge" id="hudHero" hidden></div>
+      <div class="xp">XP <b id="xp">0</b></div>
+      <div class="stars" id="hudStars" aria-label="Gwiazdki"><i>★</i><i>★</i><i>★</i></div>
+    </div>
+    <ul class="stages" id="stages">
+      <li><button data-go="start" aria-current="step">Okładka</button></li>
+      <li><button data-go="lab">Laboratorium</button></li>
+      <li><button data-go="quiz">Pytanie</button></li>
+      <li><button data-go="end">Raport</button></li>
+    </ul>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- OKŁADKA -->
+  <section class="screen" id="scr-start">
+    <div class="panel tilt-l" id="cover">
+      <h1>Misja Orion</h1>
+      <h2>Orion ma awarię!</h2>
+      <p class="lead">Statek musi wrócić na Ziemię. Zepsuł się komputer, który steruje silnikami. Żeby go naprawić, musisz zrozumieć, jak poruszają się ciała.</p>
+      <p>Każdy zeszyt komiksu to jeden temat z działu „Dynamika”.</p>
+    </div>
+    <div class="panel tilt-r">
+      <span class="caption">Załoga</span>
+      <h2>Wybierz bohatera</h2>
+      <div class="heroes" id="heroPick" role="group" aria-label="Bohater"></div>
+      <div class="name-row">
+        <label for="heroName">Jak ma na imię?</label>
+        <input id="heroName" maxlength="14" autocomplete="off" placeholder="Wpisz imię">
+      </div>
+      <div class="say" id="say-start" hidden></div>
+    </div>
+    <div class="row"><button class="btn pink" data-go="lab">Rozpocznij naprawę</button></div>
+  </section>
+
+  <!-- LABORATORIUM -->
+  <section class="screen" id="scr-lab" hidden>
+    <div class="say" id="say-lab"></div>
+    <div class="panel tilt-r">
+      <span class="caption">Kadr 1: Laboratorium</span>
+      <h2>Co zrobi skrzynia, gdy przestaniesz ją pchać?</h2>
+      <p>Wybierz miejsce. Przytrzymaj <b>PCHAJ</b> (albo spację), a potem puść. Patrz, co robi skrzynia. Zrób to w trzech miejscach.</p>
+      <div class="seg" role="group" aria-label="Miejsce eksperymentu">
+        <button data-surf="hangar" aria-pressed="true">Hangar</button>
+        <button data-surf="ice" aria-pressed="false">Lodowisko</button>
+        <button data-surf="space" aria-pressed="false">Kosmos</button>
+      </div>
+    </div>
+    <div class="panel scene tilt-l" id="labPanel">
+      <div class="scene-wrap">
+        <canvas class="scene-canvas" id="labCanvas" aria-label="Symulacja skrzyni"></canvas>
+        <div class="stickers">
+          <div class="sticker"><small>prędkość v</small><b id="ro-v">0,0 m/s</b></div>
+          <div class="sticker"><small>pchanie F</small><b id="ro-f">0 N</b></div>
+          <div class="sticker"><small>tarcie T</small><b id="ro-t">0 N</b></div>
+          <div class="sticker"><small>wypadkowa</small><b id="ro-w">0 N</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn hold" id="pushBtn">PCHAJ</button>
+      <button class="btn ghost" id="labReset">Ustaw skrzynię od nowa</button>
+    </div>
+    <div class="panel quiet">
+      <h3>Twoje eksperymenty</h3>
+      <ul class="checklist">
+        <li id="chk-hangar">Pchnij i puść skrzynię w hangarze</li>
+        <li id="chk-ice">Pchnij i puść skrzynię na lodowisku</li>
+        <li id="chk-space">Pchnij i puść skrzynię w kosmosie</li>
+      </ul>
+    </div>
+    <div class="row"><button class="btn" data-go="quiz">Dalej: pytanie</button></div>
+  </section>
+
+  <!-- PYTANIE -->
+  <section class="screen" id="scr-quiz" hidden>
+    <div class="say" id="say-quiz"></div>
+    <div class="panel tilt-l" id="quizPanel">
+      <span class="caption">Kadr 2: Pytanie</span>
+      <h2>Gdzie skrzynia po puszczeniu jechała cały czas tak samo szybko?</h2>
+      <div class="opts" id="opts">
+        <button class="opt" data-ok="0" data-fb="W hangarze skrzynia szybko stanęła. Czyli zwalniała.">W hangarze</button>
+        <button class="opt" data-ok="0" data-fb="Blisko! Na lodzie skrzynia też zwalniała, tylko bardzo powoli. Spójrz na prędkość.">Na lodowisku</button>
+        <button class="opt" data-ok="1" data-fb="Nic jej nie hamowało. Siła jest potrzebna tylko, gdy chcesz zmienić prędkość.">W kosmosie</button>
+      </div>
+    </div>
+    <div class="row"><button class="btn" data-go="end" id="quizNext" disabled>Dalej: raport</button></div>
+  </section>
+
+  <!-- RAPORT -->
+  <section class="screen" id="scr-end" hidden>
+    <div class="panel scene tilt-r ship-wrap" id="shipPanel">
+      <svg viewBox="0 0 800 360" aria-label="Orion odpala silnik" id="shipSvg">
+        <g id="shipStars"></g>
+        <g id="flame" opacity="0">
+          <polygon points="250,180 120,140 160,180 120,220" fill="#ffe14d" stroke="#0d0a14" stroke-width="5" stroke-linejoin="round"/>
+          <polygon points="250,180 170,160 190,180 170,200" fill="#ff3d7f" stroke="#0d0a14" stroke-width="4" stroke-linejoin="round"/>
+        </g>
+        <g id="ship">
+          <polygon points="250,130 520,110 640,180 520,250 250,230" fill="#fff7e8" stroke="#0d0a14" stroke-width="6" stroke-linejoin="round"/>
+          <polygon points="250,130 250,230 200,260 200,100" fill="#35e0ff" stroke="#0d0a14" stroke-width="6" stroke-linejoin="round"/>
+          <circle cx="470" cy="178" r="34" fill="#35e0ff" stroke="#0d0a14" stroke-width="6"/>
+          <circle cx="482" cy="166" r="9" fill="#fff"/>
+          <polygon points="330,120 380,70 440,70 400,116" fill="#ff3d7f" stroke="#0d0a14" stroke-width="6" stroke-linejoin="round"/>
+          <polygon points="330,240 380,290 440,290 400,244" fill="#ff3d7f" stroke="#0d0a14" stroke-width="6" stroke-linejoin="round"/>
+          <text x="300" y="195" font-family="Bangers" font-size="40" fill="#0d0a14" letter-spacing="2">ORION</text>
+        </g>
+      </svg>
+    </div>
+    <div class="panel tilt-l">
+      <span class="caption">Ostatni kadr</span>
+      <h2 id="endTitle">Moduł naprawiony</h2>
+      <div class="result-stars" id="endStars"><i>★</i><i>★</i><i>★</i></div>
+      <p class="lead" id="endXp"></p>
+      <div class="row"><button class="btn pink" id="fireBtn">Odpal silnik</button></div>
+    </div>
+    <div class="say" id="say-end"></div>
+    <div class="panel tilt-r">
+      <h3>Pojęcia</h3>
+      <ul class="terms">
+        <li>Siła <span>znam od razu</span></li>
+        <li>Siła wypadkowa <span>znam od razu</span></li>
+        <li>Bezwładność <span>znam po powtórce</span></li>
+        <li>Tarcie <span>do powtórki</span></li>
+      </ul>
+    </div>
+    <div class="panel quiet">
+      <h3>Dla rodzica</h3>
+      <p>Dziecko zrobiło trzy eksperymenty i odpowiedziało na pytanie kontrolne. Tarcie warto jeszcze raz omówić razem.</p>
+      <p>Materiał: Spotkania z fizyką 7, temat 24 „Pierwsza zasada dynamiki Newtona – bezwładność”, s. 162–168.</p>
+    </div>
+    <div class="row"><button class="btn ghost" data-go="start">Zagraj od nowa</button></div>
+  </section>
+
+</main>
+
+<canvas id="fx" aria-hidden="true"></canvas>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { ink: '#0d0a14', purple: '#2a1050', yellow: '#ffe14d', pink: '#ff3d7f', cyan: '#35e0ff', paper: '#fff7e8' };
+const fmt = (n, d = 1) => n.toFixed(d).replace('.', ',');
+const rand = (a, b) => a + Math.random() * (b - a);
+
+// ---------- bohaterowie: trzy miny (normal / surprised / happy) ----------
+const HEROES = [
+  { id: 'zoe', name: 'Zoja', desc: 'pilotka', body: '#ff8c42', hair: '#c0392b' },
+  { id: 'rex', name: 'Rex', desc: 'robot pokładowy', body: '#35e0ff', hair: null },
+  { id: 'pusz', name: 'Puszek', desc: 'kot w hełmie', body: '#ff3d7f', hair: '#f6c177' },
+];
+function heroSvg(h, mood = 'normal', cls = 'ava') {
+  const eyes = {
+    normal: `<circle cx="24" cy="30" r="5" fill="#fff" stroke="#0d0a14" stroke-width="2"/><circle cx="40" cy="30" r="5" fill="#fff" stroke="#0d0a14" stroke-width="2"/><circle cx="25" cy="31" r="2.2" fill="#0d0a14"/><circle cx="41" cy="31" r="2.2" fill="#0d0a14"/><path d="M26 42 q6 5 12 0" fill="none" stroke="#0d0a14" stroke-width="2.5" stroke-linecap="round"/>`,
+    surprised: `<circle cx="24" cy="30" r="7" fill="#fff" stroke="#0d0a14" stroke-width="2"/><circle cx="40" cy="30" r="7" fill="#fff" stroke="#0d0a14" stroke-width="2"/><circle cx="24" cy="30" r="1.8" fill="#0d0a14"/><circle cx="40" cy="30" r="1.8" fill="#0d0a14"/><ellipse cx="32" cy="44" rx="4" ry="5" fill="#0d0a14"/><path d="M17 20 l6 -3 M47 20 l-6 -3" stroke="#0d0a14" stroke-width="2.5" stroke-linecap="round"/>`,
+    happy: `<path d="M19 31 q5 -7 10 0" fill="none" stroke="#0d0a14" stroke-width="3" stroke-linecap="round"/><path d="M35 31 q5 -7 10 0" fill="none" stroke="#0d0a14" stroke-width="3" stroke-linecap="round"/><path d="M22 40 q10 12 20 0 z" fill="#0d0a14"/><path d="M26 44 q6 4 12 0" fill="#ff3d7f"/>`,
+  }[mood];
+  const extra = h.id === 'rex'
+    ? `<rect x="30" y="4" width="4" height="10" fill="#0d0a14"/><circle cx="32" cy="4" r="4" fill="#ffe14d" stroke="#0d0a14" stroke-width="2"/><rect x="14" y="18" width="36" height="32" rx="6" fill="#dff8ff" stroke="#0d0a14" stroke-width="3"/>`
+    : h.id === 'pusz'
+    ? `<polygon points="16,18 20,4 30,16" fill="${h.hair}" stroke="#0d0a14" stroke-width="3" stroke-linejoin="round"/><polygon points="48,18 44,4 34,16" fill="${h.hair}" stroke="#0d0a14" stroke-width="3" stroke-linejoin="round"/><circle cx="32" cy="34" r="19" fill="${h.hair}" stroke="#0d0a14" stroke-width="3"/><path d="M12 36 l10 1 M12 42 l10 -1 M52 36 l-10 1 M52 42 l-10 -1" stroke="#0d0a14" stroke-width="2" stroke-linecap="round"/>`
+    : `<circle cx="32" cy="34" r="19" fill="#fde2c8" stroke="#0d0a14" stroke-width="3"/><path d="M13 32 q4 -20 19 -18 q15 -2 19 18 q-6 -8 -19 -8 q-13 0 -19 8z" fill="${h.hair}" stroke="#0d0a14" stroke-width="3" stroke-linejoin="round"/>`;
+  return `<svg class="${cls}" viewBox="0 0 64 64" aria-hidden="true">
+    <rect x="12" y="50" width="40" height="14" rx="4" fill="${h.body}" stroke="#0d0a14" stroke-width="3"/>
+    <circle cx="32" cy="32" r="28" fill="rgba(53,224,255,.35)" stroke="#0d0a14" stroke-width="3"/>
+    ${extra}${eyes}
+    <path d="M12 20 q4 -10 12 -12" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+  </svg>`;
+}
+const hero = { id: null, name: '' };
+const heroReady = () => !!(hero.id && hero.name.trim());
+function say(el, text, mood = 'normal') {
+  const h = HEROES.find(x => x.id === hero.id) || HEROES[0];
+  el.hidden = false;
+  el.innerHTML = `${heroSvg(h, mood)}<div class="bubble">${text}</div>`;
+  if (!REDUCED) gsap.from(el.querySelector('.bubble'), { scale: .4, opacity: 0, duration: .4, ease: 'back.out(2.5)', transformOrigin: 'left top' });
+}
+function renderHeroes() {
+  $('#heroPick').innerHTML = HEROES.map(h => `<button class="hero-opt" data-id="${h.id}" aria-pressed="false">${heroSvg(h)}<b>${h.name}</b><span>${h.desc}</span></button>`).join('');
+  $$('.hero-opt').forEach(b => b.addEventListener('click', () => {
+    hero.id = b.dataset.id;
+    $$('.hero-opt').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+    if (!$('#heroName').value) $('#heroName').value = HEROES.find(h => h.id === hero.id).name;
+    hero.name = $('#heroName').value;
+    heroRefresh();
+    boom($('#cover'), 'HEJ!', C.cyan, { size: 70 });
+  }));
+  $('#heroName').addEventListener('input', e => { hero.name = e.target.value; heroRefresh(); });
+}
+function heroRefresh() {
+  const h = HEROES.find(x => x.id === hero.id);
+  const tag = $('#hudHero');
+  if (!h) { tag.hidden = true; return; }
+  tag.hidden = false;
+  tag.innerHTML = `${heroSvg(h)}<span>${hero.name || h.name}</span>`;
+  say($('#say-start'), `Jestem ${hero.name || h.name}. Lecimy naprawić Oriona!`, 'happy');
+}
+
+// ---------- stan ----------
+const S = { xp: 0, stars: 0, done: { hangar: false, ice: false, space: false } };
+function addXP(d) {
+  const o = { v: S.xp }; S.xp += d;
+  if (REDUCED) { $('#xp').textContent = S.xp; return; }
+  gsap.to(o, { v: S.xp, duration: .8, ease: 'power2.out', onUpdate: () => $('#xp').textContent = Math.round(o.v) });
+  gsap.fromTo('.xp', { scale: 1.5, rotation: 8 }, { scale: 1, rotation: -3, duration: .6, ease: 'elastic.out(1, .4)' });
+}
+function paintStars(el, n, bounce) {
+  [...el.children].forEach((c, i) => {
+    if (i < n && !c.classList.contains('on')) {
+      c.classList.add('on');
+      if (bounce && !REDUCED) gsap.from(c, { scale: 0, rotation: -180, y: -60, duration: .7, delay: i * .35, ease: 'bounce.out' });
+    }
+  });
+}
+
+// ---------- onomatopeje: gwiazda-rozbłysk + wstrząs kadru ----------
+function starburst(color, points = 14) {
+  let d = '';
+  for (let i = 0; i < points * 2; i++) {
+    const a = (i / (points * 2)) * Math.PI * 2;
+    const r = i % 2 ? rand(34, 42) : rand(50, 62);
+    d += `${50 + Math.cos(a) * r},${50 + Math.sin(a) * r} `;
+  }
+  return `<svg viewBox="-15 -15 130 130"><polygon points="${d}" fill="${color}" stroke="#0d0a14" stroke-width="4" stroke-linejoin="round"/></svg>`;
+}
+function boom(panel, text, color = C.yellow, o = {}) {
+  if (REDUCED) return;
+  const el = document.createElement('div');
+  el.className = 'ono';
+  const w = o.w || 260;
+  el.style.width = el.style.height = w + 'px';
+  el.style.setProperty('--ono-size', (o.size || 64) + 'px');
+  el.style.setProperty('--ono-color', o.textColor || C.paper);
+  const r = panel.getBoundingClientRect();
+  el.style.left = (o.x != null ? o.x : rand(0.1, 0.65) * r.width) - w / 2 + 'px';
+  el.style.top = (o.y != null ? o.y : rand(0.1, 0.5) * r.height) - w / 2 + 'px';
+  el.innerHTML = starburst(color) + `<span>${text}</span>`;
+  panel.appendChild(el);
+  gsap.timeline({ onComplete: () => el.remove() })
+    .from(el, { scale: 0, rotation: -25, duration: .35, ease: 'back.out(3)' })
+    .to(el, { rotation: 3, duration: .9 })
+    .to(el, { scale: .6, opacity: 0, duration: .25, ease: 'power2.in' }, '-=.1');
+  shake(panel, o.shake == null ? 7 : o.shake);
+}
+function shake(el, amp = 7) {
+  if (REDUCED || !amp) return;
+  gsap.fromTo(el, { x: -amp, y: amp / 2 }, { x: amp, y: -amp / 2, duration: .05, repeat: 5, yoyo: true, clearProps: 'x,y' });
+}
+function mega(text, color) {
+  if (REDUCED) return;
+  const m = document.createElement('div');
+  m.className = 'mega';
+  m.innerHTML = `<div class="ono" style="--ono-color:${C.paper}">${starburst(color, 18)}<span>${text}</span></div>`;
+  document.body.appendChild(m);
+  const o = m.firstElementChild;
+  gsap.timeline({ onComplete: () => m.remove() })
+    .from(o, { scale: 0, rotation: -40, duration: .5, ease: 'back.out(2.5)' })
+    .to(o, { scale: 1.08, rotation: 4, duration: .5, yoyo: true, repeat: 1 })
+    .to(o, { scale: 2.5, opacity: 0, duration: .35, ease: 'power3.in' });
+  shake(document.querySelector('.page'), 12);
+}
+
+// ---------- cząsteczki: iskry, odłamki, dym (płaskie, z obwódką) ----------
+const fx = $('#fx'), fctx = fx.getContext('2d');
+let P = [];
+function fxFit() { const d = devicePixelRatio || 1; fx.width = innerWidth * d; fx.height = innerHeight * d; fctx.setTransform(d, 0, 0, d, 0, 0); }
+fxFit(); addEventListener('resize', fxFit);
+function spawn(x, y, n, opt = {}) {
+  if (REDUCED) return;
+  for (let i = 0; i < n; i++) {
+    const a = opt.dir != null ? opt.dir + rand(-opt.spread || -.6, opt.spread || .6) : rand(0, Math.PI * 2);
+    const sp = rand(opt.v0 || 80, opt.v1 || 420);
+    P.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, decay: rand(1.2, 2.6),
+      r: rand(opt.r0 || 3, opt.r1 || 8), type: opt.type || 'spark', color: opt.colors ? opt.colors[i % opt.colors.length] : C.yellow,
+      rot: rand(0, 6), g: opt.g == null ? 700 : opt.g });
+  }
+  if (!fxRun) fxLoop();
+}
+let fxRun = false, fxLast = 0;
+function fxLoop(t = 0) {
+  fxRun = true;
+  const dt = Math.min(.04, (t - fxLast) / 1000 || .016); fxLast = t;
+  fctx.clearRect(0, 0, innerWidth, innerHeight);
+  P = P.filter(p => p.life > 0);
+  for (const p of P) {
+    p.life -= p.decay * dt; p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += dt * 4;
+    fctx.globalAlpha = Math.min(1, p.life * 2);
+    fctx.lineWidth = 2.5; fctx.strokeStyle = C.ink; fctx.fillStyle = p.color;
+    fctx.beginPath();
+    if (p.type === 'smoke') { const r = p.r * (2 - p.life); fctx.arc(p.x, p.y, r, 0, 7); fctx.fill(); fctx.stroke(); }
+    else if (p.type === 'shard') {
+      fctx.save(); fctx.translate(p.x, p.y); fctx.rotate(p.rot);
+      fctx.moveTo(-p.r, -p.r * .6); fctx.lineTo(p.r, 0); fctx.lineTo(-p.r * .6, p.r); fctx.closePath(); fctx.fill(); fctx.stroke(); fctx.restore();
+    } else { fctx.arc(p.x, p.y, p.r * p.life + 1, 0, 7); fctx.fill(); fctx.stroke(); }
+  }
+  fctx.globalAlpha = 1;
+  if (P.length) requestAnimationFrame(fxLoop); else { fxRun = false; fctx.clearRect(0, 0, innerWidth, innerHeight); }
+}
+function starConfetti(x = .5, y = .5) {
+  if (REDUCED) return;
+  const base = { origin: { x, y }, colors: [C.yellow, C.pink, C.cyan, C.paper], zIndex: 35 };
+  confetti({ ...base, particleCount: 90, spread: 100, startVelocity: 55, shapes: ['star'], scalar: 1.8 });
+  confetti({ ...base, particleCount: 120, spread: 160, startVelocity: 40, shapes: ['circle', 'square'], scalar: 1.1, ticks: 220 });
+  setTimeout(() => confetti({ ...base, particleCount: 40, angle: 60, spread: 60, origin: { x: 0, y: .8 }, shapes: ['star'], scalar: 1.6 }), 250);
+  setTimeout(() => confetti({ ...base, particleCount: 40, angle: 120, spread: 60, origin: { x: 1, y: .8 }, shapes: ['star'], scalar: 1.6 }), 250);
+}
+
+// ---------- nawigacja: kadry wjeżdżają pop-in ----------
+const SAY = {
+  lab: ['Pchnij skrzynię i puść. Zobaczymy, kto ją zatrzyma!', 'normal'],
+  quiz: ['Teraz Ty. Pomyśl, co widziałeś w kosmosie.', 'normal'],
+  end: ['Orion gotowy! Wciśnij przycisk i trzymaj się!', 'happy'],
+};
+function go(key) {
+  $$('.screen').forEach(s => s.hidden = s.id !== 'scr-' + key);
+  $$('#stages button').forEach(b => b.dataset.go === key ? b.setAttribute('aria-current', 'step') : b.removeAttribute('aria-current'));
+  if (SAY[key]) say($('#say-' + key), SAY[key][0], SAY[key][1]);
+  scrollTo({ top: 0, behavior: REDUCED ? 'auto' : 'smooth' });
+  if (!REDUCED) gsap.from('#scr-' + key + ' .panel, #scr-' + key + ' .row', { scale: .6, opacity: 0, rotation: () => rand(-10, 10), duration: .5, stagger: .1, ease: 'back.out(1.8)', clearProps: 'scale,opacity,rotation' });
+  if (key === 'lab') labStart(); else stopLoop();
+  if (key === 'end') endScreen();
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b && !b.disabled) go(b.dataset.go); });
+
+// ---------- LABORATORIUM: skrzynia w stylu komiksu ----------
+const LAB = { m: 20, F: 120, g: 9.81, mu: { hangar: .35, ice: .02, space: 0 } };
+const lab = { surf: 'hangar', x: 0, v: 0, push: false, wasPush: false, released: false };
+const cv = $('#labCanvas'), ctx = cv.getContext('2d');
+let W = 800, H = 320, raf = null, last = 0;
+function fit() { const d = devicePixelRatio || 1; W = cv.clientWidth || 800; H = Math.max(240, Math.min(380, W * .42)); cv.width = W * d; cv.height = H * d; cv.style.height = H + 'px'; ctx.setTransform(d, 0, 0, d, 0, 0); }
+addEventListener('resize', () => { if (!$('#scr-lab').hidden) fit(); });
+function labStart() { fit(); labReset(); runLoop(); }
+function labReset() { lab.x = 0; lab.v = 0; lab.released = false; readouts(0, 0); }
+function runLoop() { stopLoop(); last = performance.now(); const step = t => { const dt = Math.min(.05, (t - last) / 1000); last = t; labStep(dt); labDraw(); raf = requestAnimationFrame(step); }; raf = requestAnimationFrame(step); }
+function stopLoop() { if (raf) cancelAnimationFrame(raf); raf = null; }
+const seed7 = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+const STARS = Array.from({ length: 90 }, () => ({ x: seed7(), y: seed7(), r: seed7() * 2 + .8 }));
+function labStep(dt) {
+  const mu = LAB.mu[lab.surf], Tmax = mu * LAB.m * LAB.g;
+  let F = lab.push ? LAB.F : 0, T = 0;
+  if (lab.push) T = Tmax; else if (lab.v > 0) T = Math.min(Tmax, lab.v * LAB.m / dt);
+  const net = F - T;
+  lab.v = Math.max(0, lab.v + net / LAB.m * dt);
+  lab.x += lab.v * dt * 60;
+  readouts(F, lab.push || lab.v > 0 ? T : 0);
+  // zdarzenia: start pchania / puszczenie
+  if (lab.push && !lab.wasPush) boom($('#labPanel'), 'ŁUP!', C.pink, { size: 76, x: W * .32, y: H * .35 });
+  if (!lab.push && lab.wasPush) {
+    lab.released = true; S.done[lab.surf] = true; $('#chk-' + lab.surf).classList.add('ok');
+    const txt = { hangar: ['SKRZYP!', C.yellow], ice: ['SZUUU…', C.cyan], space: ['…I LECI!', C.paper] }[lab.surf];
+    setTimeout(() => boom($('#labPanel'), txt[0], txt[1], { size: 64, x: W * .6, y: H * .3, shake: lab.surf === 'hangar' ? 8 : 0 }), lab.surf === 'hangar' ? 250 : 500);
+    if (!S.done.counted?.[lab.surf]) { S.done.counted = S.done.counted || {}; S.done.counted[lab.surf] = true; addXP(10); }
+  }
+  if (lab.push && Math.random() < .5) {
+    const r = cv.getBoundingClientRect(), bx = r.left + W * .34, by = r.top + H * .72;
+    const kind = { hangar: { colors: ['#9c6b3c', '#c98a3d'], type: 'smoke', r0: 4, r1: 9, g: -60, v0: 20, v1: 90 }, ice: { colors: [C.cyan, '#fff'], type: 'spark', r0: 2, r1: 4, v0: 60, v1: 220 }, space: { colors: [C.yellow, C.paper], type: 'spark', r0: 2, r1: 3, g: 0, v0: 40, v1: 160 } }[lab.surf];
+    spawn(bx, by, 2, { ...kind, dir: Math.PI, spread: .7 });
+  }
+  lab.wasPush = lab.push;
+}
+function readouts(F, T) {
+  $('#ro-v').textContent = fmt(lab.v) + ' m/s'; $('#ro-f').textContent = Math.round(F) + ' N';
+  $('#ro-t').textContent = Math.round(T) + ' N'; $('#ro-w').textContent = Math.round(F - T) + ' N';
+}
+function halftone(x, y, w, h, step = 7, color = 'rgba(13,10,20,.35)') {
+  ctx.fillStyle = color;
+  for (let i = x; i < x + w; i += step) for (let j = y; j < y + h; j += step) { ctx.beginPath(); ctx.arc(i + ((j / step) % 2) * step / 2, j, 1.4, 0, 7); ctx.fill(); }
+}
+function labDraw() {
+  const floorY = H * .78, off = lab.x % 80;
+  ctx.clearRect(0, 0, W, H);
+  ctx.lineWidth = 4; ctx.strokeStyle = C.ink; ctx.lineJoin = 'round';
+  if (lab.surf === 'hangar') {
+    ctx.fillStyle = '#5c6a94'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#8a93ab'; for (let x = -off * .5; x < W; x += 120) { ctx.fillRect(x, 0, 110, floorY); ctx.strokeRect(x, 0, 110, floorY); }
+    ctx.fillStyle = '#a7afc2'; ctx.fillRect(0, floorY, W, H - floorY); ctx.beginPath(); ctx.moveTo(0, floorY); ctx.lineTo(W, floorY); ctx.stroke();
+    ctx.fillStyle = C.ink; for (let x = -off; x < W; x += 80) { ctx.fillRect(x, floorY + 10, 10, 4); ctx.fillRect(x + 40, floorY + 28, 10, 4); }
+    halftone(0, floorY, W, H - floorY, 9);
+  } else if (lab.surf === 'ice') {
+    ctx.fillStyle = '#bfeeff'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#e9fbff'; ctx.fillRect(0, floorY, W, H - floorY); ctx.beginPath(); ctx.moveTo(0, floorY); ctx.lineTo(W, floorY); ctx.stroke();
+    ctx.strokeStyle = C.cyan; ctx.lineWidth = 2;
+    for (let x = -off * .8; x < W; x += 140) { ctx.beginPath(); ctx.moveTo(x, floorY + 8); ctx.lineTo(x + 30, floorY + 22); ctx.lineTo(x + 22, floorY + 40); ctx.lineTo(x + 60, floorY + 55); ctx.stroke(); }
+    ctx.fillStyle = '#fff'; for (let x = -off * .2; x < W; x += 180) { ctx.beginPath(); ctx.ellipse(x, 50, 70, 24, 0, 0, 7); ctx.fill(); }
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 4;
+  } else {
+    ctx.fillStyle = C.ink; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#fff'; for (const s of STARS) { const sx = ((s.x * W - lab.x * .3) % W + W) % W; ctx.beginPath(); ctx.arc(sx, s.y * H, s.r, 0, 7); ctx.fill(); }
+    ctx.fillStyle = C.purple; ctx.beginPath(); ctx.arc(W * .85, 60, 36, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+    if (lab.v > .5) for (let i = 0; i < 12; i++) { const y = (i * 37 + 20) % H, len = 30 + lab.v * 12; const x = ((i * 131 - lab.x * 2) % W + W) % W; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len, y); ctx.stroke(); }
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 4;
+  }
+  // skrzynia
+  const bw = 96, bh = 86, bx = W * .34, by = floorY - bh;
+  if (lab.v > .3) { ctx.strokeStyle = lab.surf === 'space' ? '#fff' : C.ink; ctx.lineWidth = 4; const n = Math.min(6, Math.ceil(lab.v)); for (let i = 0; i < n; i++) { const y = by + 12 + i * (bh - 20) / n; ctx.beginPath(); ctx.moveTo(bx - 20 - lab.v * 6, y); ctx.lineTo(bx - 8, y); ctx.stroke(); } }
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 5;
+  ctx.fillStyle = '#ffb347'; ctx.fillRect(bx, by, bw, bh); ctx.strokeRect(bx, by, bw, bh);
+  ctx.fillStyle = '#d98a2b'; ctx.fillRect(bx + 6, by + 6, bw - 12, 10);
+  ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + bw, by + bh); ctx.moveTo(bx + bw, by); ctx.lineTo(bx, by + bh); ctx.stroke();
+  halftone(bx + bw * .55, by + bh * .5, bw * .45, bh * .5, 6, 'rgba(13,10,20,.45)');
+  ctx.strokeRect(bx, by, bw, bh);
+  // pchający: ręka + strzałka siły
+  if (lab.push) {
+    ctx.fillStyle = C.pink; ctx.beginPath(); ctx.roundRect(bx - 56, by + 28, 50, 26, 8); ctx.fill(); ctx.stroke();
+    arrow(bx - 70, by - 20, bx + 10, by - 20, C.pink, 'F');
+  }
+  if (lab.surf !== 'space' && (lab.push || lab.v > 0)) arrow(bx + bw + 60, by + bh - 12, bx + bw + 10, by + bh - 12, C.cyan, 'T');
+  // komiksowa ramka kadru
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 8; ctx.strokeRect(0, 0, W, H);
+}
+function arrow(x1, y1, x2, y2, color, label) {
+  ctx.strokeStyle = color; ctx.lineWidth = 7; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  const a = Math.atan2(y2 - y1, x2 - x1);
+  ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - 18 * Math.cos(a - .5), y2 - 18 * Math.sin(a - .5)); ctx.lineTo(x2 - 18 * Math.cos(a + .5), y2 - 18 * Math.sin(a + .5)); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.stroke();
+  ctx.font = '26px Bangers'; ctx.fillStyle = color; ctx.strokeStyle = C.ink; ctx.lineWidth = 4; ctx.lineJoin = 'round';
+  ctx.strokeText(label, (x1 + x2) / 2 - 8, y1 - 10); ctx.fillText(label, (x1 + x2) / 2 - 8, y1 - 10);
+}
+$$('.seg button').forEach(b => b.addEventListener('click', () => {
+  lab.surf = b.dataset.surf; $$('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  labReset(); boom($('#labPanel'), { hangar: 'HANGAR', ice: 'LÓD!', space: 'KOSMOS' }[lab.surf], C.cyan, { size: 56, x: W * .7, y: H * .25, shake: 4 });
+}));
+$('#labReset').addEventListener('click', labReset);
+function holdButton(btn, on, off) {
+  const down = e => { e.preventDefault(); btn.classList.add('active'); on(); };
+  const up = () => { btn.classList.remove('active'); off(); };
+  btn.addEventListener('pointerdown', down); btn.addEventListener('pointerup', up); btn.addEventListener('pointerleave', up); btn.addEventListener('pointercancel', up);
+}
+holdButton($('#pushBtn'), () => lab.push = true, () => lab.push = false);
+addEventListener('keydown', e => { if (e.code === 'Space' && !$('#scr-lab').hidden && e.target.tagName !== 'INPUT') { e.preventDefault(); lab.push = true; $('#pushBtn').classList.add('active'); } });
+addEventListener('keyup', e => { if (e.code === 'Space') { lab.push = false; $('#pushBtn').classList.remove('active'); } });
+
+// ---------- PYTANIE ----------
+let answered = false;
+$$('.opt').forEach(b => b.addEventListener('click', () => {
+  if (answered) return;
+  const ok = b.dataset.ok === '1', panel = $('#quizPanel'), r = b.getBoundingClientRect();
+  if (ok) {
+    answered = true; b.classList.add('good'); $$('.opt').forEach(x => x.disabled = true);
+    mega('TAK!', C.yellow); starConfetti((r.left + r.width / 2) / innerWidth, (r.top + r.height / 2) / innerHeight);
+    spawn(r.left + r.width / 2, r.top + r.height / 2, 40, { type: 'shard', colors: [C.yellow, C.pink, C.cyan], r0: 6, r1: 14 });
+    addXP(50); S.stars = 1; paintStars($('#hudStars'), 1, true);
+    say($('#say-quiz'), b.dataset.fb, 'happy');
+    $('#quizNext').disabled = false;
+    if (!REDUCED) gsap.from($('#quizNext'), { scale: 0, duration: .6, ease: 'back.out(3)', delay: .8 });
+  } else {
+    b.classList.add('bad'); b.disabled = true;
+    boom(panel, 'OJ!', C.pink, { size: 80, x: r.left - panel.getBoundingClientRect().left + r.width / 2, y: r.top - panel.getBoundingClientRect().top + 10, shake: 10 });
+    spawn(r.left + r.width / 2, r.top + r.height / 2, 14, { type: 'smoke', colors: ['#c9c2d8', '#fff'], r0: 6, r1: 12, g: -80, v0: 20, v1: 120 });
+    say($('#say-quiz'), b.dataset.fb, 'surprised');
+  }
+}));
+
+// ---------- RAPORT ----------
+function endScreen() {
+  $('#endXp').textContent = `Zdobyte punkty: ${S.xp} XP`;
+  const g = $('#shipStars'); g.innerHTML = STARS.slice(0, 60).map(s => `<circle cx="${s.x * 800}" cy="${s.y * 360}" r="${s.r}" fill="#fff"/>`).join('');
+  gsap.set('#ship', { x: 0 }); gsap.set('#flame', { opacity: 0 });
+  $('#fireBtn').disabled = false;
+}
+$('#fireBtn').addEventListener('click', () => {
+  const btn = $('#fireBtn'); btn.disabled = true;
+  const panel = $('#shipPanel'), r = panel.getBoundingClientRect();
+  if (REDUCED) { gsap.set('#flame', { opacity: 1 }); paintStars($('#endStars'), 3); paintStars($('#hudStars'), 3); addXP(100); say($('#say-end'), 'Lecimy do domu! Moduł 1 naprawiony.', 'happy'); return; }
+  gsap.timeline()
+    .to('#ship', { x: -12, duration: .06, repeat: 9, yoyo: true })
+    .set('#flame', { opacity: 1 })
+    .from('#flame', { scaleX: 0, transformOrigin: '250px 180px', duration: .2 })
+    .to('#ship', { x: 1200, duration: 1.4, ease: 'power3.in' }, '+=.3')
+    .to('#flame', { x: 1200, duration: 1.4, ease: 'power3.in' }, '<');
+  setTimeout(() => {
+    boom(panel, 'BUUUM!', C.pink, { size: 110, w: 420, x: r.width * .3, y: r.height * .5, shake: 16 });
+    spawn(r.left + r.width * .3, r.top + r.height * .5, 70, { type: 'shard', colors: [C.yellow, C.pink, C.paper], r0: 5, r1: 16, v0: 200, v1: 700 });
+    spawn(r.left + r.width * .3, r.top + r.height * .55, 30, { type: 'smoke', colors: ['#8a93ab', '#fff7e8'], r0: 10, r1: 22, g: -40, v0: 30, v1: 160 });
+    starConfetti(.5, .3);
+  }, 650);
+  setTimeout(() => { paintStars($('#endStars'), 3, true); paintStars($('#hudStars'), 3, true); addXP(100); say($('#say-end'), 'Lecimy do domu! Moduł 1 naprawiony.', 'happy'); }, 1500);
+});
+
+// ---------- start ----------
+renderHeroes();
+hero.id = 'zoe'; $$('.hero-opt')[0].setAttribute('aria-pressed', 'true'); hero.name = 'Zoja'; $('#heroName').value = 'Zoja'; heroRefresh();
+if (!REDUCED) gsap.from('#cover h1', { scale: 0, rotation: -20, duration: .9, ease: 'elastic.out(1, .45)', delay: .2 });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Misja Orion — Żywioły</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Manrope:wght@500;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+/* Makieta C „Żywioły”: świat gry to shader, który zmienia się jak żywioł;
+   UI leży na nim płasko, dużym drukiem. Akcent (--accent) podąża za środowiskiem. */
+:root {
+  --plum: #140a1e;
+  --magma: #ff5a1f;
+  --ice: #a8e9ff;
+  --violet: #5b4bff;
+  --white: #ffffff;
+  --ash: #c9c2d6;
+  --accent: var(--magma);
+  --f-display: "Unbounded", "Arial Black", sans-serif;
+  --f-body: "Manrope", system-ui, sans-serif;
+  --shadow: 0 2px 2px rgba(20,10,30,.55), 0 0 28px rgba(20,10,30,.6);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; min-height: 100%; background: var(--plum); color: var(--white); }
+body { font-family: var(--f-body); font-size: 18px; line-height: 1.5; overflow-x: hidden; }
+
+/* warstwy: shader (0) → cząsteczki (1) → scrim (2) → UI (3) */
+#gl, #fx { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#gl { z-index: 0; }
+#fx { z-index: 1; pointer-events: none; }
+.scrim { position: fixed; inset: 0; z-index: 2; pointer-events: none;
+  background: linear-gradient(90deg, rgba(20,10,30,.62) 0%, rgba(20,10,30,.38) 45%, rgba(20,10,30,.05) 100%); }
+.flash { position: fixed; z-index: 2; left: 0; top: 0; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%;
+  background: var(--accent); pointer-events: none; opacity: 0; transform: scale(0); }
+
+.app { position: relative; z-index: 3; min-height: 100vh; display: flex; flex-direction: column; padding: 20px 16px 60px; }
+@media (min-width: 720px) { .app { padding: 28px 7vw 80px; } }
+
+/* HUD: jedna cienka linia na górze */
+.hud { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; font-weight: 700; text-shadow: var(--shadow); }
+.hud .who { display: flex; align-items: center; gap: 8px; }
+.hud .who svg { width: 34px; height: 34px; }
+.hud .xp { font-family: var(--f-display); font-size: 20px; }
+.hud .xp small { font-family: var(--f-body); font-size: 14px; color: var(--ash); margin-left: 4px; }
+.stars { display: inline-flex; gap: 3px; }
+.stars svg { width: 24px; height: 24px; fill: rgba(255,255,255,.18); stroke: rgba(255,255,255,.5); stroke-width: 1.5; }
+.stars svg.on { fill: var(--accent); stroke: var(--white); }
+.steps { margin-left: auto; display: flex; gap: 14px; font-size: 15px; color: var(--ash); }
+.steps span { padding-bottom: 3px; border-bottom: 3px solid transparent; }
+.steps span.cur { color: var(--white); border-color: var(--accent); }
+@media (max-width: 560px) { .steps { margin-left: 0; width: 100%; } }
+
+/* ekrany */
+.screen { display: grid; gap: 22px; margin-top: 8vh; max-width: 980px; }
+h1, h2, h3 { font-family: var(--f-display); margin: 0; line-height: 1; text-wrap: balance; text-shadow: var(--shadow); }
+h1 { font-size: clamp(44px, 8vw, 110px); font-weight: 900; letter-spacing: -.035em; }
+h2 { font-size: clamp(30px, 4.6vw, 56px); font-weight: 900; letter-spacing: -.03em; }
+h3 { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+p { margin: 0; max-width: 60ch; text-shadow: var(--shadow); }
+.lead { font-size: 20px; font-weight: 700; }
+.soft { color: var(--ash); }
+
+button { font: inherit; cursor: pointer; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--white); outline-offset: 3px; }
+.btn { font-family: var(--f-display); font-weight: 700; font-size: 18px; padding: 14px 26px; border-radius: 999px;
+  border: 0; background: var(--accent); color: var(--plum); transition: transform .15s; }
+.btn:hover { transform: translateY(-2px); }
+.btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.btn.ghost { background: rgba(20,10,30,.55); color: var(--white); box-shadow: inset 0 0 0 2px rgba(255,255,255,.35); }
+.btn.hold { min-width: 170px; font-size: 24px; padding: 18px 34px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.btn.hold.active { background: var(--white); transform: scale(.96); }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+
+/* bohaterowie: portrety z detalami; świecące części (wizjer, lampki) w kolorze żywiołu */
+.heroes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; max-width: 720px; }
+.hero { display: grid; justify-items: center; gap: 10px; padding: 18px 10px 14px; border-radius: 22px; border: 0;
+  background: rgba(20,10,30,.5); box-shadow: inset 0 0 0 2px rgba(255,255,255,.18); font-weight: 700; }
+.hero svg { width: 104px; height: 104px; filter: drop-shadow(0 6px 10px rgba(0,0,0,.45)); }
+.hero[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--accent); background: rgba(20,10,30,.78); }
+.hero[aria-pressed="true"] svg { filter: drop-shadow(0 0 16px var(--accent)); }
+.name { display: grid; gap: 6px; max-width: 320px; font-weight: 700; }
+.name input { font: inherit; font-size: 20px; padding: 12px 16px; border-radius: 14px; border: 0; color: var(--white);
+  background: rgba(20,10,30,.6); box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); }
+
+/* dymek bohatera */
+.say { display: flex; gap: 12px; align-items: flex-start; max-width: 560px; }
+.say svg { flex: none; width: 56px; height: 56px; filter: drop-shadow(0 4px 8px rgba(0,0,0,.45)); }
+.say p { background: rgba(20,10,30,.75); border-radius: 16px; padding: 10px 16px; text-shadow: none; font-weight: 700; }
+
+/* laboratorium: przełącznik świata, scena, odczyty */
+.seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.seg button { font-weight: 700; font-size: 17px; padding: 10px 18px; border-radius: 999px; border: 0;
+  background: rgba(20,10,30,.55); box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); }
+.seg button[aria-pressed="true"] { background: var(--white); color: var(--plum); box-shadow: none; }
+.stage { position: relative; height: 240px; overflow: hidden; }
+.floor { position: absolute; left: 0; right: 0; bottom: 48px; height: 6px; background: var(--white); border-radius: 3px; opacity: .9; }
+/* kreski co 1 m (90 px); przesuwają się, gdy kamera jedzie za skrzynią */
+.ticks { position: absolute; left: 0; right: 0; bottom: 26px; height: 22px; opacity: .55;
+  background: repeating-linear-gradient(90deg, var(--white) 0 2px, transparent 2px 90px); }
+.startmark { position: absolute; left: 0; bottom: 54px; width: 4px; height: 96px; border-radius: 2px; background: var(--accent); will-change: transform; }
+.status { font-weight: 700; color: var(--accent); min-height: 1.5em; }
+/* tabela eksperymentów: wynik zostaje po każdym „pchnij i puść” */
+.exps { display: grid; gap: 8px; max-width: 760px; }
+.exp { display: grid; grid-template-columns: 112px 1fr; gap: 2px 16px; padding: 12px 16px; border-radius: 16px; background: rgba(20,10,30,.6); font-size: 16px; }
+.exp > * { text-shadow: none; }
+.exp b { font-family: var(--f-display); font-size: 18px; grid-row: span 3; align-self: center; }
+.exp em { font-style: normal; font-weight: 700; color: var(--c); }
+.exp[data-env="0"] { --c: #ff5a1f; } .exp[data-env="1"] { --c: #a8e9ff; } .exp[data-env="2"] { --c: #8f84ff; }
+.exp.done { box-shadow: inset 0 0 0 2px var(--c); }
+.exp .res { font-weight: 700; }
+@media (max-width: 520px) { .exp { grid-template-columns: 1fr; } .exp b { grid-row: auto; } }
+.crate { position: absolute; left: 0; bottom: 54px; width: 76px; height: 76px; will-change: transform; }
+.crate svg { width: 100%; height: 100%; stroke: var(--white); stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; fill: var(--plum); }
+.readouts { display: flex; flex-wrap: wrap; gap: 8px 28px; }
+.ro { display: grid; text-shadow: var(--shadow); }
+.ro span { font-size: 14px; font-weight: 700; color: var(--ash); }
+.ro b { font-family: var(--f-display); font-size: clamp(22px, 3.4vw, 36px); font-variant-numeric: tabular-nums; }
+.ro b.hi { color: var(--accent); }
+
+/* pytanie */
+.opts { display: grid; gap: 10px; max-width: 520px; }
+.opt { text-align: left; font-weight: 700; font-size: 19px; padding: 16px 20px; border-radius: 16px; border: 0;
+  background: rgba(20,10,30,.6); box-shadow: inset 0 0 0 2px rgba(255,255,255,.22); }
+.opt:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--white); }
+.opt.good { background: var(--accent); color: var(--plum); box-shadow: none; }
+.opt.bad { box-shadow: inset 0 0 0 3px #ff5a6a; }
+.opt:disabled { cursor: default; }
+
+/* raport */
+.bigstars { display: flex; gap: 10px; }
+.bigstars svg { width: clamp(56px, 10vw, 110px); height: auto; fill: rgba(255,255,255,.12); stroke: rgba(255,255,255,.5); stroke-width: 1.2; }
+.bigstars svg.on { fill: var(--accent); stroke: var(--white); }
+/* raport bohatera: portret + co zrobił + źródło */
+.report { display: grid; grid-template-columns: auto 1fr; gap: 10px 22px; align-items: start; padding: 20px 24px; border-radius: 22px;
+  background: rgba(20,10,30,.62); max-width: 640px; }
+.report svg { width: clamp(96px, 14vw, 140px); height: auto; grid-row: span 3; filter: drop-shadow(0 0 18px var(--accent)); }
+.report h2 { font-size: clamp(26px, 3.6vw, 40px); }
+.report .role { color: var(--ash); font-weight: 700; margin-top: -4px; }
+.report ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.report li { display: flex; gap: 10px; align-items: baseline; font-weight: 700; text-shadow: none; }
+.report li::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); transform: translateY(-1px); }
+.report .soft { grid-column: 2; font-weight: 500; text-shadow: none; font-size: 15px; }
+@media (max-width: 520px) { .report { grid-template-columns: 1fr; } .report svg { grid-row: auto; } .report .soft { grid-column: 1; } }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<canvas id="gl" aria-hidden="true"></canvas>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="scrim" aria-hidden="true"></div>
+<div class="flash" id="flash" aria-hidden="true"></div>
+
+<div class="app">
+  <header class="hud">
+    <div class="who" id="hudWho" hidden></div>
+    <div class="xp"><span id="xp">0</span><small>XP</small></div>
+    <div class="stars" id="hudStars"></div>
+    <nav class="steps" id="steps">
+      <span data-s="start" class="cur">Start</span>
+      <span data-s="lab">Laboratorium</span>
+      <span data-s="quiz">Pytanie</span>
+      <span data-s="end">Raport</span>
+    </nav>
+  </header>
+
+  <!-- START -->
+  <section class="screen" id="scr-start">
+    <h1>Orion ma awarię!</h1>
+    <p class="lead">Statek musi wrócić na Ziemię. Zepsuł się komputer, który steruje silnikami.</p>
+    <p>Żeby go naprawić, musisz zrozumieć, jak poruszają się ciała. Zaczynamy od bezwładności.</p>
+    <h3>Wybierz bohatera</h3>
+    <div class="heroes" id="heroes" role="group" aria-label="Bohater"></div>
+    <label class="name">Jak ma na imię?
+      <input id="heroName" maxlength="14" autocomplete="off" placeholder="Wpisz imię">
+    </label>
+    <div class="actions"><button class="btn" id="startBtn">Rozpocznij naprawę</button></div>
+  </section>
+
+  <!-- LABORATORIUM -->
+  <section class="screen" id="scr-lab" hidden>
+    <div class="say" id="say-lab"></div>
+    <h2>Co zrobi skrzynia, gdy przestaniesz ją pchać?</h2>
+    <p>Wybierz miejsce. Przytrzymaj <b>Pchaj</b> albo spację, a potem puść. Patrz, co robi skrzynia.</p>
+    <div class="seg" role="group" aria-label="Miejsce eksperymentu">
+      <button data-env="0" aria-pressed="true">Hangar</button>
+      <button data-env="1" aria-pressed="false">Lodowisko</button>
+      <button data-env="2" aria-pressed="false">Kosmos</button>
+    </div>
+    <div class="stage" id="stage">
+      <div class="ticks" id="ticks"></div>
+      <div class="floor"></div>
+      <div class="startmark" id="startMark"></div>
+      <div class="crate" id="crate"><svg viewBox="0 0 76 76" aria-hidden="true"><rect x="6" y="6" width="64" height="64" rx="10"/><path d="M22 22 L54 54 M54 22 L22 54"/></svg></div>
+    </div>
+    <div class="readouts">
+      <div class="ro"><span>Prędkość v</span><b id="ro-v">0,0 m/s</b></div>
+      <div class="ro"><span>Droga s</span><b id="ro-s">0,0 m</b></div>
+      <div class="ro"><span>Pchanie F</span><b id="ro-f">0 N</b></div>
+      <div class="ro"><span>Tarcie T</span><b id="ro-t">0 N</b></div>
+      <div class="ro"><span>Wypadkowa</span><b id="ro-w" class="hi">0 N</b></div>
+    </div>
+    <p class="status" id="labStatus">Skrzynia stoi. Kreski na podłodze są co 1 metr.</p>
+    <div class="actions">
+      <button class="btn hold" id="pushBtn">Pchaj</button>
+      <button class="btn ghost" id="labReset">Ustaw od nowa</button>
+      <button class="btn ghost" id="labNext">Dalej: pytanie</button>
+    </div>
+    <h3>Twoje eksperymenty</h3>
+    <div class="exps" id="exps"></div>
+  </section>
+
+  <!-- PYTANIE -->
+  <section class="screen" id="scr-quiz" hidden>
+    <h2>Gdzie skrzynia po puszczeniu jechała cały czas tak samo szybko?</h2>
+    <div class="opts" id="opts">
+      <button class="opt" data-ok="0">W hangarze</button>
+      <button class="opt" data-ok="0">Na lodowisku</button>
+      <button class="opt" data-ok="1">W kosmosie</button>
+    </div>
+    <div class="say" id="say-quiz" hidden></div>
+    <div class="actions"><button class="btn" id="quizNext" hidden>Dalej: raport</button></div>
+  </section>
+
+  <!-- RAPORT -->
+  <section class="screen" id="scr-end" hidden>
+    <h1>Moduł naprawiony</h1>
+    <div class="bigstars" id="bigStars"></div>
+    <p class="lead" id="endXp"></p>
+    <div class="say" id="say-end"></div>
+    <div class="report" id="report"></div>
+    <div class="actions"><button class="btn ghost" id="againBtn">Zagraj od nowa</button></div>
+  </section>
+</div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fmt = (n, d = 1) => n.toFixed(d).replace('.', ',');
+const ACCENT = ['#ff5a1f', '#a8e9ff', '#8f84ff'];
+const ENV_NAME = ['hangar', 'lód', 'kosmos'];
+
+// ---------- stan świata (uniformy shadera) ----------
+const W = { env: 0, heat: 0, tone: 0, dark: 1, shock: { x: .5, y: .5, r: 0, s: 0 } };
+
+// ---------- shader ----------
+const VS = `attribute vec2 a; void main(){ gl_Position = vec4(a, 0., 1.); }`;
+const FS = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform float u_time; uniform vec2 u_res; uniform float u_env;
+uniform vec4 u_shock;   // x,y środek (0..1), z promień, w siła
+uniform float u_heat;   // 0..1, rośnie przy pchaniu
+uniform float u_tone;   // 0..1, czerwony ton po błędzie
+uniform float u_dark;   // 1 = czerń (start), 0 = pełne światło
+
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.-2.*f);
+  return mix(mix(hash(i), hash(i+vec2(1,0)), f.x), mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y); }
+float fbm(vec2 p){ float v = 0., a = .5; for (int i = 0; i < 5; i++){ v += a*noise(p); p = p*2.03 + vec2(1.7, 9.2); a *= .5; } return v; }
+// drobiny: jedna kropka w co drugiej komórce siatki
+float dots(vec2 p, float size){ vec2 i = floor(p), f = fract(p); vec2 c = vec2(hash(i+1.3), hash(i+7.1));
+  return smoothstep(size, 0., length(f-c)) * step(.5, hash(i)); }
+
+// Hangar: żar od dołu, rozgrzane powietrze, iskry lecące w górę
+vec3 hangar(vec2 uv, float t){
+  vec2 p = uv; p.x += sin(p.y*18. + t*3.) * (.004 + .02*u_heat);
+  float glow = pow(1.-p.y, 2.2);
+  float n = fbm(p*vec2(3., 2.) + vec2(0., -t*.25));
+  vec3 c = mix(vec3(.08,.04,.12), vec3(1.,.35,.12), glow*(.45+.55*n)*(.8+u_heat));
+  float e = dots(vec2(p.x*40., p.y*40. - t*4.), .08) + dots(vec2(p.x*22.+5., p.y*22. - t*2.5), .07);
+  c += vec3(1.,.6,.25) * e * (.5+.5*sin(t*6. + p.x*50.)) * (1.+2.*u_heat);
+  return c;
+}
+// Lodowisko: zimna mgła, szkliste smugi, migoczące kryształki
+vec3 ice(vec2 uv, float t){
+  vec2 p = uv;
+  float fog = fbm(p*2.5 + vec2(t*.05, t*.02));
+  vec3 c = mix(vec3(.05,.08,.16), vec3(.66,.91,1.), fog*.75);
+  float st = smoothstep(.965, 1., sin((p.x*.6+p.y)*26. + t*.4 + fbm(p*5.)*2.5)*.5+.5);
+  c += vec3(.6,.9,1.) * st * .16;
+  float cry = dots(p*30., .05) * (.5+.5*sin(t*4. + hash(floor(p*30.))*40.));
+  c += vec3(1.) * cry * 1.2;
+  return c;
+}
+// Kosmos: fioletowa mgławica w dryfie, dwie warstwy gwiazd
+vec3 space(vec2 uv, float t){
+  vec2 p = uv + vec2(t*.01, 0.);
+  float n1 = fbm(p*2. + vec2(t*.03)), n2 = fbm(p*3.5 - vec2(t*.02));
+  vec3 c = vec3(.06,.03,.12) + vec3(.36,.29,1.)*pow(n1, 2.2)*1.2 + vec3(.9,.3,.6)*pow(n2, 3.5)*.8;
+  c += vec3(1.) * (dots(p*60., .04)*.9 + dots(p*120.+3., .025)*.6);
+  return c;
+}
+void main(){
+  vec2 uv = gl_FragCoord.xy / u_res; float asp = u_res.x/u_res.y; float t = u_time;
+  // fala uderzeniowa: pierścień, który odpycha obraz i świeci
+  vec2 d = uv - u_shock.xy; d.x *= asp; float dist = length(d);
+  float ring = smoothstep(.14, 0., abs(dist - u_shock.z));
+  vec2 dir = dist > .001 ? d/dist : vec2(0.); dir.x /= asp;
+  uv -= dir * ring * u_shock.w * .08;
+  vec3 c; float e = u_env;
+  if (e <= 0.) c = hangar(uv, t);
+  else if (e < 1.) c = mix(hangar(uv, t), ice(uv, t), smoothstep(0., 1., e));
+  else if (e < 2.) c = mix(ice(uv, t), space(uv, t), smoothstep(0., 1., e-1.));
+  else c = space(uv, t);
+  c += ring * u_shock.w * vec3(1., .95, .9);
+  c = mix(c, vec3(.5,.05,.08), u_tone*.6);
+  c *= 1. - .45*length((uv-.5)*vec2(1., 1.3));   // winieta
+  c *= 1. - u_dark;
+  gl_FragColor = vec4(c, 1.);
+}`;
+
+const glc = $('#gl');
+const gl = glc.getContext('webgl', { antialias: false, alpha: false });
+let U = null, prog = null;
+if (!gl) {
+  console.warn('Brak WebGL — tło statyczne, UI działa.');
+  glc.hidden = true;
+} else {
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s)); return s; };
+  prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog); gl.useProgram(prog);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const a = gl.getAttribLocation(prog, 'a'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
+  U = {}; ['u_time','u_res','u_env','u_shock','u_heat','u_tone','u_dark'].forEach(n => U[n] = gl.getUniformLocation(prog, n));
+}
+function drawGL(t) {
+  if (!gl) return;
+  gl.uniform1f(U.u_time, t); gl.uniform2f(U.u_res, glc.width, glc.height);
+  gl.uniform1f(U.u_env, W.env); gl.uniform4f(U.u_shock, W.shock.x, W.shock.y, W.shock.r, W.shock.s);
+  gl.uniform1f(U.u_heat, W.heat); gl.uniform1f(U.u_tone, W.tone); gl.uniform1f(U.u_dark, W.dark);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+// ---------- cząsteczki (canvas 2D, składanie addytywne) ----------
+const fxc = $('#fx'), fx = fxc.getContext('2d');
+const P = [];
+function emit(x, y, o) {
+  if (RM) return;
+  for (let i = 0; i < o.count; i++) {
+    const ang = o.spread === undefined ? Math.random()*Math.PI*2 : o.dir + (Math.random()-.5)*o.spread;
+    const sp = o.speed * (.4 + Math.random()*.8);
+    P.push({ x, y, vx: Math.cos(ang)*sp, vy: Math.sin(ang)*sp, life: 0, max: o.life*(.6+Math.random()*.6),
+      size: o.size*(.5+Math.random()), color: Array.isArray(o.color) ? o.color[(Math.random()*o.color.length)|0] : o.color,
+      type: o.type, g: o.g || 0, rot: Math.random()*Math.PI });
+  }
+}
+function drawFX(dt) {
+  fx.clearRect(0, 0, fxc.width, fxc.height);
+  fx.globalCompositeOperation = 'lighter';
+  for (let i = P.length-1; i >= 0; i--) {
+    const p = P[i]; p.life += dt;
+    if (p.life > p.max) { P.splice(i, 1); continue; }
+    p.vy += p.g*dt; p.vx *= .985; p.vy *= .985; p.x += p.vx*dt; p.y += p.vy*dt;
+    const k = 1 - p.life/p.max; fx.globalAlpha = k; fx.fillStyle = fx.strokeStyle = p.color;
+    if (p.type === 'spark') { fx.lineWidth = p.size*.5; fx.beginPath(); fx.moveTo(p.x, p.y); fx.lineTo(p.x - p.vx*.03, p.y - p.vy*.03); fx.stroke(); }
+    else if (p.type === 'crystal') { fx.save(); fx.translate(p.x, p.y); fx.rotate(p.rot + p.life*2); fx.fillRect(-p.size/2, -p.size/2, p.size, p.size); fx.restore(); }
+    else { fx.beginPath(); fx.arc(p.x, p.y, p.size*.5*k + .5, 0, Math.PI*2); fx.fill(); }
+  }
+  fx.globalAlpha = 1; fx.globalCompositeOperation = 'source-over';
+}
+// wybuch dopasowany do świata
+function burst(x, y, big) {
+  const e = Math.round(W.env);
+  const base = { count: big ? 220 : 60, speed: big ? 520 : 260, life: big ? 1.6 : .9, size: big ? 7 : 4 };
+  if (e === 0) emit(x, y, { ...base, type: 'spark', color: ['#ff5a1f', '#ffb347', '#fff2c8'], g: 300 });
+  else if (e === 1) emit(x, y, { ...base, type: 'crystal', color: ['#a8e9ff', '#ffffff', '#d7f6ff'], g: 120 });
+  else emit(x, y, { ...base, type: 'dust', color: ['#5b4bff', '#b7a9ff', '#ffffff'], g: 0 });
+}
+
+// ---------- fala uderzeniowa + flash ----------
+function shock(px, py, strength, dur = 1.1) {
+  if (RM) return;
+  W.shock.x = px / innerWidth; W.shock.y = 1 - py / innerHeight;
+  gsap.killTweensOf(W.shock);
+  gsap.fromTo(W.shock, { r: 0, s: strength }, { r: 1.6, s: 0, duration: dur, ease: 'power2.out' });
+}
+function spill(px, py) {
+  if (RM) return;
+  const f = $('#flash');
+  gsap.fromTo(f, { x: px, y: py, scale: 0, opacity: .9 }, { scale: 60, opacity: 0, duration: 1.2, ease: 'power3.out' });
+}
+
+// ---------- rozmiar, pętla ----------
+function resize() {
+  const dpr = Math.min(devicePixelRatio || 1, 1.5);
+  glc.width = Math.round(innerWidth * dpr * .7); glc.height = Math.round(innerHeight * dpr * .7); // shader w 70% rozdzielczości
+  fxc.width = innerWidth * dpr; fxc.height = innerHeight * dpr; fx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (gl) gl.viewport(0, 0, glc.width, glc.height);
+  if (RM) drawGL(10);
+}
+addEventListener('resize', resize); resize();
+let last = performance.now(), T = 0;
+function loop(now) {
+  const dt = Math.min(.05, (now - last)/1000); last = now; T += dt;
+  if (!RM) drawGL(T);
+  labStep(dt); drawFX(dt);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ---------- środowisko ----------
+function setEnv(i) {
+  const target = +i;
+  document.documentElement.style.setProperty('--accent', ACCENT[target]);
+  document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.env === target)));
+  gsap.to(W, { env: target, duration: RM ? 0 : 1.4, ease: 'sine.inOut', onComplete: () => { if (RM) drawGL(10); } });
+  lab.env = target; lab.mu = [0.35, 0.02, 0][target]; labReset();
+}
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setEnv(b.dataset.env)));
+
+// ---------- bohaterowie ----------
+// portrety 96×96: skafander + hełm, twarz przycięta do wizjera; „var(--accent)” = światło żywiołu
+const VISOR = '<circle cx="48" cy="40" r="23"/>';
+const suit = (color) =>
+  `<path d="M22 96 V78 q0-14 14-14 h24 q14 0 14 14 V96 Z" fill="${color}"/>` +
+  '<rect x="30" y="60" width="36" height="10" rx="5" fill="#b9c3d6"/>' +
+  '<rect x="40" y="76" width="16" height="12" rx="3" fill="#15102a"/><circle cx="45" cy="82" r="2.2" fill="var(--accent)"/><circle cx="51" cy="82" r="2.2" fill="#fff" opacity=".8"/>' +
+  '<circle cx="29" cy="80" r="4" fill="var(--accent)"/><path d="M66 80 q9 2 9 13" stroke="#b9c3d6" stroke-width="4" fill="none" stroke-linecap="round"/>';
+const helmet = (uid, inside) =>
+  `<defs><clipPath id="${uid}">${VISOR}</clipPath></defs>` +
+  '<circle cx="48" cy="38" r="31" fill="#eef2f8"/><circle cx="48" cy="40" r="23" fill="#15102a"/>' +
+  `<g clip-path="url(#${uid})">${inside}</g>` +
+  '<circle cx="48" cy="40" r="23" fill="none" stroke="var(--accent)" stroke-width="2.5"/>' +
+  '<path d="M31 32 q5-12 19-14" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".55"/><circle cx="36" cy="51" r="1.6" fill="#fff" opacity=".5"/>';
+const face = (skin, mouth = '#8a3b2a') =>
+  `<rect x="42" y="50" width="12" height="14" fill="${skin}"/><circle cx="48" cy="42" r="13" fill="${skin}"/>` +
+  '<ellipse cx="43.5" cy="42" rx="1.9" ry="2.4" fill="#15102a"/><ellipse cx="52.5" cy="42" rx="1.9" ry="2.4" fill="#15102a"/>' +
+  '<circle cx="44.2" cy="41.2" r=".7" fill="#fff"/><circle cx="53.2" cy="41.2" r=".7" fill="#fff"/>' +
+  `<path d="M44 47 q4 3.5 8 0" stroke="${mouth}" stroke-width="1.6" fill="none" stroke-linecap="round"/>` +
+  '<circle cx="39.5" cy="46" r="2.3" fill="#ff8aa0" opacity=".4"/><circle cx="56.5" cy="46" r="2.3" fill="#ff8aa0" opacity=".4"/>';
+const HEROES = [
+  { id: 'astronautka', role: 'Astronautka', name: 'Nova', draw: uid => suit('#ff9a3c') + helmet(uid,
+      '<path d="M35 44 q-3 8 0 16" stroke="#a0522d" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M61 44 q3 8 0 16" stroke="#a0522d" stroke-width="5" fill="none" stroke-linecap="round"/>' +
+      '<circle cx="35" cy="59" r="2.6" fill="var(--accent)"/><circle cx="61" cy="59" r="2.6" fill="var(--accent)"/>' +
+      face('#f2c9a1') +
+      '<path d="M35 41 q1-15 13-15 q12 0 13 15 q-4-7-12-6 q-9-1-14 6 z" fill="#a0522d"/>' +
+      '<path d="M40.5 37.5 q3-2 6 0 M49.5 37.5 q3-2 6 0" stroke="#7a3a1e" stroke-width="1.4" fill="none" stroke-linecap="round"/>' +
+      '<circle cx="42" cy="45" r=".6" fill="#b06a46"/><circle cx="44.5" cy="46" r=".6" fill="#b06a46"/><circle cx="52" cy="45" r=".6" fill="#b06a46"/><circle cx="54.5" cy="46" r=".6" fill="#b06a46"/>') },
+  { id: 'astronauta', role: 'Astronauta', name: 'Leo', draw: uid => suit('#3cc4ff') + helmet(uid,
+      face('#8b5a2b', '#4a2714') +
+      '<path d="M34 42 q0-16 14-16 q14 0 14 16 q-3-6-8-5 q-2-4-6-3 q-4-1-6 3 q-5-1-8 5 z" fill="#2a1a12"/><circle cx="40" cy="30" r="3" fill="#2a1a12"/><circle cx="56" cy="30" r="3" fill="#2a1a12"/>' +
+      '<path d="M40 37.5 q3.5-2.5 7 0 M49 37.5 q3.5-2.5 7 0" stroke="#2a1a12" stroke-width="1.8" fill="none" stroke-linecap="round"/>' +
+      '<circle cx="43.5" cy="42" r="4.2" fill="none" stroke="#fff" stroke-width="1.3"/><circle cx="52.5" cy="42" r="4.2" fill="none" stroke="#fff" stroke-width="1.3"/><path d="M47.7 42 h.6" stroke="#fff" stroke-width="1.3"/>') },
+  { id: 'robot', role: 'Robot pokładowy', name: 'Rex', draw: () =>
+      '<line x1="48" y1="14" x2="48" y2="6" stroke="#b9c3d6" stroke-width="3"/><circle cx="48" cy="6" r="4" fill="var(--accent)"/>' +
+      '<rect x="12" y="66" width="10" height="22" rx="5" fill="#8f9bb3"/><rect x="74" y="66" width="10" height="22" rx="5" fill="#8f9bb3"/>' +
+      '<path d="M14 88 l-3 6 M20 88 l3 6 M76 88 l-3 6 M82 88 l3 6" stroke="#8f9bb3" stroke-width="4" stroke-linecap="round"/>' +
+      '<rect x="42" y="54" width="12" height="8" fill="#6f7a92"/>' +
+      '<path d="M24 96 V72 q0-10 10-10 h28 q10 0 10 10 V96 Z" fill="#9aa6bf"/>' +
+      '<circle cx="48" cy="78" r="8" fill="#15102a"/><path d="M48 78 l5-4" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/><circle cx="48" cy="78" r="1.5" fill="var(--accent)"/>' +
+      '<circle cx="31" cy="70" r="2" fill="#6f7a92"/><circle cx="65" cy="70" r="2" fill="#6f7a92"/><rect x="36" y="90" width="24" height="3" rx="1.5" fill="#6f7a92"/>' +
+      '<rect x="22" y="14" width="52" height="40" rx="10" fill="#b9c3d6"/><rect x="26" y="18" width="44" height="32" rx="8" fill="#8f9bb3"/><rect x="29" y="21" width="38" height="26" rx="6" fill="#15102a"/>' +
+      '<circle cx="40" cy="32" r="5" fill="var(--accent)"/><circle cx="56" cy="32" r="5" fill="var(--accent)"/><circle cx="41.5" cy="30.5" r="1.5" fill="#fff"/><circle cx="57.5" cy="30.5" r="1.5" fill="#fff"/>' +
+      '<rect x="38" y="41" width="20" height="3" rx="1.5" fill="var(--accent)" opacity=".85"/>' +
+      '<circle cx="22" cy="34" r="4" fill="#6f7a92"/><circle cx="74" cy="34" r="4" fill="#6f7a92"/><path d="M20 34 h4 M22 32 v4 M72 34 h4 M74 32 v4" stroke="#15102a" stroke-width="1"/>' },
+  { id: 'kot', role: 'Kosmiczny kot', name: 'Pix', draw: uid => suit('#9d8cff') + helmet(uid,
+      '<path d="M34 36 L35 16 L46 29 Z M62 36 L61 16 L50 29 Z" fill="#e8964a"/><path d="M37 32 L37.5 22 L43 28.5 Z M59 32 L58.5 22 L53 28.5 Z" fill="#f6c9a8"/>' +
+      '<circle cx="48" cy="42" r="14" fill="#e8964a"/><path d="M42 30 l2 6 M48 29 v6 M54 30 l-2 6" stroke="#c4712c" stroke-width="2" stroke-linecap="round"/>' +
+      '<ellipse cx="48" cy="47.5" rx="7" ry="5" fill="#f6d7b8"/>' +
+      '<ellipse cx="43" cy="41" rx="2.7" ry="3.4" fill="#5ad67d"/><ellipse cx="53" cy="41" rx="2.7" ry="3.4" fill="#5ad67d"/><ellipse cx="43" cy="41" rx="1" ry="3" fill="#15102a"/><ellipse cx="53" cy="41" rx="1" ry="3" fill="#15102a"/>' +
+      '<path d="M46.5 45.5 h3 l-1.5 2z" fill="#ff7d8a"/><path d="M46 48 q2 2 4 0" stroke="#8a3b2a" stroke-width="1.3" fill="none" stroke-linecap="round"/>' +
+      '<path d="M30 44 h10 M30 48 l10-2 M66 44 h-10 M66 48 l-10-2" stroke="#15102a" stroke-width="1" stroke-linecap="round"/>') },
+];
+const hero = { id: null, name: '' };
+let avaSeq = 0;
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ava = (id, cls = '') => `<svg class="${cls}" viewBox="0 0 96 96" aria-hidden="true">${HEROES.find(h => h.id === id).draw('visor' + (++avaSeq))}</svg>`;
+$('#heroes').innerHTML = HEROES.map(h => `<button class="hero" data-id="${h.id}" aria-pressed="false">${ava(h.id)}<span>${h.role}</span></button>`).join('');
+document.querySelectorAll('.hero').forEach(b => b.addEventListener('click', () => {
+  hero.id = b.dataset.id;
+  document.querySelectorAll('.hero').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  const r = b.getBoundingClientRect(); burst(r.left + r.width/2, r.top + r.height/2, false);
+  if (!RM) gsap.fromTo(b, { scale: .92 }, { scale: 1, duration: .4, ease: 'back.out(3)' });
+}));
+$('#heroName').addEventListener('input', e => hero.name = e.target.value.trim());
+function say(el, text) {
+  el.hidden = false;
+  el.innerHTML = `${ava(hero.id || 'kot')}<p>${text}</p>`;
+  if (!RM) gsap.from(el, { y: 12, opacity: 0, duration: .4 });
+}
+
+// ---------- HUD ----------
+const STAR = '<svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3 6.1 20.6l1.3-6.6L2.5 9.4l6.6-.8z"/></svg>';
+$('#hudStars').innerHTML = STAR + STAR + STAR;
+const S = { xp: 0, stars: 0 };
+function addXP(n, px, py) {
+  const from = S.xp; S.xp += n;
+  const o = { v: from };
+  gsap.to(o, { v: S.xp, duration: RM ? 0 : .9, ease: 'power2.out', onUpdate: () => $('#xp').textContent = Math.round(o.v) });
+  if (!RM) { const r = $('#xp').getBoundingClientRect(); emit(px, py, { count: 1, speed: 0, life: .01, size: 0, type: 'dust', color: '#fff' });
+    gsap.fromTo($('.hud .xp'), { scale: 1 }, { scale: 1.3, yoyo: true, repeat: 1, duration: .25, delay: .5, transformOrigin: 'left center' }); }
+}
+function setStep(k) { document.querySelectorAll('#steps span').forEach(s => s.classList.toggle('cur', s.dataset.s === k)); }
+function show(id, step) {
+  document.querySelectorAll('.screen').forEach(s => s.hidden = s.id !== id);
+  setStep(step);
+  if (!RM) gsap.from(`#${id} > *`, { y: 24, opacity: 0, duration: .55, stagger: .06, ease: 'power3.out', clearProps: 'all' });
+  scrollTo({ top: 0, behavior: 'instant' });
+}
+
+// ---------- start: świat zapala się z czerni ----------
+if (RM) { W.dark = 0; drawGL(10); }
+else {
+  gsap.to(W, { dark: 0, duration: 1.8, ease: 'power2.inOut' });
+  gsap.from('#scr-start > *', { y: 40, opacity: 0, duration: .8, stagger: .09, delay: .5, ease: 'power3.out', clearProps: 'all' });
+}
+$('#startBtn').addEventListener('click', () => {
+  if (!hero.id) hero.id = 'kot';
+  if (!hero.name) hero.name = HEROES.find(h => h.id === hero.id).name;
+  $('#hudWho').hidden = false; $('#hudWho').innerHTML = ava(hero.id) + esc(hero.name);
+  show('scr-lab', 'lab');
+  say($('#say-lab'), `${hero.name}, zrób ten sam test w trzech miejscach. Patrz na prędkość.`);
+  labReset();
+});
+
+// ---------- laboratorium: prosta fizyka skrzyni ----------
+const lab = { m: 20, F: 120, g: 9.81, mu: 0.35, env: 0, x: 0, v: 0, push: false, wasPush: false, rel: null, done: {}, scale: 90 }; // 90 px = 1 m
+const ENV_LABEL = ['Hangar', 'Lodowisko', 'Kosmos'];
+function labReset() { lab.x = 0; lab.v = 0; lab.rel = null; labDraw(); }
+// jeden eksperyment = pchnij → puść → skrzynia stanie albo minie 3,5 s; wynik zostaje w tabeli
+function labRecord(T) {
+  const r = lab.rel, stopped = lab.v < .01;
+  lab.done[r.env] = { T, v0: r.v, dist: lab.x - r.x, t: r.t, vEnd: lab.v, stopped };
+  lab.rel = null; labTable();
+  const c = $('#crate').getBoundingClientRect(); burst(c.left + c.width/2, c.top + c.height/2, false);
+  if ([0, 1, 2].every(i => lab.done[i])) { addXP(10, c.left, c.top); say($('#say-lab'), 'Masz trzy wyniki. Porównaj siłę wypadkową po puszczeniu. Gdzie było 0 N?'); }
+}
+function labTable() {
+  $('#exps').innerHTML = [0, 1, 2].map(i => {
+    const T = Math.round([0.35, 0.02, 0][i] * lab.m * lab.g), d = lab.done[i];
+    let res = '<span class="res soft">Jeszcze nie sprawdzone. Pchnij i puść.</span>';
+    if (d) res = `<span class="res">Puszczona przy ${fmt(d.v0)} m/s. ` + (d.stopped ? `Stanęła po ${fmt(d.dist)} m.`
+      : T ? `Po ${fmt(d.t)} s nadal jedzie ${fmt(d.vEnd)} m/s i powoli zwalnia.` : `Po ${fmt(d.t)} s jedzie tak samo: ${fmt(d.vEnd)} m/s. Nic jej nie hamuje.`) + '</span>';
+    return `<div class="exp${d ? ' done' : ''}" data-env="${i}"><b>${ENV_LABEL[i]}</b>` +
+      `<span>Pchanie: ${lab.F} N − tarcie ${T} N = <em>+${lab.F - T} N</em></span>` +
+      `<span>Po puszczeniu: 0 N − tarcie ${T} N = <em>${T ? '−' + T : '0'} N</em></span>${res}</div>`;
+  }).join('');
+}
+labTable();
+function labStep(dt) {
+  if ($('#scr-lab').hidden) { W.heat = gsap.utils.interpolate(W.heat, 0, .1); return; }
+  const T = (lab.push || Math.abs(lab.v) > .01) ? lab.mu * lab.m * lab.g : 0;
+  const F = lab.push ? lab.F : 0;
+  let net = F - Math.sign(lab.v || 1) * T;
+  if (!lab.push && Math.abs(lab.v) < .01) { lab.v = 0; net = 0; }
+  lab.v += net / lab.m * dt;
+  if (!lab.push && lab.v < 0) lab.v = 0;
+  lab.x += lab.v * dt;
+  // moment puszczenia → start pomiaru; ponowne pchnięcie przerywa pomiar
+  if (lab.wasPush && !lab.push && lab.v > .2) lab.rel = { env: lab.env, t: 0, x: lab.x, v: lab.v };
+  if (lab.push) lab.rel = null;
+  lab.wasPush = lab.push;
+  if (lab.rel) { lab.rel.t += dt; if (lab.v < .01 || lab.rel.t >= 3.5) labRecord(T); }
+  let st;
+  if (lab.push) st = T > 0 ? 'Pchasz mocniej, niż hamuje tarcie. Skrzynia przyspiesza.' : 'Pchasz, nic nie hamuje. Skrzynia przyspiesza.';
+  else if (lab.v > 0) st = T > 0 ? 'Nie pchasz. Tarcie hamuje skrzynię. Skrzynia zwalnia.' : 'Nie pchasz i nic nie hamuje. Skrzynia jedzie cały czas tak samo szybko!';
+  else st = lab.x > 0 ? 'Skrzynia stanęła. Spójrz na wynik w tabeli.' : 'Skrzynia stoi. Kreski na podłodze są co 1 metr.';
+  $('#labStatus').textContent = st;
+  W.heat = gsap.utils.interpolate(W.heat, lab.push ? 1 : 0, lab.push ? .08 : .03);
+  if (lab.push && !RM) {
+    const r = $('#crate').getBoundingClientRect(); const e = Math.round(W.env);
+    const o = { count: 4, dir: Math.PI, spread: .9, speed: 260, life: .7, size: 6 };
+    if (e === 0) emit(r.left + 6, r.bottom - 8, { ...o, type: 'spark', color: ['#ff5a1f', '#ffb347'], g: 400 });
+    else if (e === 1) emit(r.left + 6, r.bottom - 8, { ...o, type: 'crystal', color: ['#a8e9ff', '#ffffff'], g: 200 });
+    else emit(r.left + 6, r.top + r.height/2, { ...o, type: 'dust', color: ['#5b4bff', '#ffffff'], g: 0, spread: .4 });
+  }
+  $('#ro-v').textContent = fmt(lab.v) + ' m/s'; $('#ro-s').textContent = fmt(lab.x) + ' m'; $('#ro-f').textContent = F + ' N';
+  $('#ro-t').textContent = fmt(T, 0) + ' N'; $('#ro-w').textContent = (net > .5 ? '+' : net < -.5 ? '−' : '') + fmt(Math.abs(net), 0) + ' N';
+  labDraw();
+}
+// kamera jedzie za skrzynią: skrzynia zatrzymuje się na 30% szerokości sceny, podłoga przesuwa się pod nią
+function labDraw() {
+  const px = lab.x * lab.scale, off = Math.max(0, px - $('#stage').clientWidth * .3);
+  $('#crate').style.transform = `translateX(${px - off}px) rotate(${lab.push ? 2 : 0}deg)`;
+  $('#ticks').style.backgroundPositionX = `${-off}px`;
+  $('#startMark').style.transform = `translateX(${-off}px)`;
+}
+function hold(btn, on, off) {
+  const down = e => { e.preventDefault(); btn.classList.add('active'); on(); };
+  const up = () => { btn.classList.remove('active'); off(); };
+  btn.addEventListener('pointerdown', down); btn.addEventListener('pointerup', up); btn.addEventListener('pointercancel', up); btn.addEventListener('pointerleave', up);
+  btn.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!btn.classList.contains('active')) down(e); } });
+  btn.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') up(); });
+}
+hold($('#pushBtn'), () => lab.push = true, () => lab.push = false);
+addEventListener('keydown', e => { if (e.key === ' ' && !$('#scr-lab').hidden && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') { e.preventDefault(); lab.push = true; $('#pushBtn').classList.add('active'); } });
+addEventListener('keyup', e => { if (e.key === ' ') { lab.push = false; $('#pushBtn').classList.remove('active'); } });
+$('#labReset').addEventListener('click', labReset);
+$('#labNext').addEventListener('click', () => { lab.push = false; show('scr-quiz', 'quiz'); });
+
+// ---------- pytanie: zła = świat pęka, dobra = supernowa ----------
+document.querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => {
+  const r = b.getBoundingClientRect(), cx = r.left + r.width/2, cy = r.top + r.height/2;
+  S.tries = (S.tries || 0) + 1;
+  if (b.dataset.ok === '1') {
+    document.querySelectorAll('.opt').forEach(o => o.disabled = true);
+    b.classList.add('good');
+    shock(cx, cy, 1.1, 1.3); burst(cx, cy, true); spill(cx, cy);
+    addXP(40, cx, cy); S.stars = 1; $('#hudStars').children[0].classList.add('on');
+    say($('#say-quiz'), 'Tak! W kosmosie nic nie hamuje. Skrzynia jedzie dalej sama.');
+    $('#quizNext').hidden = false;
+    if (!RM) gsap.from('#quizNext', { scale: .8, opacity: 0, duration: .5, delay: .4, ease: 'back.out(2)' });
+  } else {
+    b.disabled = true; b.classList.add('bad');
+    shock(cx, cy, .45, .7);
+    if (!RM) {
+      gsap.fromTo(W, { tone: .9 }, { tone: 0, duration: .8, ease: 'power2.out' });
+      gsap.fromTo('.app', { x: -7 }, { x: 0, duration: .5, ease: 'elastic.out(1, .25)' });
+    }
+    say($('#say-quiz'), 'Blisko! Spójrz na prędkość. Tam skrzynia zwalniała.');
+  }
+}));
+$('#quizNext').addEventListener('click', () => {
+  show('scr-end', 'end');
+  $('#endXp').textContent = `${S.xp} XP za ten moduł`;
+  say($('#say-end'), `Brawo, ${esc(hero.name)}! Silniki znowu słuchają komputera.`);
+  const h = HEROES.find(x => x.id === hero.id);
+  $('#report').innerHTML = ava(hero.id) +
+    `<h2>Raport: ${esc(hero.name)}</h2><p class="role">${h.role} na statku Orion</p>` +
+    '<ul>' +
+    '<li>Trzy eksperymenty ze skrzynią: hangar, lodowisko, kosmos.</li>' +
+    `<li>Pytanie o bezwładność: ${S.tries === 1 ? 'dobra odpowiedź za pierwszym razem' : 'dobra odpowiedź po ' + S.tries + ' próbach'}.</li>` +
+    '<li>Pojęcie do zeszytu: bezwładność.</li>' +
+    `<li>Zdobyte: ${S.xp} XP i ${S.stars === 1 ? 'gwiazdka' : 'gwiazdki'} za ten moduł.</li>` +
+    '</ul>' +
+    '<p class="soft">Spotkania z fizyką 7, temat 24, s. 162–168.</p>';
+  const bs = $('#bigStars'); bs.innerHTML = STAR + STAR + STAR;
+  shock(innerWidth/2, innerHeight/2, 1.4, 1.8); burst(innerWidth/2, innerHeight/2, true);
+  [...bs.children].forEach((s, i) => {
+    const light = () => { s.classList.add('on'); const r = s.getBoundingClientRect(); burst(r.left + r.width/2, r.top + r.height/2, false); };
+    if (RM) light();
+    else gsap.fromTo(s, { scale: 0 }, { scale: 1, duration: .6, delay: .5 + i*.45, ease: 'back.out(2.5)', onStart: light, transformOrigin: 'center' });
+  });
+});
+$('#againBtn').addEventListener('click', () => location.reload());
+
+// podgląd z konsoli (np. gdy karta jest w tle i rAF stoi): orion.tick(0.5) posuwa świat o pół sekundy
+window.orion = { W, lab, tick(dt = 1/60) { T += dt; const g = gsap.globalTimeline; g.time(g.time() + dt); drawGL(T); labStep(dt); drawFX(dt); } };
+})();
+</script>
+</body>
+</html>

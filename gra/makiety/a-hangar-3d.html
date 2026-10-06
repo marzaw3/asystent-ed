@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Misja Orion — Hangar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Nunito+Sans:wght@400;700&display=swap">
+<style>
+/* Makieta A: hangar Oriona w 3D. Scena na całym ekranie, rama instrumentów przy lewej i dolnej krawędzi. */
+:root {
+  --void: #050912;
+  --hull: #0e1a2b;
+  --hull-2: #15243a;
+  --thruster: #ff7a1a;
+  --coldlight: #8fd3ff;
+  --white: #f2f5f9;
+  --amber: #ffd166;
+  --alarm: #ff3b3b;
+  --ok: #7ef0a6;
+  --muted: #9fb3cc;
+  --f-head: "Chakra Petch", "Arial Narrow", sans-serif;
+  --f-body: "Nunito Sans", system-ui, sans-serif;
+  --rail-w: clamp(300px, 32vw, 440px);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--void); color: var(--white); }
+body { font-family: var(--f-body); font-size: 18px; line-height: 1.5; overflow: hidden; min-height: 100vh; }
+h1, h2, h3 { font-family: var(--f-head); font-weight: 700; line-height: 1.05; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(34px, 3.3vw, 56px); letter-spacing: -.01em; }
+h2 { font-size: 32px; }
+h3 { font-size: 20px; font-weight: 600; color: var(--coldlight); }
+p { margin: 0; max-width: 65ch; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+
+/* scena */
+#stage { position: fixed; inset: 0; z-index: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; }
+#nogl { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; background: var(--hull); }
+.alarm-veil { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(255, 59, 59, .55) 100%); }
+
+/* rama instrumentów */
+.frame { position: fixed; inset: 0; z-index: 2; display: grid; pointer-events: none;
+  grid-template-columns: var(--rail-w) 1fr; grid-template-rows: auto 1fr auto; }
+.frame > * { pointer-events: auto; }
+.hud { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 20px; }
+.hud-left { display: flex; align-items: center; gap: 14px; min-height: 48px; }
+.brand { font-family: var(--f-head); font-weight: 600; font-size: 15px; color: var(--muted); }
+.hero-badge { display: flex; align-items: center; gap: 10px; font-family: var(--f-head); font-weight: 700; font-size: 19px;
+  padding: 6px 14px 6px 6px; border-radius: 999px; background: rgba(14, 26, 43, .8); border: 1px solid rgba(143, 211, 255, .3); }
+.hero-badge svg { width: 36px; height: 36px; }
+.hud-right { display: flex; align-items: center; gap: 12px; font-family: var(--f-head); }
+.xp { display: flex; align-items: baseline; gap: 8px; padding: 8px 14px; border-radius: 8px; background: rgba(14, 26, 43, .8); border: 1px solid rgba(143, 211, 255, .3); font-variant-numeric: tabular-nums; }
+.xp small { font-size: 13px; color: var(--muted); }
+.xp b { font-size: 22px; color: var(--amber); }
+.stars { display: flex; gap: 4px; font-size: 26px; line-height: 1; }
+.stars i { font-style: normal; color: rgba(143, 211, 255, .25); transition: color .3s, text-shadow .3s; }
+.stars i.on { color: var(--amber); text-shadow: 0 0 14px var(--amber); }
+
+.rail { grid-row: 2; grid-column: 1; align-self: stretch; display: grid; grid-template-rows: auto 1fr; gap: 12px; padding: 4px 20px 12px; min-height: 0; }
+.stages { display: flex; gap: 6px; flex-wrap: wrap; }
+.stages button { font-family: var(--f-head); font-weight: 600; font-size: 14px; padding: 7px 12px; border-radius: 6px;
+  background: rgba(14, 26, 43, .75); border: 1px solid rgba(143, 211, 255, .25); color: var(--muted); }
+.stages button[aria-current="step"] { color: var(--void); background: var(--amber); border-color: var(--amber); }
+.stages button.done { color: var(--ok); border-color: rgba(126, 240, 166, .5); }
+
+.slab { position: relative; overflow: auto; min-height: 0; padding: 22px 22px 24px; display: grid; gap: 14px; align-content: start;
+  background: linear-gradient(180deg, rgba(21, 36, 58, .92), rgba(14, 26, 43, .88)); backdrop-filter: blur(10px);
+  border: 1px solid rgba(143, 211, 255, .18); border-top: 2px solid var(--coldlight); border-radius: 4px 4px 12px 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 20px 50px rgba(0, 0, 0, .45); scrollbar-width: thin; }
+.slab .lead { color: var(--muted); }
+.slab .kicker { font-family: var(--f-head); font-weight: 600; font-size: 15px; color: var(--coldlight); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn { font-family: var(--f-head); font-weight: 700; font-size: 19px; padding: 11px 22px; border-radius: 8px;
+  background: var(--amber); border: 1px solid var(--amber); color: var(--void); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.ghost { background: transparent; color: var(--white); border-color: rgba(143, 211, 255, .4); }
+.btn.hold { min-width: 160px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  background: var(--thruster); border-color: var(--thruster); box-shadow: 0 0 0 0 rgba(255, 122, 26, 0); transition: box-shadow .2s; }
+.btn.hold.active { box-shadow: 0 0 28px 4px rgba(255, 122, 26, .7); }
+
+/* bohater */
+.heroes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.hero-opt { display: grid; justify-items: center; gap: 6px; padding: 12px 6px 10px; border-radius: 10px; color: var(--white);
+  background: rgba(5, 9, 18, .5); border: 1px solid rgba(143, 211, 255, .2); font-family: var(--f-head); font-weight: 600; font-size: 16px; }
+.hero-opt svg { width: 64px; height: 64px; }
+.hero-opt[aria-pressed="true"] { border-color: var(--amber); box-shadow: 0 0 0 1px var(--amber) inset, 0 0 24px rgba(255, 209, 102, .25); }
+.field { display: grid; gap: 4px; max-width: 300px; }
+.field label { font-family: var(--f-head); font-weight: 600; font-size: 15px; color: var(--muted); }
+.field input { font: inherit; font-size: 19px; padding: 9px 12px; border-radius: 8px; color: var(--white);
+  background: rgba(5, 9, 18, .6); border: 1px solid rgba(143, 211, 255, .35); width: 100%; }
+.say { display: flex; gap: 10px; align-items: flex-start; }
+.say svg { width: 44px; height: 44px; flex: none; }
+.say .bubble { position: relative; padding: 10px 14px; border-radius: 10px; background: rgba(5, 9, 18, .55);
+  border: 1px solid rgba(143, 211, 255, .45); display: grid; gap: 2px; }
+.say .bubble::before { content: ""; position: absolute; left: -7px; top: 16px; width: 12px; height: 12px;
+  background: rgba(5, 9, 18, .9); border-left: 1px solid rgba(143, 211, 255, .45); border-bottom: 1px solid rgba(143, 211, 255, .45); transform: rotate(45deg); }
+.say b { font-family: var(--f-head); color: var(--coldlight); }
+
+/* pytanie */
+.opts { display: grid; gap: 8px; }
+.opt { text-align: left; padding: 12px 14px; border-radius: 8px; line-height: 1.4; color: var(--white);
+  background: rgba(5, 9, 18, .5); border: 1px solid rgba(143, 211, 255, .3); transition: border-color .15s, transform .15s; }
+.opt:hover:not(:disabled) { border-color: var(--coldlight); }
+.opt:disabled { cursor: default; }
+.opt.good { border-color: var(--ok); box-shadow: 0 0 0 1px var(--ok) inset, 0 0 22px rgba(126, 240, 166, .35); }
+.opt.bad { border-color: var(--alarm); box-shadow: 0 0 0 1px var(--alarm) inset; }
+.fb { padding: 12px 14px; border-radius: 8px; border: 1px solid rgba(143, 211, 255, .3); background: rgba(5, 9, 18, .5); display: grid; gap: 4px; }
+.fb.good { border-color: var(--ok); }
+.fb.bad { border-color: var(--alarm); }
+.fb .tag { font-family: var(--f-head); font-weight: 700; font-size: 20px; }
+.fb.good .tag { color: var(--ok); }
+.fb.bad .tag { color: var(--alarm); }
+.xp-fly { position: fixed; z-index: 5; pointer-events: none; font-family: var(--f-head); font-weight: 700; font-size: 26px;
+  color: var(--amber); text-shadow: 0 0 16px var(--amber); will-change: transform; }
+
+/* raport */
+.result-stars { display: flex; gap: 10px; font-size: 56px; line-height: 1; }
+.result-stars i { font-style: normal; color: rgba(143, 211, 255, .2); transform: scale(.6); }
+.result-stars i.on { color: var(--amber); text-shadow: 0 0 24px var(--amber); }
+.terms { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.terms li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 12px; border-radius: 6px; background: rgba(5, 9, 18, .5); }
+.terms li span { color: var(--ok); font-family: var(--f-head); font-size: 15px; }
+.parent { font-size: 15px; color: var(--muted); }
+.parent a { color: var(--coldlight); }
+
+/* instrumenty na dole */
+.instruments { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; padding: 12px 20px 18px;
+  background: linear-gradient(180deg, transparent, rgba(5, 9, 18, .85) 40%); }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg button { font-family: var(--f-head); font-weight: 600; font-size: 15px; padding: 8px 14px; border-radius: 6px;
+  background: rgba(14, 26, 43, .85); border: 1px solid rgba(143, 211, 255, .3); color: var(--muted); }
+.seg button[aria-pressed="true"] { color: var(--coldlight); border-color: var(--coldlight); box-shadow: 0 0 14px rgba(143, 211, 255, .3); }
+.readouts { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.ro { min-width: 118px; padding: 7px 12px; border-radius: 6px; background: rgba(14, 26, 43, .85); border: 1px solid rgba(143, 211, 255, .25);
+  font-variant-numeric: tabular-nums; display: grid; gap: 0; }
+.ro span { font-family: var(--f-head); font-weight: 600; font-size: 12px; color: var(--muted); }
+.ro b { font-family: var(--f-head); font-size: 20px; color: var(--white); }
+.ro.hot b { color: var(--thruster); }
+.status { flex-basis: 100%; font-family: var(--f-head); font-weight: 600; font-size: 15px; color: var(--coldlight); min-height: 1.4em; }
+
+@media (max-width: 760px) {
+  body { overflow: auto; }
+  #stage { position: relative; height: 54vh; }
+  .alarm-veil { position: absolute; }
+  .frame { position: static; display: block; }
+  .hud { position: absolute; top: 0; left: 0; right: 0; }
+  .rail { padding: 12px 16px; }
+  .slab { max-height: none; overflow: visible; }
+  .readouts { margin-left: 0; }
+  :root { --rail-w: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+
+<div id="stage">
+  <canvas id="gl" aria-label="Hangar Oriona w 3D"></canvas>
+  <div id="nogl" hidden><p>Ta przeglądarka nie obsługuje grafiki 3D (WebGL). Włącz akcelerację sprzętową albo otwórz grę na innym komputerze.</p></div>
+</div>
+<div class="alarm-veil" id="veil"></div>
+
+<div class="frame">
+  <header class="hud">
+    <div class="hud-left">
+      <span class="brand">Misja Orion</span>
+      <div class="hero-badge" id="badge" hidden></div>
+    </div>
+    <div class="hud-right">
+      <div class="xp"><small>XP</small><b id="xp">0</b></div>
+      <div class="stars" id="hudStars" aria-label="Gwiazdki"><i>★</i><i>★</i><i>★</i></div>
+    </div>
+  </header>
+
+  <aside class="rail">
+    <nav class="stages" id="stages" aria-label="Etapy misji">
+      <button data-go="start" aria-current="step">Start</button>
+      <button data-go="lab">Laboratorium</button>
+      <button data-go="quiz">Pytanie</button>
+      <button data-go="report">Raport</button>
+    </nav>
+
+    <div class="slab" id="pane">
+      <!-- START -->
+      <section id="p-start" data-pane>
+        <span class="kicker">Komunikat z mostka</span>
+        <h1>Orion ma awarię!</h1>
+        <p>Komputer, który steruje silnikami, jest zepsuty. Żeby go naprawić, musisz zrozumieć, jak poruszają się ciała. Zacznij w hangarze.</p>
+        <h3>Kto leci?</h3>
+        <div class="heroes" id="heroes" role="group" aria-label="Bohater"></div>
+        <div class="field">
+          <label for="heroName">Jak ma na imię?</label>
+          <input id="heroName" maxlength="14" autocomplete="off" placeholder="Wpisz imię">
+        </div>
+        <div class="say" id="say-start" hidden></div>
+        <div class="actions"><button class="btn" id="goLab" disabled>Wejdź do hangaru</button></div>
+      </section>
+
+      <!-- LABORATORIUM -->
+      <section id="p-lab" data-pane hidden>
+        <span class="kicker">Laboratorium</span>
+        <h2>Co zrobi skrzynia, gdy przestaniesz ją pchać?</h2>
+        <p>Wybierz miejsce na dole ekranu. Przytrzymaj <b>Pchaj</b> albo spację, potem puść. Patrz na prędkość.</p>
+        <div class="say" id="say-lab"></div>
+        <ul class="terms" id="labChecks">
+          <li>Hangar <span id="ck-hangar"></span></li>
+          <li>Lodowisko <span id="ck-ice"></span></li>
+          <li>Kosmos <span id="ck-space"></span></li>
+        </ul>
+        <div class="actions"><button class="btn" id="goQuiz">Dalej: pytanie</button></div>
+      </section>
+
+      <!-- PYTANIE -->
+      <section id="p-quiz" data-pane hidden>
+        <span class="kicker">Pytanie kontrolne</span>
+        <h2>Gdzie skrzynia po puszczeniu jechała cały czas tak samo szybko?</h2>
+        <div class="opts" id="opts">
+          <button class="opt" data-ok="0" data-fb="W hangarze skrzynia szybko stanęła. Czyli zwalniała.">W hangarze</button>
+          <button class="opt" data-ok="0" data-fb="Blisko! Na lodzie skrzynia też zwalniała, tylko bardzo powoli. Spójrz na prędkość.">Na lodowisku</button>
+          <button class="opt" data-ok="1" data-fb="W kosmosie nic skrzyni nie hamowało. Jechała dalej tak samo szybko.">W kosmosie</button>
+        </div>
+        <div class="fb" id="fb" hidden></div>
+        <div class="say" id="say-quiz" hidden></div>
+        <div class="actions"><button class="btn" id="goReport" hidden>Dalej: raport</button></div>
+      </section>
+
+      <!-- RAPORT -->
+      <section id="p-report" data-pane hidden>
+        <span class="kicker">Raport z naprawy</span>
+        <h2>Moduł naprawiony</h2>
+        <div class="result-stars" id="endStars"><i>★</i><i>★</i><i>★</i></div>
+        <p id="endXp"></p>
+        <div class="say" id="say-end"></div>
+        <h3>Pojęcia</h3>
+        <ul class="terms">
+          <li>Bezwładność <span>znam od razu</span></li>
+          <li>Siła wypadkowa <span>znam od razu</span></li>
+          <li>Tarcie <span>znam po powtórce</span></li>
+        </ul>
+        <h3>Dla rodzica</h3>
+        <p class="parent">Materiał: Spotkania z fizyką 7, temat 24 „Pierwsza zasada dynamiki Newtona – bezwładność”, s. 162–168. Dziecko samodzielnie przeprowadziło trzy eksperymenty i poprawnie wskazało, gdzie nie działa tarcie.</p>
+        <div class="actions"><button class="btn ghost" id="again">Zagraj od nowa</button></div>
+      </section>
+    </div>
+  </aside>
+
+  <footer class="instruments" id="instruments">
+    <div class="seg" role="group" aria-label="Miejsce eksperymentu">
+      <button data-surf="hangar" aria-pressed="true">Hangar</button>
+      <button data-surf="ice" aria-pressed="false">Lodowisko</button>
+      <button data-surf="space" aria-pressed="false">Kosmos</button>
+    </div>
+    <button class="btn hold" id="pushBtn">Pchaj</button>
+    <button class="btn ghost" id="resetBtn">Ustaw od nowa</button>
+    <div class="readouts">
+      <div class="ro"><span>Prędkość v</span><b id="ro-v">0,0 m/s</b></div>
+      <div class="ro hot"><span>Pchanie F</span><b id="ro-f">0 N</b></div>
+      <div class="ro"><span>Tarcie T</span><b id="ro-t">0 N</b></div>
+      <div class="ro"><span>Siła wypadkowa</span><b id="ro-w">0 N</b></div>
+    </div>
+    <p class="status" id="status"></p>
+  </footer>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const fmt = (n, d = 1) => n.toFixed(d).replace('.', ',');
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { void: 0x050912, hull: 0x0e1a2b, hull2: 0x15243a, thruster: 0xff7a1a, cold: 0x8fd3ff, white: 0xf2f5f9, amber: 0xffd166, alarm: 0xff3b3b, ok: 0x7ef0a6 };
+
+// ---------- renderer ----------
+const canvas = $('#gl');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+} catch {
+  $('#nogl').hidden = false;
+  throw new Error('WebGL niedostępny');
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(C.void);
+scene.fog = new THREE.FogExp2(C.void, 0.018);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 400);
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.9, 0.55, 0.82);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  composer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+
+// ---------- gwiazdy ----------
+const starGroup = new THREE.Group();
+{
+  const n = 2200, pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const r = 120 + Math.random() * 180, th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
+    pos.set([r * Math.sin(ph) * Math.cos(th), r * Math.sin(ph) * Math.sin(th), r * Math.cos(ph)], i * 3);
+    const t = Math.random(); col.set([0.7 + t * 0.3, 0.8 + t * 0.2, 1], i * 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const stars = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.9, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  starGroup.add(stars);
+}
+scene.add(starGroup);
+
+// ---------- hangar ----------
+const hangar = new THREE.Group();
+scene.add(hangar);
+
+// podłoga z płyt: InstancedMesh, każda płyta ma własną pozycję — w kosmosie rozlatują się
+const TILE = { cols: 14, rows: 70, size: 1, x0: -12, z0: -7 };
+const tileCount = TILE.cols * TILE.rows;
+const tileGeo = new THREE.BoxGeometry(0.94, 0.1, 0.94);
+const matHangar = new THREE.MeshStandardMaterial({ color: C.hull2, metalness: 0.65, roughness: 0.45, envMapIntensity: 0.6 });
+const matIce = new THREE.MeshPhysicalMaterial({ color: 0xbfe3f2, metalness: 0.05, roughness: 0.06, transparent: true, opacity: 0.86, envMapIntensity: 1.6, clearcoat: 1, clearcoatRoughness: 0.05 });
+const tiles = new THREE.InstancedMesh(tileGeo, matHangar, tileCount);
+tiles.receiveShadow = true;
+hangar.add(tiles);
+const tileHome = [], tileState = [];
+{
+  let i = 0;
+  for (let r = 0; r < TILE.rows; r++) for (let c = 0; c < TILE.cols; c++) {
+    const h = new THREE.Vector3(TILE.x0 + r * TILE.size, -0.05, TILE.z0 + c * TILE.size);
+    tileHome.push(h);
+    tileState.push({ p: h.clone(), rot: new THREE.Euler(), v: new THREE.Vector3(), w: new THREE.Vector3(), mode: 'home' });
+    i++;
+  }
+}
+const dummy = new THREE.Object3D();
+function tileWrite() {
+  for (let i = 0; i < tileCount; i++) {
+    const s = tileState[i];
+    dummy.position.copy(s.p); dummy.rotation.copy(s.rot); dummy.updateMatrix();
+    tiles.setMatrixAt(i, dummy.matrix);
+  }
+  tiles.instanceMatrix.needsUpdate = true;
+}
+tileWrite();
+let tilesDirty = false;
+
+// pasy prowadzące (emisja: bloom je podkreśla)
+const stripMat = new THREE.MeshBasicMaterial({ color: C.cold, transparent: true });
+for (const z of [-7.4, 7.4]) {
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(TILE.rows * TILE.size, 0.06, 0.12), stripMat);
+  strip.position.set(TILE.x0 + TILE.rows * TILE.size / 2 - 0.5, 0.02, z);
+  hangar.add(strip);
+}
+
+// ściana tylna z panelami i żebrami
+const wallGroup = new THREE.Group();
+const wallMat = new THREE.MeshStandardMaterial({ color: C.hull, metalness: 0.5, roughness: 0.7, transparent: true });
+const ribMat = new THREE.MeshStandardMaterial({ color: C.hull2, metalness: 0.7, roughness: 0.4, transparent: true });
+const winMat = new THREE.MeshBasicMaterial({ color: C.cold, transparent: true, opacity: 0.9 });
+{
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(TILE.rows * TILE.size, 9, 0.4), wallMat);
+  wall.position.set(TILE.x0 + TILE.rows * TILE.size / 2 - 0.5, 4.5, -8.2);
+  wallGroup.add(wall);
+  for (let i = 0; i < TILE.rows; i += 4) {
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.5, 9.2, 0.9), ribMat);
+    rib.position.set(TILE.x0 + i, 4.6, -7.9);
+    wallGroup.add(rib);
+    const win = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.12, 0.1), winMat);
+    win.position.set(TILE.x0 + i + 2, 6.4, -7.95);
+    wallGroup.add(win);
+  }
+  // belki sufitowe
+  for (let i = 0; i < TILE.rows; i += 8) {
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 18), ribMat);
+    beam.position.set(TILE.x0 + i + 2, 9.2, 0);
+    wallGroup.add(beam);
+  }
+}
+hangar.add(wallGroup);
+
+// silnik Oriona na końcu hangaru (raport: zapłon)
+const engine = new THREE.Group();
+{
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3.2, 6, 32), ribMat);
+  body.rotation.z = Math.PI / 2;
+  engine.add(body);
+  const nozzleMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.9, roughness: 0.3, emissive: C.thruster, emissiveIntensity: 0 });
+  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 2.0, 2.5, 32, 1, true), nozzleMat);
+  nozzle.rotation.z = Math.PI / 2; nozzle.position.x = -4;
+  engine.add(nozzle);
+  engine.userData.nozzleMat = nozzleMat;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.12, 8, 48), new THREE.MeshBasicMaterial({ color: C.amber }));
+  ring.rotation.y = Math.PI / 2; ring.position.x = -2.6;
+  engine.add(ring);
+}
+engine.position.set(52, 3.4, -1);
+hangar.add(engine);
+
+// ---------- skrzynia ----------
+const crate = new THREE.Group();
+{
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 1.6), new THREE.MeshStandardMaterial({ color: 0x2a3a52, metalness: 0.5, roughness: 0.4, envMapIntensity: 0.8 }));
+  body.position.y = 0.8;
+  crate.add(body);
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(body.geometry), new THREE.LineBasicMaterial({ color: C.cold }));
+  edges.position.y = 0.8;
+  crate.add(edges);
+  const stripeMat = new THREE.MeshBasicMaterial({ color: C.amber });
+  for (const y of [0.35, 1.25]) {
+    const s = new THREE.Mesh(new THREE.BoxGeometry(1.64, 0.1, 1.64), stripeMat);
+    s.position.y = y; crate.add(s);
+  }
+  // dysza ciągu z tyłu (pcha w +x, więc dysza na -x)
+  const nozzleMat = new THREE.MeshStandardMaterial({ color: 0x222, metalness: 0.9, roughness: 0.3, emissive: C.thruster, emissiveIntensity: 0 });
+  const nozzle = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.7, 24, 1, true), nozzleMat);
+  nozzle.rotation.z = Math.PI / 2; nozzle.position.set(-1.1, 0.8, 0);
+  crate.add(nozzle);
+  crate.userData.nozzleMat = nozzleMat;
+  const glowTex = makeGlowTexture();
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: C.thruster, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 }));
+  glow.position.set(-1.45, 0.8, 0); glow.scale.set(2.2, 2.2, 1);
+  crate.add(glow);
+  crate.userData.glow = glow;
+}
+scene.add(crate);
+
+function makeGlowTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.25, 'rgba(255,200,120,.8)'); grd.addColorStop(1, 'rgba(255,122,26,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+// ---------- światła ----------
+scene.add(new THREE.AmbientLight(0x223047, 0.9));
+const hemi = new THREE.HemisphereLight(C.cold, C.void, 0.35); scene.add(hemi);
+const keyLight = new THREE.PointLight(C.cold, 160, 40, 1.8); keyLight.position.set(0, 7.5, 3); scene.add(keyLight);
+const warmLight = new THREE.PointLight(C.thruster, 0, 14, 1.6); scene.add(warmLight);
+const alarmLight = new THREE.PointLight(C.alarm, 0, 60, 1.2); alarmLight.position.set(0, 6, 0); scene.add(alarmLight);
+const engineLight = new THREE.PointLight(C.thruster, 0, 80, 1.4); engineLight.position.set(44, 3.4, 0); scene.add(engineLight);
+
+// ---------- cząsteczki ----------
+class Sparks {
+  constructor(n) {
+    this.n = n; this.i = 0;
+    this.pos = new Float32Array(n * 3); this.col = new Float32Array(n * 3);
+    this.vel = new Float32Array(n * 3); this.life = new Float32Array(n); this.max = new Float32Array(n);
+    this.base = new Float32Array(n * 3); this.grav = new Float32Array(n);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(this.col, 3));
+    this.points = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.26, map: makeGlowTexture(), vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, sizeAttenuation: true }));
+    this.points.frustumCulled = false;
+    scene.add(this.points);
+  }
+  emit(p, count, { speed = 4, spread = 1, dir = new THREE.Vector3(-1, 0, 0), color = C.amber, life = 0.8, grav = 1, size } = {}) {
+    const c = new THREE.Color(color);
+    for (let k = 0; k < count; k++) {
+      const i = this.i; this.i = (this.i + 1) % this.n;
+      this.pos.set([p.x, p.y, p.z], i * 3);
+      const rx = (Math.random() - 0.5) * spread, ry = (Math.random() - 0.5) * spread, rz = (Math.random() - 0.5) * spread;
+      const s = speed * (0.5 + Math.random());
+      this.vel.set([(dir.x + rx) * s, (dir.y + ry) * s, (dir.z + rz) * s], i * 3);
+      const tint = 0.6 + Math.random() * 0.6;
+      this.base.set([Math.min(1, c.r * tint + 0.2), Math.min(1, c.g * tint + 0.1), Math.min(1, c.b * tint)], i * 3);
+      this.life[i] = this.max[i] = life * (0.5 + Math.random());
+      this.grav[i] = grav;
+    }
+    if (size) this.points.material.size = size;
+  }
+  update(dt) {
+    const { pos, vel, life, max, col, base, grav } = this;
+    for (let i = 0; i < this.n; i++) {
+      if (life[i] <= 0) { col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = 0; continue; }
+      life[i] -= dt;
+      const j = i * 3;
+      vel[j + 1] -= 9.8 * grav[i] * dt * 0.35;
+      vel[j] *= 0.985; vel[j + 1] *= 0.985; vel[j + 2] *= 0.985;
+      pos[j] += vel[j] * dt; pos[j + 1] += vel[j + 1] * dt; pos[j + 2] += vel[j + 2] * dt;
+      if (pos[j + 1] < 0.02 && grav[i] > 0) { pos[j + 1] = 0.02; vel[j + 1] *= -0.35; }
+      const a = Math.max(0, life[i] / max[i]);
+      col[j] = base[j] * a; col[j + 1] = base[j + 1] * a * a; col[j + 2] = base[j + 2] * a * a * a;
+    }
+    this.points.geometry.attributes.position.needsUpdate = true;
+    this.points.geometry.attributes.color.needsUpdate = true;
+  }
+}
+const sparks = new Sparks(4000);
+
+// fala uderzeniowa
+const wave = new THREE.Mesh(new THREE.RingGeometry(0.92, 1, 72), new THREE.MeshBasicMaterial({ color: C.amber, transparent: true, opacity: 0, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+wave.rotation.x = -Math.PI / 2; wave.position.y = 0.06; scene.add(wave);
+function shockwave(p, color = C.amber, size = 14) {
+  wave.position.set(p.x, 0.06, p.z); wave.material.color.set(color);
+  wave.scale.set(0.3, 0.3, 1); wave.material.opacity = 1;
+  gsap.to(wave.scale, { x: size, y: size, duration: REDUCED ? 0.01 : 0.9, ease: 'power2.out' });
+  gsap.to(wave.material, { opacity: 0, duration: REDUCED ? 0.01 : 0.9, ease: 'power1.out' });
+}
+
+// ---------- kamera ----------
+const cam = { follow: true, shake: 0, offset: new THREE.Vector3(3.2, 4.4, 9.5), look: new THREE.Vector3(1.5, 0.8, 0), t: 0 };
+const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+function camUpdate(dt) {
+  cam.t += dt;
+  const target = new THREE.Vector3(crate.position.x, 0, crate.position.z);
+  if (cam.follow) {
+    camPos.set(target.x + cam.offset.x, cam.offset.y, cam.offset.z);
+    camLook.set(target.x + cam.look.x, cam.look.y, cam.look.z);
+    camera.position.lerp(camPos, 1 - Math.pow(0.001, dt));
+  }
+  if (!REDUCED) {
+    camera.position.y += Math.sin(cam.t * 0.7) * 0.004;
+    if (cam.shake > 0) {
+      camera.position.x += (Math.random() - 0.5) * cam.shake;
+      camera.position.y += (Math.random() - 0.5) * cam.shake;
+      cam.shake *= 0.9; if (cam.shake < 0.003) cam.shake = 0;
+    }
+  }
+  camera.lookAt(cam.follow ? camLook : camLookFree);
+}
+const camLookFree = new THREE.Vector3(1.5, 0.8, 0);
+
+// ---------- fizyka skrzyni ----------
+const LAB = { m: 20, F: 120, g: 9.81, mu: { hangar: 0.35, ice: 0.02, space: 0 } };
+const lab = { surf: 'hangar', x: 0, v: 0, push: false, wasPush: false, done: { hangar: false, ice: false, space: false }, T: 0, W: 0 };
+const nozzleP = new THREE.Vector3();
+function labStep(dt) {
+  const mu = LAB.mu[lab.surf], fr = mu * LAB.m * LAB.g;
+  const F = lab.push ? LAB.F : 0;
+  let T;
+  if (Math.abs(lab.v) < 0.01 && Math.abs(F) <= fr) { T = F; lab.v = 0; }
+  else T = fr * Math.sign(lab.v || F);
+  const W = F - T;
+  const v0 = lab.v;
+  lab.v += (W / LAB.m) * dt;
+  if (v0 > 0 && lab.v < 0 && !lab.push) lab.v = 0;
+  lab.x += lab.v * dt;
+  lab.T = Math.abs(T); lab.W = W;
+  if (lab.x > 44) { lab.x = 44; lab.v = 0; status('Skrzynia dojechała do końca hangaru. Ustaw ją od nowa.'); }
+  crate.position.x = lab.x;
+  if (!lab.push && lab.wasPush) { lab.done[lab.surf] = true; checks(); }
+  lab.wasPush = lab.push;
+
+  // dysza: poświata, światło, iskry
+  const k = lab.push ? 1 : 0;
+  const nm = crate.userData.nozzleMat;
+  nm.emissiveIntensity += (k * 3.5 - nm.emissiveIntensity) * Math.min(1, dt * 12);
+  crate.userData.glow.material.opacity += (k - crate.userData.glow.material.opacity) * Math.min(1, dt * 12);
+  warmLight.intensity += (k * 90 - warmLight.intensity) * Math.min(1, dt * 12);
+  warmLight.position.set(crate.position.x - 1.6, 0.9, 0);
+  if (lab.push) {
+    nozzleP.set(crate.position.x - 1.4, 0.8, 0);
+    sparks.emit(nozzleP, 6, { speed: 7, spread: 0.5, dir: new THREE.Vector3(-1, 0.05, 0), color: C.thruster, life: 0.5, grav: 0.4 });
+    sparks.emit(nozzleP, 2, { speed: 5, spread: 1.4, color: C.amber, life: 0.9, grav: 1 });
+  }
+  $('#ro-v').textContent = fmt(lab.v, 1) + ' m/s';
+  $('#ro-f').textContent = Math.round(F) + ' N';
+  $('#ro-t').textContent = Math.round(lab.T) + ' N';
+  $('#ro-w').textContent = Math.round(W) + ' N';
+}
+function labReset() { lab.x = 0; lab.v = 0; crate.position.x = 0; status(''); }
+const CK = { hangar: 'skrzynia szybko stanęła', ice: 'zwalniała bardzo powoli', space: 'jechała cały czas tak samo' };
+function checks() {
+  for (const k of Object.keys(lab.done)) $('#ck-' + k).textContent = lab.done[k] ? CK[k] : '';
+  if (lab.done.hangar && lab.done.ice && lab.done.space) say('#say-lab', 'Trzy eksperymenty gotowe. Wiesz już, co robi tarcie.');
+}
+function status(s) { $('#status').textContent = s; }
+
+// ---------- powierzchnie ----------
+const SURF_STATUS = { hangar: 'Hangar: szorstka podłoga, duże tarcie.', ice: 'Lodowisko: podłoga śliska, tarcie prawie zero.', space: 'Kosmos: nie ma podłogi ani powietrza. Nic nie hamuje.' };
+function setSurface(s) {
+  if (s === lab.surf) return;
+  const was = lab.surf; lab.surf = s;
+  $$('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.surf === s)));
+  labReset();
+  status(SURF_STATUS[s]);
+  tiles.material = s === 'ice' ? matIce : matHangar;
+  if (s === 'space') scatterTiles(); else if (was === 'space') gatherTiles();
+  const wallOp = s === 'space' ? 0 : 1;
+  gsap.to([wallMat, ribMat, winMat, stripMat], { opacity: wallOp, duration: REDUCED ? 0.01 : 1.2, onStart: () => { wallGroup.visible = true; }, onComplete: () => { wallGroup.visible = wallOp > 0; } });
+  gsap.to(scene.fog, { density: s === 'space' ? 0.004 : 0.018, duration: 1.2 });
+  gsap.to(hemi, { intensity: s === 'ice' ? 0.7 : 0.35, duration: 1 });
+  keyLight.color.set(s === 'ice' ? 0xdff4ff : C.cold);
+  starSpeed.target = s === 'space' ? 1 : 0.06;
+}
+const starSpeed = { v: 0.06, target: 0.06 };
+function scatterTiles() {
+  tilesDirty = true;
+  for (let i = 0; i < tileCount; i++) {
+    const s = tileState[i], h = tileHome[i];
+    s.mode = 'fly';
+    const d = Math.abs(h.x - crate.position.x) * 0.05;
+    s.v.set((Math.random() - 0.5) * 2, -(1 + Math.random() * 3), (h.z) * (0.6 + Math.random() * 0.6));
+    s.w.set((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 2);
+    s.delay = d + Math.random() * 0.4;
+  }
+  sparks.emit(new THREE.Vector3(crate.position.x, 0.2, 0), 300, { speed: 9, spread: 2, dir: new THREE.Vector3(0, 0.6, 0), color: C.cold, life: 1.4, grav: 0 });
+  shockwave(crate.position, C.cold, 30);
+  cam.shake = REDUCED ? 0 : 0.25;
+}
+function gatherTiles() { tilesDirty = true; for (const s of tileState) s.mode = 'back'; }
+function tileStep(dt) {
+  if (!tilesDirty) return;
+  let active = false;
+  for (let i = 0; i < tileCount; i++) {
+    const s = tileState[i], h = tileHome[i];
+    if (s.mode === 'fly') {
+      if (s.delay > 0) { s.delay -= dt; active = true; continue; }
+      if (s.p.y < -60) { s.mode = 'gone'; continue; }
+      s.v.y -= 6 * dt;
+      s.p.addScaledVector(s.v, dt);
+      s.rot.x += s.w.x * dt; s.rot.y += s.w.y * dt; s.rot.z += s.w.z * dt;
+      active = true;
+    } else if (s.mode === 'back') {
+      s.p.lerp(h, 1 - Math.pow(0.002, dt));
+      s.rot.x *= 0.9; s.rot.y *= 0.9; s.rot.z *= 0.9;
+      if (s.p.distanceTo(h) < 0.01) { s.p.copy(h); s.rot.set(0, 0, 0); s.mode = 'home'; } else active = true;
+    }
+  }
+  tileWrite();
+  if (!active) tilesDirty = false;
+}
+
+// ---------- bohater ----------
+const HEROES = [
+  { id: 'iskra', name: 'Iskra', visor: '#ff7a1a' },
+  { id: 'nova', name: 'Nova', visor: '#8fd3ff' },
+  { id: 'bolt', name: 'Bolt', visor: '#7ef0a6' },
+];
+const helmet = (h, size) => `<svg viewBox="0 0 64 64" width="${size}" height="${size}" aria-hidden="true">
+  <defs><radialGradient id="v-${h.id}" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".35" stop-color="${h.visor}"/><stop offset="1" stop-color="#050912"/></radialGradient></defs>
+  <circle cx="32" cy="34" r="26" fill="#15243a" stroke="#8fd3ff" stroke-width="2"/>
+  <path d="M12 34a20 20 0 0 1 40 0v6H12z" fill="url(#v-${h.id})"/>
+  <rect x="10" y="40" width="44" height="7" rx="3" fill="#0e1a2b" stroke="#8fd3ff" stroke-width="1.5"/>
+  <circle cx="48" cy="44" r="2" fill="${h.visor}"/><circle cx="16" cy="44" r="2" fill="${h.visor}"/>
+</svg>`;
+const hero = { id: null, name: '' };
+const heroesEl = $('#heroes');
+heroesEl.innerHTML = HEROES.map(h => `<button class="hero-opt" data-id="${h.id}" aria-pressed="false">${helmet(h, 64)}${h.name}</button>`).join('');
+heroesEl.addEventListener('click', e => {
+  const b = e.target.closest('.hero-opt'); if (!b) return;
+  hero.id = b.dataset.id;
+  $$('.hero-opt').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  heroRefresh();
+  sparks.emit(new THREE.Vector3(crate.position.x, 1.2, 0), 60, { speed: 3, spread: 2, dir: new THREE.Vector3(0, 1, 0), color: HEROES.find(h => h.id === hero.id).visor, life: 1, grav: 1 });
+});
+$('#heroName').addEventListener('input', e => { hero.name = e.target.value.trim(); heroRefresh(); });
+function heroRefresh() {
+  const h = HEROES.find(x => x.id === hero.id);
+  const ready = h && hero.name;
+  $('#goLab').disabled = !ready;
+  $('#badge').hidden = !ready;
+  if (h) $('#badge').innerHTML = helmet(h, 36) + `<span>${hero.name || h.name}</span>`;
+  if (ready) say('#say-start', `Cześć, jestem ${hero.name}. Chodźmy do hangaru!`);
+}
+function say(sel, text) {
+  const el = $(sel); const h = HEROES.find(x => x.id === hero.id) || HEROES[0];
+  el.hidden = false;
+  el.innerHTML = `${helmet(h, 44)}<div class="bubble"><b>${hero.name || h.name}</b><span>${text}</span></div>`;
+  if (!REDUCED) gsap.from(el, { opacity: 0, x: -10, duration: 0.35 });
+}
+
+// ---------- etapy ----------
+const S = { xp: 0, stars: 0, stage: 'start' };
+const STAGE_ORDER = ['start', 'lab', 'quiz', 'report'];
+function go(stage) {
+  S.stage = stage;
+  $$('#stages button').forEach(b => {
+    const i = STAGE_ORDER.indexOf(b.dataset.go), cur = STAGE_ORDER.indexOf(stage);
+    b.toggleAttribute('aria-current', i === cur); if (i === cur) b.setAttribute('aria-current', 'step');
+    b.classList.toggle('done', i < cur);
+  });
+  const show = () => {
+    $$('[data-pane]').forEach(p => p.hidden = p.id !== 'p-' + stage);
+    $('#pane').scrollTop = 0;
+    if (!REDUCED) gsap.from('#pane > section:not([hidden]) > *', { opacity: 0, y: 12, duration: 0.4, stagger: 0.05, ease: 'power2.out' });
+  };
+  show();
+  $('#instruments').style.visibility = stage === 'lab' ? 'visible' : 'hidden';
+  if (stage === 'lab') { say('#say-lab', 'Spróbuj w trzech miejscach. Ja patrzę na liczby.'); status(SURF_STATUS[lab.surf]); }
+  if (stage === 'quiz') { lab.push = false; }
+  if (stage === 'report') reportShow();
+  else cameraToCrate();
+}
+$('#stages').addEventListener('click', e => { const b = e.target.closest('button'); if (b) go(b.dataset.go); });
+$('#goLab').addEventListener('click', () => go('lab'));
+$('#goQuiz').addEventListener('click', () => go('quiz'));
+$('#goReport').addEventListener('click', () => go('report'));
+$('#again').addEventListener('click', () => { S.xp = 0; S.stars = 0; setXP(0); paintStars(0); $$('.opt').forEach(o => { o.disabled = false; o.classList.remove('good', 'bad'); }); $('#fb').hidden = true; $('#goReport').hidden = true; lab.done = { hangar: false, ice: false, space: false }; checks(); setSurface('hangar'); go('start'); });
+
+function setXP(v) { S.xp = v; $('#xp').textContent = v; }
+function paintStars(n) { S.stars = n; $$('#hudStars i').forEach((s, i) => s.classList.toggle('on', i < n)); }
+
+// ---------- pytanie ----------
+$('#opts').addEventListener('click', e => {
+  const b = e.target.closest('.opt'); if (!b || b.disabled) return;
+  const ok = b.dataset.ok === '1';
+  const fb = $('#fb');
+  fb.hidden = false; fb.className = 'fb ' + (ok ? 'good' : 'bad');
+  if (ok) {
+    $$('.opt').forEach(o => o.disabled = true);
+    b.classList.add('good');
+    fb.innerHTML = `<span class="tag">Dokładnie tak</span><span>${b.dataset.fb}</span>`;
+    say('#say-quiz', 'Tak! Bez tarcia skrzynia leci sama. To jest bezwładność.');
+    winBurst(b);
+    $('#goReport').hidden = false;
+  } else {
+    b.disabled = true; b.classList.add('bad');
+    fb.innerHTML = `<span class="tag">Jeszcze nie</span><span>${b.dataset.fb}</span>`;
+    say('#say-quiz', 'Blisko! Spójrz na prędkość i spróbuj jeszcze raz.');
+    alarm();
+  }
+});
+function alarm() {
+  cam.shake = REDUCED ? 0 : 0.22;
+  const x0 = crate.position.x;
+  alarmLight.position.set(x0 - 22, 6, 0);
+  const tl = gsap.timeline();
+  tl.to(alarmLight, { intensity: 420, duration: 0.15 }, 0)
+    .to(alarmLight.position, { x: x0 + 22, duration: REDUCED ? 0.01 : 1.1, ease: 'power1.inOut' }, 0)
+    .to(alarmLight, { intensity: 0, duration: 0.4 }, 0.8)
+    .to('#veil', { opacity: 1, duration: 0.12, repeat: 3, yoyo: true }, 0)
+    .to('#veil', { opacity: 0, duration: 0.3 }, 1);
+  winMat.color.set(C.alarm); setTimeout(() => winMat.color.set(C.cold), 1200);
+}
+function winBurst(btn) {
+  const p = new THREE.Vector3(crate.position.x, 1, 0);
+  sparks.emit(p, 500, { speed: 10, spread: 2.2, dir: new THREE.Vector3(0, 0.9, 0), color: C.amber, life: 1.4, grav: 1 });
+  sparks.emit(p, 250, { speed: 6, spread: 2.5, dir: new THREE.Vector3(0, 0.6, 0), color: C.white, life: 1, grav: 1 });
+  shockwave(p, C.amber, 18);
+  gsap.to(warmLight, { intensity: 400, duration: 0.1, yoyo: true, repeat: 1 });
+  if (!REDUCED) gsap.fromTo(bloom, { strength: 2.2 }, { strength: 0.9, duration: 1.4, ease: 'power2.out' });
+  cam.shake = REDUCED ? 0 : 0.12;
+  // „+50 XP” leci z odpowiedzi do licznika
+  const fly = document.createElement('div'); fly.className = 'xp-fly'; fly.textContent = '+50 XP';
+  const a = btn.getBoundingClientRect(), z = $('#xp').getBoundingClientRect();
+  fly.style.left = a.left + 'px'; fly.style.top = a.top + 'px';
+  document.body.appendChild(fly);
+  gsap.to(fly, { x: z.left - a.left, y: z.top - a.top, scale: 0.6, duration: REDUCED ? 0.01 : 0.9, ease: 'power2.in',
+    onComplete: () => { fly.remove(); gsap.to(S, { xp: S.xp + 50, duration: 0.5, snap: 'xp', onUpdate: () => setXP(Math.round(S.xp)) }); paintStars(3); gsap.fromTo('#xp', { scale: 1.4 }, { scale: 1, duration: 0.4 }); } });
+}
+
+// ---------- raport: zapłon silnika ----------
+function reportShow() {
+  $('#endXp').textContent = `${S.xp || 50} XP za ten moduł`;
+  say('#say-end', 'Silnik działa! Orion wraca na Ziemię.');
+  cam.follow = false;
+  gsap.to(camera.position, { x: 30, y: 6.5, z: 16, duration: REDUCED ? 0.01 : 1.6, ease: 'power3.inOut' });
+  gsap.to(camLookFree, { x: 48, y: 3.4, z: -1, duration: REDUCED ? 0.01 : 1.6, ease: 'power3.inOut', onComplete: ignite });
+  $$('#endStars i').forEach(s => s.classList.remove('on'));
+}
+function ignite() {
+  const nm = engine.userData.nozzleMat;
+  gsap.to(nm, { emissiveIntensity: 5, duration: 0.3 });
+  gsap.to(engineLight, { intensity: 900, duration: 0.3 });
+  const p = new THREE.Vector3(engine.position.x - 5.2, engine.position.y, engine.position.z);
+  sparks.emit(p, 900, { speed: 16, spread: 1.6, dir: new THREE.Vector3(-1, 0, 0), color: C.thruster, life: 1.6, grav: 0 });
+  sparks.emit(p, 400, { speed: 9, spread: 3, dir: new THREE.Vector3(-1, 0.3, 0), color: C.white, life: 1.2, grav: 0.5 });
+  shockwave(new THREE.Vector3(p.x, 0, p.z), C.thruster, 40);
+  cam.shake = REDUCED ? 0 : 0.5;
+  if (!REDUCED) gsap.fromTo(bloom, { strength: 2.6 }, { strength: 0.9, duration: 2.2, ease: 'power2.out' });
+  engineBurn = 3.5;
+  gsap.to('#endStars i', { duration: 0.01, stagger: REDUCED ? 0 : 0.45, delay: 0.3, onStart: function () { /* no-op */ },
+    onUpdate: function () { this.targets().forEach(t => t.classList.add('on')); } });
+  gsap.to('#endStars i', { scale: 1, duration: 0.5, stagger: 0.45, delay: 0.3, ease: 'back.out(2)' });
+  gsap.to(S, { xp: S.xp || 50, duration: 0.01, onUpdate: () => setXP(Math.round(S.xp)) });
+}
+let engineBurn = 0;
+function engineStep(dt) {
+  if (engineBurn <= 0) return;
+  engineBurn -= dt;
+  const p = new THREE.Vector3(engine.position.x - 5.2, engine.position.y + (Math.random() - 0.5) * 2, engine.position.z + (Math.random() - 0.5) * 2);
+  sparks.emit(p, 14, { speed: 14, spread: 0.6, dir: new THREE.Vector3(-1, 0, 0), color: C.thruster, life: 1.2, grav: 0 });
+  if (engineBurn <= 0) {
+    gsap.to(engine.userData.nozzleMat, { emissiveIntensity: 1.2, duration: 1 });
+    gsap.to(engineLight, { intensity: 300, duration: 1 });
+  }
+}
+function cameraToCrate() {
+  if (cam.follow) return;
+  cam.follow = true;
+  gsap.killTweensOf(camera.position);
+}
+
+// ---------- pchanie (przytrzymanie, spacja) ----------
+const pushBtn = $('#pushBtn');
+const pushOn = () => { if (S.stage !== 'lab') return; lab.push = true; pushBtn.classList.add('active'); };
+const pushOff = () => { lab.push = false; pushBtn.classList.remove('active'); };
+pushBtn.addEventListener('pointerdown', e => { e.preventDefault(); pushBtn.setPointerCapture(e.pointerId); pushOn(); });
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => pushBtn.addEventListener(ev, pushOff));
+pushBtn.addEventListener('contextmenu', e => e.preventDefault());
+addEventListener('keydown', e => { if (e.code === 'Space' && !e.repeat && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); pushOn(); } });
+addEventListener('keyup', e => { if (e.code === 'Space') pushOff(); });
+$('#resetBtn').addEventListener('click', labReset);
+$$('.seg button').forEach(b => b.addEventListener('click', () => setSurface(b.dataset.surf)));
+
+// ---------- wejście: przelot kamery przez hangar ----------
+function intro() {
+  resize();
+  $('#instruments').style.visibility = 'hidden';
+  if (REDUCED) { camera.position.set(cam.offset.x, cam.offset.y, cam.offset.z); return; }
+  cam.follow = false;
+  camera.position.set(-30, 1.6, -1);
+  camLookFree.set(-10, 2.5, -1);
+  gsap.from('.frame', { opacity: 0, duration: 0.8, delay: 1.4 });
+  const tl = gsap.timeline({ onComplete: () => { cam.follow = true; } });
+  tl.to(camera.position, { x: 3.2, y: 4.4, z: 9.5, duration: 3, ease: 'power3.inOut' }, 0)
+    .to(camLookFree, { x: 1.5, y: 0.8, z: 0, duration: 3, ease: 'power3.inOut' }, 0)
+    .fromTo(bloom, { strength: 1.8 }, { strength: 0.9, duration: 3 }, 0);
+  // iskry powitalne przy skrzyni
+  setTimeout(() => sparks.emit(new THREE.Vector3(0.3, 0.3, 0.4), 80, { speed: 3, spread: 1.5, dir: new THREE.Vector3(0, 1, 0), color: C.cold, life: 1.2, grav: 1 }), 2000);
+}
+
+// ---------- pętla ----------
+const clock = new THREE.Clock();
+function frame() {
+  step(Math.min(clock.getDelta(), 0.05));
+  requestAnimationFrame(frame);
+}
+function step(dt) {
+  if (S.stage === 'lab') labStep(dt);
+  else { crate.userData.nozzleMat.emissiveIntensity *= 0.9; crate.userData.glow.material.opacity *= 0.9; warmLight.intensity *= 0.9; }
+  tileStep(dt);
+  sparks.update(dt);
+  engineStep(dt);
+  starSpeed.v += (starSpeed.target - starSpeed.v) * dt;
+  starGroup.rotation.y += dt * 0.01 * starSpeed.v * 10;
+  starGroup.rotation.z += dt * 0.004 * starSpeed.v * 10;
+  keyLight.position.x = crate.position.x;
+  camUpdate(dt);
+  composer.render();
+}
+intro();
+frame();
+// hak do podglądu stanów (makieta): window.__orion.step(dt) przesuwa symulację bez rAF
+window.__orion = { go, setSurface, lab, step, pushOn, pushOff, S };
+</script>
+</body>
+</html>

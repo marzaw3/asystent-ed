@@ -1,271 +1,386 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Misja Orion</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&family=Saira+Condensed:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Manrope:wght@500;700;800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <style>
-/* Layout: konsola pokładowa — pasek HUD, etapy misji, jeden panel roboczy naraz */
+/* Styl „Żywioły”: świat gry to shader (hangar / lód / kosmos), który zmienia się jak żywioł.
+   UI leży na nim na półprzezroczystych podkładach. Akcent (--accent) podąża za światem. */
 :root {
-  --space: #0c1322;
-  --panel: #141e33;
-  --panel-2: #1b2844;
-  --line: #2b3c62;
-  --ink: #eaf0fa;
-  --muted: #9aabcb;
-  --amber: #ffb24a;
-  --cyan: #62d4e8;
-  --ok: #74df93;
-  --bad: #ff7d6e;
-  --ice: #bfe3f2;
-  --floor: #4a4f5e;
-  --crate: #c98a3d;
-  --f-display: "Saira Condensed", "Arial Narrow", sans-serif;
-  --f-body: "Atkinson Hyperlegible", system-ui, sans-serif;
-  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --plum: #140a1e;
+  --magma: #ff5a1f;
+  --ice: #a8e9ff;
+  --violet: #8f84ff;
+  --white: #ffffff;
+  --ash: #c9c2d6;
+  --accent: var(--magma);
+  --veil: rgba(20,10,30,.66);
+  --veil-2: rgba(20,10,30,.82);
+  --rim: rgba(255,255,255,.2);
+  --good: #74e8a0;
+  --wrong: #ff5a6a;
+  /* tokeny czytane przez sceny na canvasie (col()) */
+  --space: #140a1e;
+  --scene: rgba(20,10,30,.6);
+  --panel-2: rgba(20,10,30,.55);
+  --line: #3d2d52;
+  --ink: #ffffff;
+  --muted: #c9c2d6;
+  --amber: #ff7a3d;
+  --cyan: #a8e9ff;
+  --ok: #74e8a0;
+  --bad: #ff5a6a;
+  --floor: #3d2d52;
+  --crate: #ff9a3c;
+  --f-display: "Unbounded", "Arial Black", sans-serif;
+  --f-body: "Manrope", system-ui, sans-serif;
+  --f-mono: "Manrope", system-ui, sans-serif;
+  --shadow: 0 2px 2px rgba(20,10,30,.55), 0 0 28px rgba(20,10,30,.6);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html, body { background: var(--space); color: var(--ink); }
-body { font-family: var(--f-body); font-size: 17px; line-height: 1.55; }
-.app { max-width: 880px; margin: 0 auto; padding-inline: 16px; padding-block: 16px 56px; display: grid; gap: 16px; }
+html, body { margin: 0; min-height: 100%; background: var(--plum); color: var(--white); }
+body { font-family: var(--f-body); font-size: 18px; line-height: 1.5; overflow-x: hidden; }
 
-.hud { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
-.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--amber); }
-h1, h2, h3 { font-family: var(--f-display); font-weight: 700; line-height: 1.1; text-wrap: balance; margin: 0; }
-h1 { font-size: 30px; letter-spacing: .01em; }
-h2 { font-size: 26px; }
-h3 { font-size: 20px; }
-.meters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.meter { font-family: var(--f-mono); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; display: flex; gap: 8px; align-items: baseline; font-variant-numeric: tabular-nums; }
-.meter span { font-size: 12px; color: var(--muted); letter-spacing: .1em; }
-.meter b { font-size: 18px; color: var(--amber); }
-.stars { font-size: 20px; letter-spacing: 2px; color: var(--line); }
-.stars .on { color: var(--amber); }
-.glos-btn { font-family: var(--f-mono); font-size: 13px; letter-spacing: .06em; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--cyan); background: transparent; color: var(--cyan); }
-.glos-btn[aria-expanded="true"] { background: var(--cyan); color: var(--space); }
+/* warstwy: shader (0) → cząsteczki (1) → scrim (2) → UI (3) */
+#gl, #fx { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#gl { z-index: 0; }
+#fx { z-index: 4; pointer-events: none; }
+.scrim { position: fixed; inset: 0; z-index: 2; pointer-events: none;
+  background: linear-gradient(90deg, rgba(20,10,30,.5) 0%, rgba(20,10,30,.36) 60%, rgba(20,10,30,.28) 100%); }
+.flash { position: fixed; z-index: 2; left: 0; top: 0; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%;
+  background: var(--accent); pointer-events: none; opacity: 0; transform: scale(0); }
 
-.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.steps li { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; padding: 5px 10px; border-radius: 4px; color: var(--muted); border: 1px solid var(--line); }
-.steps li.cur { color: var(--space); background: var(--amber); border-color: var(--amber); }
-.steps li.done { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, var(--line)); }
+/* cała szerokość ekranu; ekrany robocze to dwie kolumny (.split): co robisz | wyniki i pytania */
+.app { position: relative; z-index: 3; padding: 14px clamp(16px, 3vw, 48px) 40px; display: grid; gap: 16px; }
 
-section { display: grid; gap: 16px; }
-.lead { color: var(--muted); max-width: 62ch; margin: 0; }
-p { margin: 0; max-width: 65ch; }
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 12px; min-width: 0; }
+/* HUD: jedna linia — tytuł, bohater, etapy, słowniczek, XP, gwiazdki */
+.hud { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 26px; font-weight: 700; text-shadow: var(--shadow); }
+.hud-title { font-family: var(--f-display); font-size: 15px; letter-spacing: -.01em; }
+.hero-tag { display: flex; align-items: center; gap: 8px; }
+.hero-tag svg { width: 36px; height: 36px; }
+.meters { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; }
+.meter { font-family: var(--f-display); font-size: 20px; font-variant-numeric: tabular-nums; display: inline-block; }
+.meter small { font-family: var(--f-body); font-size: 14px; color: var(--ash); margin-left: 4px; }
+.stars { font-size: 22px; letter-spacing: 3px; color: rgba(255,255,255,.28); }
+.stars .on { color: var(--accent); text-shadow: 0 0 12px var(--accent); }
+.glos-btn { font-weight: 700; font-size: 15px; padding: 8px 16px; border-radius: 999px; border: 0;
+  background: var(--veil); box-shadow: inset 0 0 0 2px var(--rim); }
+.glos-btn[aria-expanded="true"] { background: var(--white); color: var(--plum); box-shadow: none; }
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 15px; font-weight: 700; color: var(--ash); text-shadow: var(--shadow); }
+.steps li { padding-bottom: 3px; border-bottom: 3px solid transparent; }
+.steps li.cur { color: var(--white); border-color: var(--accent); }
+.steps li.done { color: var(--white); opacity: .7; }
+@media (max-width: 640px) { .meters { margin-left: 0; width: 100%; } }
 
-canvas { display: block; width: 100%; max-width: 100%; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); touch-action: none; }
+/* typografia */
+section { display: grid; gap: 16px; min-width: 0; }
+main > section { margin-top: 1vh; }
+.split { grid-template-columns: minmax(0, 1.6fr) minmax(340px, 1fr); gap: 16px clamp(20px, 2.6vw, 44px); align-items: start; }
+.split > .col { display: grid; gap: 14px; min-width: 0; align-content: start; }
+.split > .full { grid-column: 1 / -1; display: grid; gap: 10px; }
+.split > .stick { position: sticky; top: 12px; }
+@media (max-width: 900px) {
+  .split { grid-template-columns: 1fr; } .split > .stick { position: static; }
+  .split.fill { min-height: 0; }
+  /* start na telefonie: najpierw tytuł, potem wybór bohatera, mapa modułów na końcu */
+  #scr-start > .col:first-child { display: contents; }
+  #scr-start .map, #best { order: 2; }
+  /* selektory z „canvas#…” / „div.…”, bo reguły bazowe stoją niżej w arkuszu */
+  canvas#labCanvas { height: clamp(220px, 62vw, 340px); }
+  canvas#dockCanvas, #scr-quiz canvas#qCanvas { height: clamp(200px, 58vw, 320px); }
+  #scr-cards div.card, #scr-quiz > div.col:not(.side) { min-height: 0; }
+}
+/* ekrany bez sceny (start, podsumowanie) wypełniają wysokość okna i stoją na środku */
+#labQ { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#labQ > :not(.opt) { grid-column: 1 / -1; }
+#labQ .opt { text-align: center; padding: 12px 10px; }
+.split.fill { min-height: calc(100dvh - 90px); align-items: center; }
+.title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; }
+.title-row p { flex: 1 1 280px; font-size: 16px; }
+h2 .label { display: block; margin-bottom: 4px; font-family: var(--f-body); letter-spacing: 0; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
+.panel-text { background: var(--veil); border-radius: 18px; padding: 14px 18px; text-shadow: none; max-width: none; }
+h1, h2, h3 { font-family: var(--f-display); margin: 0; line-height: 1.05; text-wrap: balance; text-shadow: var(--shadow); }
+h1 { font-size: clamp(42px, 6.4vw, 104px); font-weight: 900; letter-spacing: -.035em; }
+h2 { font-size: clamp(22px, 2.3vw, 34px); font-weight: 900; letter-spacing: -.025em; }
+h3 { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+p { margin: 0; max-width: 62ch; text-shadow: var(--shadow); }
+.lead { font-size: 20px; font-weight: 700; }
+.soft { color: var(--ash); }
+.label { font-weight: 800; font-size: 15px; color: var(--accent); text-shadow: var(--shadow); }
+.panel { background: var(--veil); border-radius: 22px; padding: 20px 22px; display: grid; gap: 12px; min-width: 0; }
+.panel p, .panel li, .card p, .fb p, .exp span, .report li { text-shadow: none; }
+a { color: var(--accent); }
 
-button { font: inherit; cursor: pointer; }
-button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
-.btn { font-family: var(--f-display); font-weight: 700; font-size: 19px; letter-spacing: .04em; padding: 10px 22px; border-radius: 6px; border: 1px solid var(--amber); background: var(--amber); color: var(--space); }
-.btn:disabled { opacity: .45; cursor: not-allowed; }
-.btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
-.btn.hold { min-width: 150px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.btn.hold.active { background: var(--cyan); border-color: var(--cyan); }
-.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+canvas.scene { display: block; width: 100%; border-radius: 20px; background: transparent; touch-action: none;
+  box-shadow: inset 0 0 0 2px var(--rim); }
+/* data-fit="css": wysokość sceny ustala CSS, fit() tylko ją odczytuje */
+#labCanvas { height: clamp(280px, calc(100dvh - 400px), 620px); }
+#dockCanvas { height: clamp(280px, calc(100dvh - 300px), 640px); }
 
-.seg { display: flex; flex-wrap: wrap; gap: 6px; }
-.seg button { font-family: var(--f-mono); font-size: 13px; padding: 7px 12px; border-radius: 5px; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); }
-.seg button[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); }
 
-.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
-.ro { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-family: var(--f-mono); font-variant-numeric: tabular-nums; min-width: 0; }
-.ro span { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-.ro b { font-size: 18px; }
-.status { font-family: var(--f-mono); font-size: 14px; color: var(--cyan); min-height: 2.6em; }
+/* przyciski */
+button { font: inherit; cursor: pointer; color: inherit; }
+button:focus-visible, input:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--white); outline-offset: 3px; }
+.btn { font-family: var(--f-display); font-weight: 700; font-size: 17px; padding: 14px 26px; border-radius: 999px;
+  border: 0; background: var(--accent); color: var(--plum); transition: transform .15s; }
+.btn:hover:not(:disabled) { transform: translateY(-2px); }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.btn.ghost { background: var(--veil); color: var(--white); box-shadow: inset 0 0 0 2px rgba(255,255,255,.35); }
+.btn.hold { min-width: 170px; font-size: 22px; padding: 18px 32px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.btn.hold.active { background: var(--white); transform: scale(.96); }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.seg button { font-weight: 700; font-size: 17px; padding: 10px 18px; border-radius: 999px; border: 0;
+  background: var(--veil); box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); }
+.seg button[aria-pressed="true"] { background: var(--white); color: var(--plum); box-shadow: none; }
 
-.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.checklist li { display: flex; gap: 10px; align-items: baseline; color: var(--muted); }
-.checklist li::before { content: ""; flex: none; width: 14px; height: 14px; border-radius: 3px; border: 2px solid var(--line); transform: translateY(2px); }
-.checklist li.ok { color: var(--ink); }
-.checklist li.ok::before { background: var(--ok); border-color: var(--ok); }
-
-.src { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+/* laboratorium: odczyty, status, tabela eksperymentów */
+.readouts { display: flex; flex-wrap: wrap; gap: 8px 28px; }
+.readouts.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.readouts.grid2 .ro { background: var(--veil); border-radius: 16px; padding: 10px 16px; text-shadow: none; }
+.ro { display: grid; text-shadow: var(--shadow); }
+.ro span { font-size: 14px; font-weight: 700; color: var(--ash); }
+.ro b { font-family: var(--f-display); font-size: clamp(20px, 3vw, 32px); font-variant-numeric: tabular-nums; }
+.ro b.hi { color: var(--accent); }
+.status { font-weight: 800; color: var(--accent); min-height: 1.5em; }
+.exps { display: grid; gap: 8px; }
+.exp { display: grid; grid-template-columns: 120px 1fr; gap: 2px 16px; padding: 12px 16px; border-radius: 16px; background: var(--veil); font-size: 16px; }
+.exp b { font-family: var(--f-display); font-size: 17px; grid-row: span 3; align-self: center; }
+.exp em { font-style: normal; font-weight: 800; color: var(--c); }
+.exp[data-surf="hangar"] { --c: #ff7a3d; } .exp[data-surf="ice"] { --c: #a8e9ff; } .exp[data-surf="space"] { --c: #8f84ff; }
+.exp.done { box-shadow: inset 0 0 0 2px var(--c); }
+.exp .res { font-weight: 700; }
+.exp .res.soft { font-weight: 500; }
+@media (max-width: 520px) { .exp { grid-template-columns: 1fr; } .exp b { grid-row: auto; } }
+ul.clean { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.src { font-size: 14px; color: var(--ash); }
 
 /* słowniczek: karta pojęcia = definicja do zeszytu + po prostu + przykład */
-.defs { display: grid; gap: 10px; }
-.def { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.def summary { list-style: none; cursor: pointer; padding: 12px 16px; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.glos-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; }
+.glos-head p { flex: 1 1 260px; }
+.defs { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, max(340px, 23%)), 1fr)); align-items: start; }
+.def { background: var(--veil-2); border-radius: 16px; overflow: hidden; }
+.def summary { list-style: none; cursor: pointer; padding: 12px 18px; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
 .def summary::-webkit-details-marker { display: none; }
-.def summary b { font-family: var(--f-display); font-size: 20px; color: var(--amber); }
-.def summary span { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.def summary b { font-family: var(--f-display); font-size: 17px; }
+.def summary span { font-size: 14px; color: var(--ash); }
 .def[open] summary span { visibility: hidden; }
-.def-body { padding: 0 16px 14px; display: grid; gap: 10px; }
+.def-body { padding: 0 18px 16px; display: grid; gap: 12px; }
 .def-row { display: grid; gap: 2px; }
-.def-row i { font-style: normal; font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-.def-row.formal p { border-left: 4px solid var(--amber); padding-left: 12px; }
-.def-row.simple p { font-size: 18px; }
+.def-row i { font-style: normal; font-weight: 800; font-size: 14px; color: var(--accent); }
+.def-row.formal p { border-left: 4px solid var(--accent); padding-left: 12px; }
+.def-row.simple p { font-size: 19px; font-weight: 700; }
 
 /* etap „Pojęcia”: karta + pytanie sprawdzające */
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 12px; }
-.card h2 { color: var(--amber); }
-.chip { justify-self: start; font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
-.chip.new { border-color: var(--amber); color: var(--amber); }
-.dots { display: flex; gap: 6px; flex-wrap: wrap; }
-.dots i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); }
-.dots i.cur { border-color: var(--amber); }
-.dots i.ok { background: var(--ok); border-color: var(--ok); }
-.dots i.retry { background: var(--cyan); border-color: var(--cyan); }
-.dots i.weak { background: var(--bad); border-color: var(--bad); }
+.card { background: var(--veil); border-radius: 22px; padding: 22px 24px; display: grid; gap: 14px; }
+.card h2 { color: var(--white); font-size: clamp(28px, 3.2vw, 48px); }
+.card .def-row p { max-width: 70ch; }
+/* etap „Pojęcia”: karta wypełnia wysokość okna, tekst większy (to ekran do czytania) */
+#scr-cards .card { min-height: clamp(340px, calc(100dvh - 190px), 760px); align-content: center; padding: clamp(22px, 3vw, 52px); gap: 22px; }
+#scr-cards .def-row i { font-size: 15px; }
+#scr-cards .def-row p { font-size: clamp(18px, 1.35vw, 23px); }
+#scr-cards .def-row.simple p { font-size: clamp(20px, 1.7vw, 28px); }
+#scr-cards .side, #scr-quiz .side { align-self: center; }
+/* quiz: lewa kolumna to karta zadania (treść + scena) na całą wysokość okna */
+#scr-quiz > .col:not(.side) { background: var(--veil); border-radius: 22px; padding: clamp(22px, 3vw, 48px);
+  min-height: clamp(340px, calc(100dvh - 190px), 760px); align-content: center; gap: 22px; }
+#scr-quiz #qText { text-shadow: none; font-size: clamp(24px, 2.4vw, 40px); }
+#scr-quiz #qCanvas { height: clamp(240px, calc(100dvh - 430px), 520px); }
+#csTitle { font-size: clamp(30px, 3.6vw, 58px); }
+#scr-cards .opt, #scr-quiz .opt { font-size: clamp(17px, 1.2vw, 20px); padding: 16px 20px; }
+.chip { justify-self: start; font-weight: 800; font-size: 14px; padding: 4px 12px; border-radius: 999px; box-shadow: inset 0 0 0 2px var(--rim); color: var(--ash); }
+.chip.new { background: var(--accent); color: var(--plum); box-shadow: none; }
+.dots { display: flex; gap: 8px; flex-wrap: wrap; }
+.dots i { width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(255,255,255,.4); }
+.dots i.cur { box-shadow: inset 0 0 0 3px var(--accent); }
+.dots i.ok { background: var(--good); box-shadow: none; }
+.dots i.retry { background: var(--ice); box-shadow: none; }
+.dots i.weak { background: var(--wrong); box-shadow: none; }
 .terms { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.terms li { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 8px 12px; background: var(--panel-2); border-radius: 6px; }
-.terms li span { font-family: var(--f-mono); font-size: 13px; }
-.st-ok { color: var(--ok); }
-.st-retry { color: var(--cyan); }
-.st-weak { color: var(--bad); }
-.def summary span.st-weak { visibility: visible !important; color: var(--bad); }
+.terms li { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 16px; background: var(--veil); border-radius: 14px; }
+.terms li span { font-size: 15px; font-weight: 700; }
+.st-ok { color: var(--good); }
+.st-retry { color: var(--ice); }
+.st-weak { color: var(--wrong); }
+.def summary span.st-weak { visibility: visible !important; color: var(--wrong); }
 
-.map { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
-.node { border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 2px; background: var(--panel); min-width: 0; }
-.node .n { font-family: var(--f-mono); font-size: 11px; color: var(--muted); letter-spacing: .08em; }
-.node b { font-family: var(--f-display); font-size: 16px; line-height: 1.15; }
-.node.active { border-color: var(--amber); box-shadow: 0 0 0 1px var(--amber) inset; }
-.node.locked { opacity: .5; }
+/* mapa modułów */
+.map { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.node { border-radius: 16px; padding: 16px 16px; display: grid; gap: 4px; align-content: start; background: var(--veil); min-width: 0; min-height: 92px; }
+.node .n { font-size: 13px; color: var(--ash); font-weight: 700; }
+.node b { font-family: var(--f-display); font-size: 14px; line-height: 1.2; }
+.node.active { box-shadow: inset 0 0 0 3px var(--accent); }
+.node.locked { opacity: .55; }
 
-.qhead { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-family: var(--f-mono); font-size: 13px; color: var(--muted); }
-.retry { font-family: var(--f-mono); font-size: 13px; color: var(--cyan); }
-.group { display: grid; gap: 8px; }
-.group h3 { font-size: 17px; color: var(--muted); font-family: var(--f-mono); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
-.opt { text-align: left; padding: 11px 14px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); line-height: 1.4; }
-.opt:hover:not(:disabled) { border-color: var(--muted); }
-.opt[aria-pressed="true"] { border-color: var(--amber); box-shadow: 0 0 0 1px var(--amber) inset; }
-.opt.good { border-color: var(--ok); box-shadow: 0 0 0 1px var(--ok) inset; }
-.opt.bad { border-color: var(--bad); box-shadow: 0 0 0 1px var(--bad) inset; }
+/* quiz: treść zadania bywa długa, więc lżejszy i mniejszy nagłówek niż na innych ekranach */
+#qText { font-size: clamp(22px, 2.4vw, 34px); font-weight: 700; line-height: 1.3; letter-spacing: -.015em; max-width: 30em; }
+.qhead { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 15px; font-weight: 700; color: var(--ash); text-shadow: var(--shadow); }
+.qhead .label { font-size: 15px; }
+.retry { font-weight: 800; color: var(--ice); text-shadow: var(--shadow); }
+.group { display: grid; gap: 10px; }
+.group h3 { font-size: 16px; color: var(--accent); }
+.opt { text-align: left; font-weight: 700; font-size: 18px; line-height: 1.4; padding: 14px 18px; border-radius: 16px; border: 0;
+  background: var(--veil); box-shadow: inset 0 0 0 2px rgba(255,255,255,.22); }
+.opt:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--white); }
+.opt[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--accent); background: var(--veil-2); }
+.opt.good { background: var(--accent); color: var(--plum); box-shadow: none; }
+.opt.bad { box-shadow: inset 0 0 0 3px var(--wrong); }
 .opt:disabled { cursor: default; }
-.hint { border: 1px dashed var(--cyan); color: var(--cyan); border-radius: 8px; padding: 10px 14px; }
-.fb { border-radius: 8px; padding: 14px 16px; display: grid; gap: 8px; background: var(--panel-2); border: 1px solid var(--line); }
-.fb.good { border-color: var(--ok); }
-.fb.bad { border-color: var(--bad); }
-.fb .tag { font-family: var(--f-display); font-size: 20px; font-weight: 700; }
-.fb.good .tag { color: var(--ok); }
-.fb.bad .tag { color: var(--bad); }
-.xp-pop { font-family: var(--f-mono); color: var(--amber); }
+.hint { border-radius: 16px; padding: 12px 18px; background: var(--veil); box-shadow: inset 0 0 0 2px var(--ice); color: var(--ice); font-weight: 700; }
+.fb { border-radius: 20px; padding: 16px 20px; display: grid; gap: 8px; background: var(--veil-2); }
+.fb.good { box-shadow: inset 0 0 0 3px var(--good); }
+.fb.bad { box-shadow: inset 0 0 0 3px var(--wrong); }
+.fb .tag { font-family: var(--f-display); font-size: 22px; font-weight: 900; }
+.fb.good .tag { color: var(--good); }
+.fb.bad .tag { color: var(--wrong); }
+.xp-pop { font-family: var(--f-display); color: var(--accent); }
 
-/* bohater: wybór postaci, plakietka w HUD, dymki */
-.heroes { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
-.hero-opt { display: grid; justify-items: center; gap: 6px; padding: 12px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); }
-.hero-opt:hover { border-color: var(--muted); }
-.hero-opt[aria-pressed="true"] { border-color: var(--amber); box-shadow: 0 0 0 1px var(--amber) inset; }
-.hero-opt b { font-family: var(--f-display); font-size: 17px; }
-.ava { display: block; flex: none; }
-.name-row { display: grid; gap: 4px; max-width: 320px; }
-.name-row label { font-family: var(--f-mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-.name-row input { font: inherit; font-size: 19px; padding: 9px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); width: 100%; }
-.name-row input:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
-.hero-tag { display: flex; align-items: center; gap: 8px; font-family: var(--f-display); font-weight: 700; font-size: 18px; }
+/* bohater: wybór postaci, dymki */
+.heroes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.hero-opt { display: grid; justify-items: center; gap: 10px; padding: 18px 10px 14px; border-radius: 22px; border: 0;
+  background: var(--veil); box-shadow: inset 0 0 0 2px var(--rim); font-weight: 700; }
+.hero-opt svg { width: 104px; height: 104px; filter: drop-shadow(0 6px 10px rgba(0,0,0,.45)); }
+.hero-opt:hover { box-shadow: inset 0 0 0 2px var(--white); }
+.hero-opt[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--accent); background: var(--veil-2); }
+.hero-opt[aria-pressed="true"] svg { filter: drop-shadow(0 0 16px var(--accent)); }
+.name-row { display: grid; gap: 6px; max-width: 340px; font-weight: 700; text-shadow: var(--shadow); }
+.name-row input { font: inherit; font-size: 20px; padding: 12px 16px; border-radius: 14px; border: 0; color: var(--white);
+  background: var(--veil-2); box-shadow: inset 0 0 0 2px rgba(255,255,255,.3); width: 100%; }
 .say { display: flex; gap: 12px; align-items: flex-start; }
-.say .bubble { position: relative; background: var(--panel-2); border: 1px solid var(--cyan); border-radius: 10px; padding: 10px 14px; display: grid; gap: 2px; min-width: 0; }
-.say .bubble::before { content: ""; position: absolute; left: -7px; top: 18px; width: 12px; height: 12px; background: var(--panel-2); border-left: 1px solid var(--cyan); border-bottom: 1px solid var(--cyan); transform: rotate(45deg); }
-.say .bubble b { font-family: var(--f-display); font-size: 17px; color: var(--cyan); }
+.say svg { flex: none; width: 60px; height: 60px; filter: drop-shadow(0 4px 8px rgba(0,0,0,.45)); }
+.say .bubble { background: var(--veil-2); border-radius: 18px; padding: 10px 16px; display: grid; gap: 2px; min-width: 0; }
+.say .bubble b { font-family: var(--f-display); font-size: 15px; color: var(--accent); }
+.say .bubble p { text-shadow: none; font-weight: 700; }
 
-.result-stars { font-size: 46px; letter-spacing: 6px; color: var(--line); }
-.result-stars .on { color: var(--amber); }
-ul.clean { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
-a { color: var(--cyan); }
+/* raport */
+#endTitle { font-size: clamp(34px, 4.6vw, 72px); }
+.end-next { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.end-next .node { flex: 0 1 300px; }
+.end-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 28px; }
+.panel .terms li { background: rgba(255,255,255,.06); }
+.bigstars { display: flex; gap: 10px; font-size: clamp(56px, 10vw, 104px); line-height: 1; color: rgba(255,255,255,.2); }
+.bigstars i { font-style: normal; display: inline-block; }
+.bigstars .on { color: var(--accent); text-shadow: 0 0 24px var(--accent); }
+.report { display: grid; grid-template-columns: auto 1fr; gap: 10px 24px; align-items: start; padding: 22px 24px; border-radius: 22px;
+  background: var(--veil); }
+.report > svg { width: clamp(96px, 14vw, 140px); height: auto; grid-row: span 4; filter: drop-shadow(0 0 18px var(--accent)); }
+.report h2 { font-size: clamp(24px, 3.4vw, 38px); }
+.report .role { color: var(--ash); font-weight: 700; margin-top: -4px; }
+.report ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.report li { display: flex; gap: 10px; align-items: baseline; font-weight: 700; }
+.report li::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); transform: translateY(-1px); }
+@media (max-width: 560px) { .report { grid-template-columns: 1fr; } .report > svg { grid-row: auto; } }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
+</head>
+<body>
+<canvas id="gl" aria-hidden="true"></canvas>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="scrim" aria-hidden="true"></div>
+<div class="flash" id="flash" aria-hidden="true"></div>
 
 <div class="app">
   <header class="hud">
-    <div>
-      <div class="eyebrow">Misja Orion · Świat: Dynamika</div>
-      <h1>Moduł 1 · Bezwładność</h1>
-    </div>
+    <span class="hud-title">Moduł 1: Bezwładność</span>
+    <div class="hero-tag" id="hudHero" hidden></div>
+    <ol class="steps" id="steps">
+      <li data-s="lab">Laboratorium</li>
+      <li data-s="cards">Pojęcia</li>
+      <li data-s="s1">★ Pamiętam</li>
+      <li data-s="s2">★★ Rozumiem</li>
+      <li data-s="s3">★★★ Stosuję</li>
+      <li data-s="end">Raport</li>
+    </ol>
     <div class="meters">
-      <div class="hero-tag" id="hudHero" hidden></div>
       <button class="glos-btn" id="glosBtn" aria-expanded="false" aria-controls="glossary">Słowniczek</button>
-      <div class="meter"><span>XP</span><b id="xp">0</b></div>
-      <div class="meter stars" id="hudStars" aria-label="Gwiazdki"><i>★</i><i>★</i><i>★</i></div>
+      <div class="meter" id="xpBox"><span id="xp">0</span><small>XP</small></div>
+      <div class="stars" id="hudStars" aria-label="Gwiazdki"><i>★</i><i>★</i><i>★</i></div>
     </div>
   </header>
 
-  <ol class="steps" id="steps">
-    <li data-s="lab">Laboratorium</li>
-    <li data-s="cards">Pojęcia</li>
-    <li data-s="s1">★ Pamiętam</li>
-    <li data-s="s2">★★ Rozumiem</li>
-    <li data-s="s3">★★★ Stosuję</li>
-    <li data-s="end">Raport</li>
-  </ol>
-
-  <section id="glossary" class="panel" hidden>
-    <div class="actions" style="justify-content: space-between">
+  <section id="glossary" hidden>
+    <div class="glos-head">
       <h2>Słowniczek</h2>
+      <p>Kliknij pojęcie, żeby je rozwinąć. Definicję warto zapisać w zeszycie.</p>
       <button class="btn ghost" id="glosClose">Zamknij</button>
     </div>
-    <p class="lead">Kliknij pojęcie, żeby je rozwinąć. Definicję warto zapisać w zeszycie.</p>
     <div class="defs" id="glosList"></div>
     <p class="src">Spotkania z fizyką 7, temat 24, s. 162</p>
   </section>
 
   <main>
     <!-- START -->
-    <section id="scr-start">
-      <div class="panel">
-        <span class="eyebrow">Komunikat z mostka</span>
-        <h2>Orion ma awarię!</h2>
-        <p>Statek musi wrócić na Ziemię. Zepsuł się komputer, który steruje silnikami. Żeby go naprawić, musisz zrozumieć, jak poruszają się ciała.</p>
-        <p class="lead">Każdy moduł statku to jeden temat z działu „Dynamika”.</p>
-      </div>
-      <div class="panel">
-        <span class="eyebrow">Załoga</span>
-        <h2>Wybierz bohatera</h2>
-        <div class="heroes" id="heroPick" role="group" aria-label="Bohater"></div>
-        <div class="name-row">
-          <label for="heroName">Jak ma na imię?</label>
-          <input id="heroName" maxlength="14" autocomplete="off" placeholder="Wpisz imię">
-        </div>
-        <div class="say" id="say-start" hidden></div>
-      </div>
+    <section id="scr-start" class="split fill">
+     <div class="col">
+      <h1>Orion ma awarię!</h1>
+      <p class="lead">Statek musi wrócić na Ziemię. Zepsuł się komputer, który steruje silnikami.</p>
+      <p>Żeby go naprawić, musisz zrozumieć, jak poruszają się ciała. Każdy moduł statku to jeden temat z działu „Dynamika”.</p>
       <div class="map" aria-label="Mapa modułów">
-        <div class="node active"><span class="n">TEMAT 24 · S. 162</span><b>I zasada dynamiki, bezwładność</b></div>
-        <div class="node locked"><span class="n">TEMAT 25 · S. 169</span><b>II zasada dynamiki</b></div>
-        <div class="node locked"><span class="n">TEMAT 26 · S. 174</span><b>Swobodne spadanie ciał</b></div>
-        <div class="node locked"><span class="n">TEMAT 27 · S. 179</span><b>III zasada, odrzut</b></div>
-        <div class="node locked"><span class="n">TEMAT 28 · S. 183</span><b>Opory ruchu</b></div>
+        <div class="node active"><span class="n">Temat 24, s. 162</span><b>I zasada dynamiki, bezwładność</b></div>
+        <div class="node locked"><span class="n">Temat 25, s. 169</span><b>II zasada dynamiki</b></div>
+        <div class="node locked"><span class="n">Temat 26, s. 174</span><b>Swobodne spadanie ciał</b></div>
+        <div class="node locked"><span class="n">Temat 27, s. 179</span><b>III zasada, odrzut</b></div>
+        <div class="node locked"><span class="n">Temat 28, s. 183</span><b>Opory ruchu</b></div>
         <div class="node locked"><span class="n">S. 190</span><b>Boss: powtórzenie działu</b></div>
       </div>
       <p class="src" id="best"></p>
+     </div>
+     <div class="col side">
+      <h3>Wybierz bohatera</h3>
+      <div class="heroes" id="heroPick" role="group" aria-label="Bohater"></div>
+      <label class="name-row">Jak ma na imię?
+        <input id="heroName" maxlength="14" autocomplete="off" placeholder="Wpisz imię">
+      </label>
+      <div class="say" id="say-start" hidden></div>
       <div class="actions"><button class="btn" id="startBtn">Rozpocznij naprawę</button></div>
+     </div>
     </section>
 
     <!-- LABORATORIUM -->
-    <section id="scr-lab" hidden>
-      <div class="say" id="say-lab"></div>
-      <div class="panel">
-        <span class="eyebrow">Etap 0 · Laboratorium</span>
-        <h2>Co zrobi skrzynia, gdy przestaniesz ją pchać?</h2>
-        <p>Wybierz miejsce. Przytrzymaj <b>PCHAJ</b> (albo spację), a potem puść. Patrz, co robi skrzynia. Zrób to w trzech miejscach.</p>
+    <section id="scr-lab" class="split" hidden>
+     <div class="col stick">
+      <div class="title-row">
+        <h2><span class="label">Laboratorium</span> Co zrobi skrzynia, gdy przestaniesz ją pchać?</h2>
       </div>
-      <div class="seg" role="group" aria-label="Miejsce eksperymentu">
-        <button id="surf-hangar" data-surf="hangar" aria-pressed="true">Hangar (szorstka podłoga)</button>
-        <button id="surf-ice" data-surf="ice" aria-pressed="false">Lodowisko</button>
-        <button id="surf-space" data-surf="space" aria-pressed="false">Kosmos</button>
+      <div class="title-row">
+        <div class="seg" role="group" aria-label="Miejsce eksperymentu">
+          <button id="surf-hangar" data-surf="hangar" aria-pressed="true">Hangar (szorstka podłoga)</button>
+          <button id="surf-ice" data-surf="ice" aria-pressed="false">Lodowisko</button>
+          <button id="surf-space" data-surf="space" aria-pressed="false">Kosmos</button>
+        </div>
+        <p class="soft">Wybierz miejsce. Przytrzymaj <b>Pchaj</b> (albo spację), a potem puść. Patrz, co robi skrzynia. Zrób to w trzech miejscach.</p>
       </div>
-      <canvas id="labCanvas" aria-label="Symulacja skrzyni"></canvas>
-      <div class="readouts">
-        <div class="ro"><span>Prędkość v</span><b id="ro-v">0,0 m/s</b></div>
-        <div class="ro"><span>Pchanie F</span><b id="ro-f">0 N</b></div>
-        <div class="ro"><span>Tarcie T</span><b id="ro-t">0 N</b></div>
-        <div class="ro"><span>Siła wypadkowa</span><b id="ro-w">0 N</b></div>
-      </div>
+      <canvas class="scene" id="labCanvas" data-fit="css" aria-label="Symulacja skrzyni"></canvas>
       <p class="status" id="labStatus"></p>
-      <div class="actions">
-        <button class="btn hold" id="pushBtn">PCHAJ</button>
-        <button class="btn ghost" id="labReset">Ustaw skrzynię od nowa</button>
+      <div class="bar">
+        <div class="readouts">
+          <div class="ro"><span>Prędkość v</span><b id="ro-v">0,0 m/s</b></div>
+          <div class="ro"><span>Droga s</span><b id="ro-s">0,0 m</b></div>
+          <div class="ro"><span>Pchanie F</span><b id="ro-f">0 N</b></div>
+          <div class="ro"><span>Tarcie T</span><b id="ro-t">0 N</b></div>
+          <div class="ro"><span>Siła wypadkowa</span><b id="ro-w" class="hi">0 N</b></div>
+        </div>
+        <div class="actions">
+          <button class="btn hold" id="pushBtn">Pchaj</button>
+          <button class="btn ghost" id="labReset">Ustaw skrzynię od nowa</button>
+        </div>
       </div>
-      <div class="panel">
-        <h3>Twoje eksperymenty</h3>
-        <ul class="checklist">
-          <li id="chk-hangar">Pchnij i puść skrzynię w hangarze</li>
-          <li id="chk-ice">Pchnij i puść skrzynię na lodowisku</li>
-          <li id="chk-space">Pchnij i puść skrzynię w kosmosie</li>
-        </ul>
-      </div>
+     </div>
+     <div class="col side">
+      <div class="say" id="say-lab"></div>
+      <h3>Twoje eksperymenty</h3>
+      <div class="exps" id="exps"></div>
       <div class="panel" id="labConclusion" hidden>
-        <span class="eyebrow">Co się stało?</span>
+        <span class="label">Co się stało?</span>
         <ul class="clean">
           <li><b>Hangar:</b> skrzynia szybko stanęła. Hamowało ją duże tarcie.</li>
           <li><b>Lodowisko:</b> tarcie jest małe. Skrzynia zwalniała bardzo powoli.</li>
@@ -282,13 +397,16 @@ a { color: var(--cyan); }
         </div>
         <div class="actions"><button class="btn" id="labNext" disabled>Dalej: Pojęcia</button></div>
       </div>
+     </div>
     </section>
 
     <!-- KARTY POJĘĆ -->
-    <section id="scr-cards" hidden>
-      <div class="say" id="say-cards" hidden></div>
-      <div class="qhead"><span class="eyebrow">Etap · Pojęcia</span><span id="cCount"></span></div>
+    <section id="scr-cards" class="split" hidden>
+     <div class="full progress">
+      <div class="qhead"><span class="label">Pojęcia</span><span id="cCount"></span></div>
       <div class="dots" id="cDots" aria-hidden="true"></div>
+     </div>
+     <div class="col">
       <div id="cBody">
         <div class="card">
           <span class="chip" id="cTag"></span>
@@ -299,9 +417,12 @@ a { color: var(--cyan); }
         </div>
       </div>
       <p class="retry" id="cRetry" hidden>Przeczytaj kartę jeszcze raz i spróbuj z innym pytaniem.</p>
+     </div>
+     <div class="col side">
+      <div class="say" id="say-cards" hidden></div>
       <div class="group">
         <h3>Sprawdź się</h3>
-        <p id="cQ"></p>
+        <p id="cQ" class="lead"></p>
         <div class="group" id="cOpts"></div>
       </div>
       <div class="fb" id="cFb" hidden></div>
@@ -309,27 +430,35 @@ a { color: var(--cyan); }
         <button class="btn" id="cCheck" disabled>Sprawdź</button>
         <button class="btn" id="cNext" hidden>Dalej</button>
       </div>
+     </div>
     </section>
 
-    <section id="scr-cardsum" hidden>
-      <div class="panel">
-        <span class="eyebrow">Pojęcia · podsumowanie</span>
-        <h2 id="csTitle"></h2>
-        <ul class="terms" id="csList"></ul>
-        <p class="lead">Wszystkie karty są w Słowniczku na górze strony. Możesz do nich wracać w każdej chwili.</p>
-      </div>
+    <section id="scr-cardsum" class="split fill" hidden>
+     <div class="col">
+      <span class="label">Pojęcia: podsumowanie</span>
+      <h2 id="csTitle"></h2>
+      <p>Wszystkie karty są w Słowniczku na górze strony. Możesz do nich wracać w każdej chwili.</p>
       <div class="actions"><button class="btn" id="csNext">Dalej: ★ Pamiętam</button></div>
+     </div>
+     <div class="col side">
+      <ul class="terms" id="csList"></ul>
+     </div>
     </section>
 
     <!-- QUIZ (etapy Pamiętam / Rozumiem / pytanie po dokowaniu) -->
-    <section id="scr-quiz" hidden>
-      <div class="say" id="say-quiz" hidden></div>
-      <div class="qhead"><span class="eyebrow" id="qStage"></span><span id="qCount"></span></div>
+    <section id="scr-quiz" class="split" hidden>
+     <div class="full progress">
+      <div class="qhead"><span class="label" id="qStage"></span><span id="qCount"></span></div>
+     </div>
+     <div class="col">
       <p class="retry" id="qRetry" hidden>Sprawdźmy to jeszcze raz, w innej sytuacji.</p>
       <h2 id="qText"></h2>
       <div id="qSceneWrap" hidden>
-        <canvas id="qCanvas" aria-label="Scena do zadania"></canvas>
+        <canvas class="scene" id="qCanvas" data-fit="css" data-design="300" aria-label="Scena do zadania"></canvas>
       </div>
+     </div>
+     <div class="col side">
+      <div class="say" id="say-quiz" hidden></div>
       <div id="qGroups" class="group"></div>
       <div class="hint" id="qHint" hidden></div>
       <div class="fb" id="qFb" hidden></div>
@@ -338,42 +467,51 @@ a { color: var(--cyan); }
         <button class="btn" id="qCheck" disabled>Sprawdź</button>
         <button class="btn" id="qNext" hidden>Dalej</button>
       </div>
+     </div>
     </section>
 
     <!-- DOKOWANIE -->
-    <section id="scr-dock" hidden>
-      <div class="say" id="say-dock"></div>
-      <div class="panel">
-        <span class="eyebrow">Etap ★★★ · Stosuję</span>
-        <h2>Zadokuj Oriona przy stacji</h2>
-        <p>Silnik działa tylko wtedy, gdy trzymasz przycisk. Doleć do portu i zatrzymaj się przy nim. Przy porcie prędkość może wynosić najwyżej <b>0,6 m/s</b>. Paliwa jest mało: starczy na kilka sekund.</p>
-      </div>
-      <canvas id="dockCanvas" aria-label="Symulacja dokowania"></canvas>
-      <div class="readouts">
-        <div class="ro"><span>Do portu</span><b id="d-dist">60,0 m</b></div>
-        <div class="ro"><span>Prędkość</span><b id="d-v">0,00 m/s</b></div>
-        <div class="ro"><span>Paliwo</span><b id="d-fuel">100%</b></div>
-        <div class="ro"><span>Próba</span><b id="d-att">1</b></div>
-      </div>
+    <section id="scr-dock" class="split" hidden>
+     <div class="col stick">
+      <h2><span class="label">Etap ★★★: Stosuję</span> Zadokuj Oriona przy stacji</h2>
+      <canvas class="scene" id="dockCanvas" data-fit="css" data-design="330" aria-label="Symulacja dokowania"></canvas>
       <p class="status" id="dockStatus"></p>
       <div class="actions">
         <button class="btn hold" id="thrBack">◀ Silnik wsteczny</button>
         <button class="btn hold" id="thrFwd">Silnik ▶</button>
         <button class="btn ghost" id="dockHintBtn">Podpowiedź</button>
       </div>
+     </div>
+     <div class="col side">
+      <div class="say" id="say-dock"></div>
+      <p class="panel-text">Silnik działa tylko wtedy, gdy trzymasz przycisk. Doleć do portu i zatrzymaj się przy nim. Przy porcie prędkość może wynosić najwyżej <b>0,6 m/s</b>. Paliwa jest mało: starczy na kilka sekund.</p>
+      <div class="readouts grid2">
+        <div class="ro"><span>Do portu</span><b id="d-dist">60,0 m</b></div>
+        <div class="ro"><span>Prędkość</span><b id="d-v" class="hi">0,00 m/s</b></div>
+        <div class="ro"><span>Paliwo</span><b id="d-fuel">100%</b></div>
+        <div class="ro"><span>Próba</span><b id="d-att">1</b></div>
+      </div>
       <div class="hint" id="dockHint" hidden></div>
       <div class="fb" id="dockFb" hidden></div>
+     </div>
     </section>
 
     <!-- RAPORT -->
-    <section id="scr-end" hidden>
-      <div class="panel">
-        <span class="eyebrow" id="endEyebrow">Raport z naprawy</span>
-        <h2 id="endTitle">Moduł naprawiony</h2>
-        <div class="result-stars" id="endStars"><i>★</i><i>★</i><i>★</i></div>
-        <p id="endXp" class="xp-pop"></p>
+    <section id="scr-end" class="split" hidden>
+     <div class="col">
+      <div class="end-head">
+        <h1 id="endTitle">Moduł naprawiony</h1>
+        <div class="bigstars" id="endStars" aria-label="Gwiazdki"><i>★</i><i>★</i><i>★</i></div>
       </div>
+      <p id="endXp" class="lead"></p>
       <div class="say" id="say-end"></div>
+      <div class="report" id="report"></div>
+      <div class="end-next">
+        <div class="node active"><span class="n">Następny moduł, s. 169</span><b>II zasada dynamiki</b><span class="src">wkrótce</span></div>
+        <button class="btn ghost" id="againBtn">Zagraj od nowa</button>
+      </div>
+     </div>
+     <div class="col side">
       <div class="panel">
         <h3>Pojęcia</h3>
         <ul class="terms" id="endTerms"></ul>
@@ -382,15 +520,7 @@ a { color: var(--cyan); }
         <h3>Do powtórki</h3>
         <ul class="clean" id="endMis"></ul>
       </div>
-      <div class="panel">
-        <h3>Dla rodzica</h3>
-        <p id="endParent"></p>
-        <p class="src">Materiał: Spotkania z fizyką 7, temat 24 „Pierwsza zasada dynamiki Newtona – bezwładność”, s. 162–168. Jeśli coś nadal jest niejasne, warto przeczytać ten temat razem albo zadać pytanie w NotebookLM z wgranymi stronami podręcznika: <a href="https://notebooklm.google.com" target="_blank" rel="noopener">notebooklm.google.com</a></p>
-      </div>
-      <div class="map">
-        <div class="node"><span class="n">NASTĘPNY · S. 169</span><b>II zasada dynamiki</b><span class="src">wkrótce</span></div>
-      </div>
-      <div class="actions"><button class="btn ghost" id="againBtn">Zagraj od nowa</button></div>
+     </div>
     </section>
   </main>
 </div>
@@ -402,6 +532,178 @@ const css = getComputedStyle(document.documentElement);
 const col = n => css.getPropertyValue('--' + n).trim();
 const fmt = (n, d = 1) => n.toFixed(d).replace('.', ',');
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ========== ŚWIAT: shader tła + cząsteczki + efekty ==========
+// stan świata = uniformy shadera; env: 0 hangar, 1 lodowisko, 2 kosmos (wartości pośrednie = morph)
+const WD = { env: 0, heat: 0, tone: 0, dark: 1, shock: { x: .5, y: .5, r: 0, s: 0 } };
+const ACCENT = ['#ff5a1f', '#a8e9ff', '#8f84ff'];
+const VS = `attribute vec2 a; void main(){ gl_Position = vec4(a, 0., 1.); }`;
+const FS = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform float u_time; uniform vec2 u_res; uniform float u_env;
+uniform vec4 u_shock;   // x,y środek (0..1), z promień, w siła
+uniform float u_heat;   // 0..1, rośnie przy pchaniu / pracy silnika
+uniform float u_tone;   // 0..1, czerwony ton po błędzie
+uniform float u_dark;   // 1 = czerń (start), 0 = pełne światło
+
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.-2.*f);
+  return mix(mix(hash(i), hash(i+vec2(1,0)), f.x), mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y); }
+float fbm(vec2 p){ float v = 0., a = .5; for (int i = 0; i < 5; i++){ v += a*noise(p); p = p*2.03 + vec2(1.7, 9.2); a *= .5; } return v; }
+// drobiny: jedna kropka w co drugiej komórce siatki
+float dots(vec2 p, float size){ vec2 i = floor(p), f = fract(p); vec2 c = vec2(hash(i+1.3), hash(i+7.1));
+  return smoothstep(size, 0., length(f-c)) * step(.5, hash(i)); }
+
+// Hangar: żar od dołu, rozgrzane powietrze, iskry lecące w górę
+vec3 hangar(vec2 uv, float t){
+  vec2 p = uv; p.x += sin(p.y*18. + t*3.) * (.004 + .02*u_heat);
+  float glow = pow(1.-p.y, 2.2);
+  float n = fbm(p*vec2(3., 2.) + vec2(0., -t*.25));
+  vec3 c = mix(vec3(.08,.04,.12), vec3(1.,.35,.12), glow*(.45+.55*n)*(.8+u_heat));
+  float e = dots(vec2(p.x*40., p.y*40. - t*4.), .08) + dots(vec2(p.x*22.+5., p.y*22. - t*2.5), .07);
+  c += vec3(1.,.6,.25) * e * (.5+.5*sin(t*6. + p.x*50.)) * (1.+2.*u_heat);
+  return c;
+}
+// Lodowisko: zimna mgła, szkliste smugi, migoczące kryształki
+vec3 ice(vec2 uv, float t){
+  vec2 p = uv;
+  float fog = fbm(p*2.5 + vec2(t*.05, t*.02));
+  vec3 c = mix(vec3(.05,.08,.16), vec3(.66,.91,1.), fog*.75);
+  float st = smoothstep(.965, 1., sin((p.x*.6+p.y)*26. + t*.4 + fbm(p*5.)*2.5)*.5+.5);
+  c += vec3(.6,.9,1.) * st * .16;
+  float cry = dots(p*30., .05) * (.5+.5*sin(t*4. + hash(floor(p*30.))*40.));
+  c += vec3(1.) * cry * 1.2;
+  return c;
+}
+// Kosmos: fioletowa mgławica w dryfie, dwie warstwy gwiazd
+vec3 space(vec2 uv, float t){
+  vec2 p = uv + vec2(t*.01, 0.);
+  float n1 = fbm(p*2. + vec2(t*.03)), n2 = fbm(p*3.5 - vec2(t*.02));
+  vec3 c = vec3(.06,.03,.12) + vec3(.36,.29,1.)*pow(n1, 2.2)*1.2 + vec3(.9,.3,.6)*pow(n2, 3.5)*.8;
+  c += vec3(1.) * (dots(p*60., .04)*.9 + dots(p*120.+3., .025)*.6);
+  return c;
+}
+void main(){
+  vec2 uv = gl_FragCoord.xy / u_res; float asp = u_res.x/u_res.y; float t = u_time;
+  // fala uderzeniowa: pierścień, który odpycha obraz i świeci
+  vec2 d = uv - u_shock.xy; d.x *= asp; float dist = length(d);
+  float ring = smoothstep(.14, 0., abs(dist - u_shock.z));
+  vec2 dir = dist > .001 ? d/dist : vec2(0.); dir.x /= asp;
+  uv -= dir * ring * u_shock.w * .08;
+  vec3 c; float e = u_env;
+  if (e <= 0.) c = hangar(uv, t);
+  else if (e < 1.) c = mix(hangar(uv, t), ice(uv, t), smoothstep(0., 1., e));
+  else if (e < 2.) c = mix(ice(uv, t), space(uv, t), smoothstep(0., 1., e-1.));
+  else c = space(uv, t);
+  c += ring * u_shock.w * vec3(1., .95, .9);
+  c = mix(c, vec3(.5,.05,.08), u_tone*.6);
+  c *= 1. - .45*length((uv-.5)*vec2(1., 1.3));   // winieta
+  c *= 1. - u_dark;
+  gl_FragColor = vec4(c, 1.);
+}`;
+const glc = $('#gl');
+const gl = glc.getContext('webgl', { antialias: false, alpha: false });
+let U = null;
+if (!gl) {
+  console.warn('Brak WebGL: tło statyczne, gra działa.');
+  glc.hidden = true;
+} else {
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s)); return s; };
+  const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog); gl.useProgram(prog);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const a = gl.getAttribLocation(prog, 'a'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
+  U = {}; ['u_time','u_res','u_env','u_shock','u_heat','u_tone','u_dark'].forEach(n => U[n] = gl.getUniformLocation(prog, n));
+}
+function drawGL(t) {
+  if (!gl) return;
+  gl.uniform1f(U.u_time, t); gl.uniform2f(U.u_res, glc.width, glc.height);
+  gl.uniform1f(U.u_env, WD.env); gl.uniform4f(U.u_shock, WD.shock.x, WD.shock.y, WD.shock.r, WD.shock.s);
+  gl.uniform1f(U.u_heat, WD.heat); gl.uniform1f(U.u_tone, WD.tone); gl.uniform1f(U.u_dark, WD.dark);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+// cząsteczki: canvas 2D nad UI, składanie addytywne
+const fxc = $('#fx'), fx = fxc.getContext('2d');
+const P = [];
+function emit(x, y, o) {
+  if (RM) return;
+  for (let i = 0; i < o.count; i++) {
+    const ang = o.spread === undefined ? Math.random() * Math.PI * 2 : o.dir + (Math.random() - .5) * o.spread;
+    const sp = o.speed * (.4 + Math.random() * .8);
+    P.push({ x, y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: 0, max: o.life * (.6 + Math.random() * .6),
+      size: o.size * (.5 + Math.random()), color: Array.isArray(o.color) ? o.color[(Math.random() * o.color.length) | 0] : o.color,
+      type: o.type, g: o.g || 0, rot: Math.random() * Math.PI });
+  }
+}
+function drawFX(dt) {
+  fx.save(); fx.setTransform(1, 0, 0, 1, 0, 0); fx.clearRect(0, 0, fxc.width, fxc.height); fx.restore(); // czyść w pikselach urządzenia (dpr może być < 1)
+  if (!P.length) return;
+  fx.globalCompositeOperation = 'lighter';
+  for (let i = P.length - 1; i >= 0; i--) {
+    const p = P[i]; p.life += dt;
+    if (p.life > p.max) { P.splice(i, 1); continue; }
+    p.vy += p.g * dt; p.vx *= .985; p.vy *= .985; p.x += p.vx * dt; p.y += p.vy * dt;
+    const k = 1 - p.life / p.max; fx.globalAlpha = k; fx.fillStyle = fx.strokeStyle = p.color;
+    if (p.type === 'spark') { fx.lineWidth = p.size * .5; fx.beginPath(); fx.moveTo(p.x, p.y); fx.lineTo(p.x - p.vx * .03, p.y - p.vy * .03); fx.stroke(); }
+    else if (p.type === 'crystal') { fx.save(); fx.translate(p.x, p.y); fx.rotate(p.rot + p.life * 2); fx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size); fx.restore(); }
+    else { fx.beginPath(); fx.arc(p.x, p.y, p.size * .5 * k + .5, 0, Math.PI * 2); fx.fill(); }
+  }
+  fx.globalAlpha = 1; fx.globalCompositeOperation = 'source-over';
+}
+// wybuch w stylu bieżącego świata
+function burst(x, y, big) {
+  const e = Math.round(WD.env);
+  const base = { count: big ? 220 : 60, speed: big ? 520 : 260, life: big ? 1.6 : .9, size: big ? 7 : 4 };
+  if (e === 0) emit(x, y, { ...base, type: 'spark', color: ['#ff5a1f', '#ffb347', '#fff2c8'], g: 300 });
+  else if (e === 1) emit(x, y, { ...base, type: 'crystal', color: ['#a8e9ff', '#ffffff', '#d7f6ff'], g: 120 });
+  else emit(x, y, { ...base, type: 'dust', color: ['#5b4bff', '#b7a9ff', '#ffffff'], g: 0 });
+}
+function shock(px, py, strength, dur = 1.1) {
+  if (RM) return;
+  WD.shock.x = px / innerWidth; WD.shock.y = 1 - py / innerHeight;
+  gsap.killTweensOf(WD.shock);
+  gsap.fromTo(WD.shock, { r: 0, s: strength }, { r: 1.6, s: 0, duration: dur, ease: 'power2.out' });
+}
+function spill(px, py) {
+  if (RM) return;
+  gsap.fromTo('#flash', { x: px, y: py, scale: 0, opacity: .85 }, { scale: 60, opacity: 0, duration: 1.2, ease: 'power3.out' });
+}
+const center = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+// jeden efekt na zdarzenie: dobra odpowiedź = supernowa, zła = pęknięcie świata
+function cheer(el) { const [x, y] = center(el); shock(x, y, 1.1, 1.3); burst(x, y, true); spill(x, y); }
+function oops(el) {
+  if (RM) return;
+  const [x, y] = center(el); shock(x, y, .45, .8);
+  gsap.fromTo(WD, { tone: .9 }, { tone: 0, duration: .8, ease: 'power2.out' });
+  gsap.fromTo('.app', { x: -7 }, { x: 0, duration: .5, ease: 'elastic.out(1, .25)', clearProps: 'transform' });
+}
+function setWorld(i) {
+  document.documentElement.style.setProperty('--accent', ACCENT[i]);
+  if (RM || !gl) { WD.env = i; drawGL(10); return; }
+  gsap.to(WD, { env: i, duration: 1.4, ease: 'sine.inOut' });
+}
+
+function resize() {
+  const dpr = Math.min(devicePixelRatio || 1, 1.5);
+  glc.width = Math.round(innerWidth * dpr * .7); glc.height = Math.round(innerHeight * dpr * .7); // shader w 70% rozdzielczości
+  fxc.width = innerWidth * dpr; fxc.height = innerHeight * dpr; fx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (gl) gl.viewport(0, 0, glc.width, glc.height);
+  if (RM) drawGL(10);
+}
+addEventListener('resize', resize); resize();
+let wT = 0, wLast = performance.now();
+function worldFrame(dt) { wT += dt; if (!RM) drawGL(wT); drawFX(dt); }
+requestAnimationFrame(function wloop(now) { const dt = Math.min(.05, (now - wLast) / 1000); wLast = now; worldFrame(dt); requestAnimationFrame(wloop); });
+if (RM) { WD.dark = 0; drawGL(10); }
+else gsap.to(WD, { dark: 0, duration: 1.8, ease: 'power2.inOut' });
 
 // ---------- słowniczek ----------
 const GLOS = [
@@ -440,8 +742,8 @@ const GLOS = [
 ];
 // skąd pojęcie: przypomnienie z wcześniejszych działów, nowe w temacie 24, zapowiedź tematu 28
 const TAG = {
-  sila: 'Przypomnienie · wcześniejszy dział', wypadkowa: 'Przypomnienie · wcześniejszy dział', rownowaga: 'Przypomnienie · wcześniejszy dział',
-  jednostajny: 'Przypomnienie · Kinematyka', tarcie: 'Zapowiedź · temat 28', zasada1: 'Nowe · temat 24', bezwladnosc: 'Nowe · temat 24', masa: 'Nowe · temat 24',
+  sila: 'Przypomnienie z wcześniejszego działu', wypadkowa: 'Przypomnienie z wcześniejszego działu', rownowaga: 'Przypomnienie z wcześniejszego działu',
+  jednostajny: 'Przypomnienie z kinematyki', tarcie: 'Zapowiedź tematu 28', zasada1: 'Nowe w temacie 24', bezwladnosc: 'Nowe w temacie 24', masa: 'Nowe w temacie 24',
 };
 // dwa pytania na pojęcie: główne i drugie (po błędzie, w innej formie)
 const TQ = {
@@ -569,29 +871,60 @@ $('#glosClose').addEventListener('click', () => toggleGlos(false));
 
 // ---------- bohater ----------
 // teksty bohatera bez form zależnych od płci; imię zawsze w mianowniku
+// portrety 96×96: skafander + hełm, twarz przycięta do wizjera; „var(--accent)” = światło bieżącego świata
+const VISOR = '<circle cx="48" cy="40" r="23"/>';
+const suit = color =>
+  `<path d="M22 96 V78 q0-14 14-14 h24 q14 0 14 14 V96 Z" fill="${color}"/>` +
+  '<rect x="30" y="60" width="36" height="10" rx="5" fill="#b9c3d6"/>' +
+  '<rect x="40" y="76" width="16" height="12" rx="3" fill="#15102a"/><circle cx="45" cy="82" r="2.2" fill="var(--accent)"/><circle cx="51" cy="82" r="2.2" fill="#fff" opacity=".8"/>' +
+  '<circle cx="29" cy="80" r="4" fill="var(--accent)"/><path d="M66 80 q9 2 9 13" stroke="#b9c3d6" stroke-width="4" fill="none" stroke-linecap="round"/>';
+const helmet = (uid, inside) =>
+  `<defs><clipPath id="${uid}">${VISOR}</clipPath></defs>` +
+  '<circle cx="48" cy="38" r="31" fill="#eef2f8"/><circle cx="48" cy="40" r="23" fill="#15102a"/>' +
+  `<g clip-path="url(#${uid})">${inside}</g>` +
+  '<circle cx="48" cy="40" r="23" fill="none" stroke="var(--accent)" stroke-width="2.5"/>' +
+  '<path d="M31 32 q5-12 19-14" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".55"/><circle cx="36" cy="51" r="1.6" fill="#fff" opacity=".5"/>';
+const face = (skin, mouth = '#8a3b2a') =>
+  `<rect x="42" y="50" width="12" height="14" fill="${skin}"/><circle cx="48" cy="42" r="13" fill="${skin}"/>` +
+  '<ellipse cx="43.5" cy="42" rx="1.9" ry="2.4" fill="#15102a"/><ellipse cx="52.5" cy="42" rx="1.9" ry="2.4" fill="#15102a"/>' +
+  '<circle cx="44.2" cy="41.2" r=".7" fill="#fff"/><circle cx="53.2" cy="41.2" r=".7" fill="#fff"/>' +
+  `<path d="M44 47 q4 3.5 8 0" stroke="${mouth}" stroke-width="1.6" fill="none" stroke-linecap="round"/>` +
+  '<circle cx="39.5" cy="46" r="2.3" fill="#ff8aa0" opacity=".4"/><circle cx="56.5" cy="46" r="2.3" fill="#ff8aa0" opacity=".4"/>';
 const HEROES = [
-  { id: 'astronautka', label: 'Astronautka', svg:
-    '<rect x="12" y="46" width="40" height="18" rx="9" fill="#ffb24a"/><circle cx="32" cy="28" r="21" fill="#dfe6f2"/><circle cx="32" cy="29" r="15" fill="#1d2a45"/>' +
-    '<circle cx="32" cy="28" r="11" fill="#8a4b2a"/><rect x="21" y="28" width="5" height="12" rx="2.5" fill="#8a4b2a"/><rect x="38" y="28" width="5" height="12" rx="2.5" fill="#8a4b2a"/>' +
-    '<circle cx="32" cy="32" r="8.5" fill="#f2c9a1"/><circle cx="29" cy="31" r="1.3" fill="#1d2a45"/><circle cx="35" cy="31" r="1.3" fill="#1d2a45"/>' +
-    '<path d="M29.5 35 q2.5 2 5 0" stroke="#1d2a45" stroke-width="1.5" fill="none" stroke-linecap="round"/>' },
-  { id: 'astronauta', label: 'Astronauta', svg:
-    '<rect x="12" y="46" width="40" height="18" rx="9" fill="#62d4e8"/><circle cx="32" cy="28" r="21" fill="#dfe6f2"/><circle cx="32" cy="29" r="15" fill="#1d2a45"/>' +
-    '<circle cx="32" cy="29" r="10" fill="#3a2a22"/>' +
-    '<circle cx="32" cy="32" r="8.5" fill="#d9a77c"/><circle cx="29" cy="31" r="1.3" fill="#1d2a45"/><circle cx="35" cy="31" r="1.3" fill="#1d2a45"/>' +
-    '<path d="M29.5 35 q2.5 2 5 0" stroke="#1d2a45" stroke-width="1.5" fill="none" stroke-linecap="round"/>' },
-  { id: 'robot', label: 'Robot', svg:
-    '<rect x="14" y="48" width="36" height="16" rx="5" fill="#74df93"/><line x1="32" y1="14" x2="32" y2="6" stroke="#9aabcb" stroke-width="3"/><circle cx="32" cy="6" r="3.5" fill="#ffb24a"/>' +
-    '<rect x="13" y="14" width="38" height="32" rx="7" fill="#9aabcb"/><rect x="17" y="18" width="30" height="24" rx="5" fill="#1d2a45"/>' +
-    '<circle cx="25" cy="27" r="4.5" fill="#62d4e8"/><circle cx="39" cy="27" r="4.5" fill="#62d4e8"/><rect x="24" y="35" width="16" height="3" rx="1.5" fill="#62d4e8"/>' },
-  { id: 'kot', label: 'Kosmiczny kot', svg:
-    '<rect x="12" y="48" width="40" height="16" rx="8" fill="#b79cff"/>' +
-    '<path d="M19 26 L20 10 L30 19 Z M45 26 L44 10 L34 19 Z" fill="#e8964a"/><path d="M21.5 21 L22 14 L27 18.5 Z M42.5 21 L42 14 L37 18.5 Z" fill="#f6c9a8"/>' +
-    '<circle cx="32" cy="31" r="14" fill="#e8964a"/><ellipse cx="26.5" cy="29" rx="2.2" ry="3" fill="#1d2a45"/><ellipse cx="37.5" cy="29" rx="2.2" ry="3" fill="#1d2a45"/>' +
-    '<path d="M30 34 h4 l-2 2.2 z" fill="#ff7d6e"/><path d="M20 34 h7 M20 37 l7 -1.5 M44 34 h-7 M44 37 l-7 -1.5" stroke="#1d2a45" stroke-width="1" stroke-linecap="round"/>' +
-    '<circle cx="32" cy="28" r="23" fill="none" stroke="#dfe6f2" stroke-width="2" opacity=".55"/>' },
+  { id: 'astronautka', label: 'Astronautka', draw: uid => suit('#ff9a3c') + helmet(uid,
+      '<path d="M35 44 q-3 8 0 16" stroke="#a0522d" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M61 44 q3 8 0 16" stroke="#a0522d" stroke-width="5" fill="none" stroke-linecap="round"/>' +
+      '<circle cx="35" cy="59" r="2.6" fill="var(--accent)"/><circle cx="61" cy="59" r="2.6" fill="var(--accent)"/>' +
+      face('#f2c9a1') +
+      '<path d="M35 41 q1-15 13-15 q12 0 13 15 q-4-7-12-6 q-9-1-14 6 z" fill="#a0522d"/>' +
+      '<path d="M40.5 37.5 q3-2 6 0 M49.5 37.5 q3-2 6 0" stroke="#7a3a1e" stroke-width="1.4" fill="none" stroke-linecap="round"/>' +
+      '<circle cx="42" cy="45" r=".6" fill="#b06a46"/><circle cx="44.5" cy="46" r=".6" fill="#b06a46"/><circle cx="52" cy="45" r=".6" fill="#b06a46"/><circle cx="54.5" cy="46" r=".6" fill="#b06a46"/>') },
+  { id: 'astronauta', label: 'Astronauta', draw: uid => suit('#3cc4ff') + helmet(uid,
+      face('#8b5a2b', '#4a2714') +
+      '<path d="M34 42 q0-16 14-16 q14 0 14 16 q-3-6-8-5 q-2-4-6-3 q-4-1-6 3 q-5-1-8 5 z" fill="#2a1a12"/><circle cx="40" cy="30" r="3" fill="#2a1a12"/><circle cx="56" cy="30" r="3" fill="#2a1a12"/>' +
+      '<path d="M40 37.5 q3.5-2.5 7 0 M49 37.5 q3.5-2.5 7 0" stroke="#2a1a12" stroke-width="1.8" fill="none" stroke-linecap="round"/>' +
+      '<circle cx="43.5" cy="42" r="4.2" fill="none" stroke="#fff" stroke-width="1.3"/><circle cx="52.5" cy="42" r="4.2" fill="none" stroke="#fff" stroke-width="1.3"/><path d="M47.7 42 h.6" stroke="#fff" stroke-width="1.3"/>') },
+  { id: 'robot', label: 'Robot pokładowy', draw: () =>
+      '<line x1="48" y1="14" x2="48" y2="6" stroke="#b9c3d6" stroke-width="3"/><circle cx="48" cy="6" r="4" fill="var(--accent)"/>' +
+      '<rect x="12" y="66" width="10" height="22" rx="5" fill="#8f9bb3"/><rect x="74" y="66" width="10" height="22" rx="5" fill="#8f9bb3"/>' +
+      '<path d="M14 88 l-3 6 M20 88 l3 6 M76 88 l-3 6 M82 88 l3 6" stroke="#8f9bb3" stroke-width="4" stroke-linecap="round"/>' +
+      '<rect x="42" y="54" width="12" height="8" fill="#6f7a92"/>' +
+      '<path d="M24 96 V72 q0-10 10-10 h28 q10 0 10 10 V96 Z" fill="#9aa6bf"/>' +
+      '<circle cx="48" cy="78" r="8" fill="#15102a"/><path d="M48 78 l5-4" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/><circle cx="48" cy="78" r="1.5" fill="var(--accent)"/>' +
+      '<circle cx="31" cy="70" r="2" fill="#6f7a92"/><circle cx="65" cy="70" r="2" fill="#6f7a92"/><rect x="36" y="90" width="24" height="3" rx="1.5" fill="#6f7a92"/>' +
+      '<rect x="22" y="14" width="52" height="40" rx="10" fill="#b9c3d6"/><rect x="26" y="18" width="44" height="32" rx="8" fill="#8f9bb3"/><rect x="29" y="21" width="38" height="26" rx="6" fill="#15102a"/>' +
+      '<circle cx="40" cy="32" r="5" fill="var(--accent)"/><circle cx="56" cy="32" r="5" fill="var(--accent)"/><circle cx="41.5" cy="30.5" r="1.5" fill="#fff"/><circle cx="57.5" cy="30.5" r="1.5" fill="#fff"/>' +
+      '<rect x="38" y="41" width="20" height="3" rx="1.5" fill="var(--accent)" opacity=".85"/>' +
+      '<circle cx="22" cy="34" r="4" fill="#6f7a92"/><circle cx="74" cy="34" r="4" fill="#6f7a92"/><path d="M20 34 h4 M22 32 v4 M72 34 h4 M74 32 v4" stroke="#15102a" stroke-width="1"/>' },
+  { id: 'kot', label: 'Kosmiczny kot', draw: uid => suit('#9d8cff') + helmet(uid,
+      '<path d="M34 36 L35 16 L46 29 Z M62 36 L61 16 L50 29 Z" fill="#e8964a"/><path d="M37 32 L37.5 22 L43 28.5 Z M59 32 L58.5 22 L53 28.5 Z" fill="#f6c9a8"/>' +
+      '<circle cx="48" cy="42" r="14" fill="#e8964a"/><path d="M42 30 l2 6 M48 29 v6 M54 30 l-2 6" stroke="#c4712c" stroke-width="2" stroke-linecap="round"/>' +
+      '<ellipse cx="48" cy="47.5" rx="7" ry="5" fill="#f6d7b8"/>' +
+      '<ellipse cx="43" cy="41" rx="2.7" ry="3.4" fill="#5ad67d"/><ellipse cx="53" cy="41" rx="2.7" ry="3.4" fill="#5ad67d"/><ellipse cx="43" cy="41" rx="1" ry="3" fill="#15102a"/><ellipse cx="53" cy="41" rx="1" ry="3" fill="#15102a"/>' +
+      '<path d="M46.5 45.5 h3 l-1.5 2z" fill="#ff7d8a"/><path d="M46 48 q2 2 4 0" stroke="#8a3b2a" stroke-width="1.3" fill="none" stroke-linecap="round"/>' +
+      '<path d="M30 44 h10 M30 48 l10-2 M66 44 h-10 M66 48 l-10-2" stroke="#15102a" stroke-width="1" stroke-linecap="round"/>') },
 ];
-const ava = (id, size) => `<svg class="ava" width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true">${HEROES.find(h => h.id === id).svg}</svg>`;
+let avaSeq = 0; // każdy portret ma własny clipPath wizjera
+const ava = (id, size) => `<svg class="ava" width="${size}" height="${size}" viewBox="0 0 96 96" aria-hidden="true">${HEROES.find(h => h.id === id).draw('visor' + (++avaSeq))}</svg>`;
 const hero = (() => {
   try { const h = JSON.parse(localStorage.getItem('orion-bohater') || 'null'); if (h && HEROES.some(x => x.id === h.id)) return { id: h.id, name: String(h.name || '').slice(0, 14) }; } catch {}
   return { id: null, name: '' };
@@ -600,20 +933,24 @@ const heroReady = () => !!(hero.id && hero.name);
 function saveHero() { try { localStorage.setItem('orion-bohater', JSON.stringify(hero)); } catch {} }
 function say(el, text) {
   el.hidden = !heroReady(); if (el.hidden) return;
-  el.innerHTML = ava(hero.id, 56) + '<div class="bubble"><b></b><p></p></div>';
+  el.innerHTML = ava(hero.id, 60) + '<div class="bubble"><b></b><p></p></div>';
   el.querySelector('b').textContent = hero.name; el.querySelector('p').textContent = text;
 }
 function heroRefresh() {
   document.querySelectorAll('#heroPick .hero-opt').forEach(b => b.setAttribute('aria-pressed', b.dataset.hero === hero.id));
   const tag = $('#hudHero'); tag.hidden = !heroReady();
-  if (heroReady()) { tag.innerHTML = ava(hero.id, 32) + '<span></span>'; tag.querySelector('span').textContent = hero.name; }
+  if (heroReady()) { tag.innerHTML = ava(hero.id, 36) + '<span></span>'; tag.querySelector('span').textContent = hero.name; }
   say($('#say-start'), 'Cześć! Lecę z Tobą. Razem naprawimy Oriona.');
   $('#startBtn').disabled = !heroReady();
 }
 HEROES.forEach(h => {
   const b = document.createElement('button'); b.className = 'hero-opt'; b.dataset.hero = h.id;
-  b.innerHTML = ava(h.id, 64) + '<b></b>'; b.querySelector('b').textContent = h.label;
-  b.addEventListener('click', () => { hero.id = h.id; saveHero(); heroRefresh(); });
+  b.innerHTML = ava(h.id, 104) + '<b></b>'; b.querySelector('b').textContent = h.label;
+  b.addEventListener('click', () => {
+    hero.id = h.id; saveHero(); heroRefresh();
+    const [x, y] = center(b); burst(x, y, false);
+    if (!RM) gsap.fromTo(b, { scale: .92 }, { scale: 1, duration: .4, ease: 'back.out(3)', clearProps: 'transform' });
+  });
   $('#heroPick').append(b);
 });
 $('#heroName').value = hero.name;
@@ -633,36 +970,48 @@ const MIS = {
 };
 const addMis = id => { if (id) S.mis[id] = (S.mis[id] || 0) + 1; };
 
-function setXP(d) { S.xp += d; $('#xp').textContent = S.xp; }
+// XP: licznik dobiega do nowej wartości, a skrzynka XP w HUD podskakuje
+function setXP(d) {
+  const o = { v: S.xp }; S.xp += d;
+  if (RM) { $('#xp').textContent = S.xp; return; }
+  gsap.to(o, { v: S.xp, duration: .9, ease: 'power2.out', onUpdate: () => $('#xp').textContent = Math.round(o.v) });
+  gsap.fromTo('#xpBox', { scale: 1 }, { scale: 1.35, yoyo: true, repeat: 1, duration: .22, delay: .4, transformOrigin: 'left center', clearProps: 'transform' });
+}
 function paintStars(el, n) { [...el.children].forEach((c, i) => c.classList.toggle('on', i < n)); }
 const starCount = () => (S.stars.s1 ? 1 : 0) + (S.stars.s2 ? 1 : 0) + (S.stars.s3 ? 1 : 0);
 function refreshStars() { paintStars($('#hudStars'), starCount()); }
 
 // ---------- pętla animacji (jedna naraz) ----------
-let raf = null;
+let raf = null, loopFn = null, loopT = 0;
 function runLoop(fn) {
   stopLoop();
-  let t0 = null, last = null;
+  let last = null; loopFn = fn; loopT = 0;
   const step = now => {
-    if (t0 === null) { t0 = now; last = now; }
+    if (last === null) last = now;
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    fn((now - t0) / 1000, dt);
+    loopT += dt; fn(loopT, dt);
     raf = requestAnimationFrame(step);
   };
   raf = requestAnimationFrame(step);
 }
-function stopLoop() { if (raf) cancelAnimationFrame(raf); raf = null; }
+function stopLoop() { if (raf) cancelAnimationFrame(raf); raf = null; loopFn = null; }
 
 function fit(c, ratio, minH = 200, maxH = 380) {
   const w = c.clientWidth || 600;
-  const h = Math.max(minH, Math.min(maxH, Math.round(w * ratio)));
+  // data-fit="css": wysokość z arkusza stylów (scena rośnie z oknem); inaczej z proporcji szerokości
+  const css = c.dataset.fit === 'css';
+  const h = css ? (c.clientHeight || 300) : Math.max(minH, Math.min(maxH, Math.round(w * ratio)));
   const dpr = window.devicePixelRatio || 1;
   if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) {
-    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); c.style.height = h + 'px';
+    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); if (!css) c.style.height = h + 'px';
   }
   const ctx = c.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  return { ctx, w, h };
+  // data-design: scena narysowana pod tę wysokość rośnie razem z płótnem (k = skala rysunku)
+  const d = +c.dataset.design || 0;
+  const k = d ? Math.max(1, Math.min(h / d, w / (d * 2.2))) : 1;
+  ctx.setTransform(dpr * k, 0, 0, dpr * k, 0, 0);
+  ctx.clearRect(0, 0, w / k, h / k); // tła scen są półprzezroczyste, więc każda klatka zaczyna od czystego płótna
+  return { ctx, w: w / k, h: h / k, k };
 }
 
 function arrow(ctx, x1, y1, x2, y2, color, label, lpos) {
@@ -688,8 +1037,8 @@ function txt(ctx, s, x, y, color, size = 13, align = 'left', weight = 500) {
 let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const STARS = Array.from({ length: 110 }, () => ({ x: rnd(), y: rnd(), r: rnd() * 1.4 + 0.3, z: rnd() * 0.6 + 0.2 }));
 function starfield(ctx, w, h, shift = 0) {
-  ctx.fillStyle = col('space'); ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = col('muted');
+  ctx.fillStyle = col('scene'); ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = col('ink');
   for (const s of STARS) {
     let x = (s.x * w - shift * s.z) % w; if (x < 0) x += w;
     ctx.globalAlpha = 0.35 + s.z; ctx.beginPath(); ctx.arc(x, s.y * h, s.r, 0, Math.PI * 2); ctx.fill();
@@ -710,97 +1059,136 @@ function show(id) {
   ['start', 'lab', 'cards', 'cardsum', 'quiz', 'dock', 'end'].forEach(s => { $('#scr-' + s).hidden = s !== id; });
   toggleGlos(false);
   window.scrollTo({ top: 0, behavior: 'auto' });
+  if (!RM) gsap.from(`#scr-${id} > *`, { y: 24, opacity: 0, duration: .5, stagger: .05, ease: 'power3.out', clearProps: 'opacity,transform' });
 }
+// który świat gdzie: start hangar, pojęcia lód (spokojne czytanie), ★ hangar, ★★ lód, dokowanie i ★★★ kosmos, raport kosmos
+const SURF_ENV = { hangar: 0, ice: 1, space: 2 };
 
 // ---------- LABORATORIUM ----------
 const LAB = { m: 20, F: 120, g: 9.81, mu: { hangar: 0.35, ice: 0.02, space: 0 } };
-const lab = { surf: 'hangar', x: 0, v: 0, push: false, wasPush: false, release: null, done: { hangar: false, ice: false, space: false }, qOk: false };
+const SURF_NAME = { hangar: 'Hangar', ice: 'Lodowisko', space: 'Kosmos' };
+const lab = { surf: 'hangar', x: 0, v: 0, push: false, wasPush: false, rel: null, done: { hangar: false, ice: false, space: false }, res: {}, qOk: false, crate: null };
 
 function labStart() {
-  show('lab'); setStep('lab');
+  show('lab'); setStep('lab'); setWorld(SURF_ENV[lab.surf]);
   say($('#say-lab'), 'Zanim naprawimy silniki, sprawdźmy, jak jeżdżą rzeczy. Pchnij skrzynię w trzech miejscach i patrz, co się dzieje.');
+  labChecklist();
   runLoop((t, dt) => { labStep(dt); labDraw(); });
 }
 function labSetSurf(s) {
-  lab.surf = s; lab.x = 0; lab.v = 0; lab.release = null;
+  const changed = s !== lab.surf;
+  lab.surf = s; lab.x = 0; lab.v = 0; lab.rel = null;
   document.querySelectorAll('[data-surf]').forEach(b => b.setAttribute('aria-pressed', b.dataset.surf === s));
+  if (changed) setWorld(SURF_ENV[s]);
 }
+const labT = () => LAB.mu[lab.surf] * LAB.m * LAB.g;
 function labStep(dt) {
-  const T = LAB.mu[lab.surf] * LAB.m * LAB.g;
+  const T = labT();
   const F = lab.push ? LAB.F : 0;
   if (lab.v > 0.0001) { lab.v = Math.max(0, lab.v + (F - T) / LAB.m * dt); }
   else if (F > T) { lab.v += (F - T) / LAB.m * dt; }
   else lab.v = 0;
   lab.x += lab.v * dt;
-  if (lab.wasPush && !lab.push && lab.v > 0.3) lab.release = { surf: lab.surf, t: performance.now() };
+  // jeden eksperyment = pchnij → puść → skrzynia stanie albo minie 3,5 s; ponowne pchnięcie przerywa pomiar
+  if (lab.wasPush && !lab.push && lab.v > 0.3) lab.rel = { surf: lab.surf, t: 0, x: lab.x, v: lab.v };
+  if (lab.push) lab.rel = null;
   lab.wasPush = lab.push;
-  if (lab.release && lab.release.surf === lab.surf && !lab.push) {
-    if (lab.v < 0.01 || performance.now() - lab.release.t > 3500) {
-      lab.done[lab.surf] = true; lab.release = null; labChecklist();
-    }
-  }
+  if (lab.rel) { lab.rel.t += dt; if (lab.v < 0.01 || lab.rel.t >= 3.5) labRecord(T); }
   const moving = lab.v > 0.0001;
   const Tact = moving ? T : (F > 0 ? Math.min(F, T) : 0);
-  const W = F - Tact;
+  const net = F - Tact;
   $('#ro-v').textContent = fmt(lab.v) + ' m/s';
+  $('#ro-s').textContent = fmt(lab.x) + ' m';
   $('#ro-f').textContent = Math.round(F) + ' N';
   $('#ro-t').textContent = Math.round(Tact) + ' N';
-  $('#ro-w').textContent = (W > 0.5 ? '+' : W < -0.5 ? '−' : '') + Math.round(Math.abs(W)) + ' N';
+  $('#ro-w').textContent = (net > 0.5 ? '+' : net < -0.5 ? '−' : '') + Math.round(Math.abs(net)) + ' N';
   let st;
-  if (!moving && !lab.push) st = 'Skrzynia stoi. Nic jej nie pcha.';
-  else if (lab.push) st = T > 0 ? 'Pchasz mocniej, niż hamuje tarcie → skrzynia przyspiesza.' : 'Pchasz → skrzynia przyspiesza.';
-  else if (T > 0) st = 'Nie pchasz. Tarcie hamuje skrzynię → skrzynia zwalnia.';
-  else st = 'Nie pchasz i nic nie hamuje → skrzynia jedzie cały czas tak samo szybko!';
+  if (lab.push) st = T > 0 ? 'Pchasz mocniej, niż hamuje tarcie. Skrzynia przyspiesza.' : 'Pchasz, a nic nie hamuje. Skrzynia przyspiesza.';
+  else if (moving) st = T > 0 ? 'Nie pchasz. Tarcie hamuje skrzynię. Skrzynia zwalnia.' : 'Nie pchasz i nic nie hamuje. Skrzynia jedzie cały czas tak samo szybko!';
+  else st = lab.x > 0 ? 'Skrzynia stanęła. Wynik zapisał się w tabeli „Twoje eksperymenty”.' : 'Skrzynia stoi. Nic jej nie pcha. Kreski na podłodze są co 1 metr.';
   $('#labStatus').textContent = st;
+  WD.heat += ((lab.push ? 1 : 0) - WD.heat) * Math.min(1, dt * (lab.push ? 5 : 2));
+  // za skrzynią sypią się iskry / kryształki / pył, zależnie od świata
+  if (lab.push && lab.crate && !RM) {
+    const [x, y] = lab.crate, o = { count: 3, dir: Math.PI, spread: .9, speed: 240, life: .7, size: 6 };
+    if (lab.surf === 'hangar') emit(x, y, { ...o, type: 'spark', color: ['#ff5a1f', '#ffb347'], g: 400 });
+    else if (lab.surf === 'ice') emit(x, y, { ...o, type: 'crystal', color: ['#a8e9ff', '#ffffff'], g: 200 });
+    else emit(x, y - 20, { ...o, type: 'dust', color: ['#8f84ff', '#ffffff'], spread: .4 });
+  }
 }
+function labRecord(T) {
+  const r = lab.rel;
+  lab.res[r.surf] = { T: Math.round(T), v0: r.v, dist: lab.x - r.x, t: r.t, vEnd: lab.v, stopped: lab.v < 0.01 };
+  lab.done[r.surf] = true; lab.rel = null;
+  if (lab.crate) burst(lab.crate[0] + 30, lab.crate[1] - 20, false);
+  labChecklist();
+}
+// tabela „Twoje eksperymenty”: wynik zostaje po każdym „pchnij i puść”
 function labChecklist() {
-  for (const k in lab.done) $('#chk-' + k).classList.toggle('ok', lab.done[k]);
+  $('#exps').innerHTML = ['hangar', 'ice', 'space'].map(s => {
+    const T = Math.round(LAB.mu[s] * LAB.m * LAB.g), d = lab.res[s];
+    let res = '<span class="res soft">Jeszcze nie sprawdzone. Pchnij i puść.</span>';
+    if (d) res = `<span class="res">Puszczona przy ${fmt(d.v0)} m/s. ` + (d.stopped ? `Stanęła po ${fmt(d.dist)} m.`
+      : T ? `Po ${fmt(d.t)} s nadal jedzie ${fmt(d.vEnd)} m/s i powoli zwalnia.` : `Po ${fmt(d.t)} s jedzie tak samo: ${fmt(d.vEnd)} m/s. Nic jej nie hamuje.`) + '</span>';
+    return `<div class="exp${d ? ' done' : ''}" data-surf="${s}"><b>${SURF_NAME[s]}</b>` +
+      `<span>Pchanie: ${LAB.F} N − tarcie ${T} N = <em>+${LAB.F - T} N</em></span>` +
+      `<span>Po puszczeniu: 0 N − tarcie ${T} N = <em>${T ? '−' + T : '0'} N</em></span>${res}</div>`;
+  }).join('');
   if (lab.done.hangar && lab.done.ice && lab.done.space && $('#labConclusion').hidden) {
     $('#labConclusion').hidden = false;
     setXP(10);
+    say($('#say-lab'), 'Masz trzy wyniki. Porównaj siłę wypadkową po puszczeniu. Gdzie było 0 N?');
   }
 }
+// kamera jedzie za skrzynią: skrzynia zatrzymuje się w 38% szerokości, podłoga z kreskami przesuwa się pod nią
 function labDraw() {
   const c = $('#labCanvas');
   const { ctx, w, h } = fit(c, 0.4, 220, 340);
-  const ppm = Math.max(34, Math.min(56, w / 14));
-  const camX = lab.x - (w * 0.38) / ppm;
+  // 1 m na ekranie: duża skrzynia (ok. 1,1 m ≈ 110–130 px na desktopie), mniejsza na telefonie
+  const ppm = Math.max(44, Math.min(112, w / 8, h / 3.4));
+  const camX = Math.max(0, lab.x - (w * 0.38) / ppm) - 0.6;
   const space = lab.surf === 'space';
-  const groundY = space ? h * 0.62 : h * 0.72;
-  if (space) starfield(ctx, w, h, camX * ppm * 0.6);
-  else {
-    ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, groundY);
-    ctx.strokeStyle = col('line'); ctx.lineWidth = 2;
-    const panelW = 3 * ppm, off = ((camX * ppm * 0.5) % panelW + panelW) % panelW;
-    for (let x = -off; x < w; x += panelW) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, groundY); ctx.stroke(); }
-    ctx.fillStyle = lab.surf === 'ice' ? col('ice') : col('floor');
-    ctx.fillRect(0, groundY, w, h - groundY);
-    ctx.fillStyle = lab.surf === 'ice' ? col('space') : col('muted');
-    const first = Math.floor(camX);
-    for (let m = first; m < camX + w / ppm + 1; m++) {
-      const x = (m - camX) * ppm;
-      ctx.fillRect(x, groundY, 2, m % 5 === 0 ? 12 : 6);
-      if (m % 5 === 0) txt(ctx, m + ' m', x + 4, groundY + 22, lab.surf === 'ice' ? col('space') : col('muted'), 11);
-    }
+  const groundY = Math.min(h * 0.74, h - 110);
+  ctx.fillStyle = 'rgba(20,10,30,.35)'; ctx.fillRect(0, 0, w, h);
+  // podłoga: hangar ciemna płyta, lód jasna tafla, kosmos tylko przerywana linia toru
+  if (lab.surf === 'hangar') { ctx.fillStyle = 'rgba(61,45,82,.85)'; ctx.fillRect(0, groundY, w, h - groundY); }
+  if (lab.surf === 'ice') { ctx.fillStyle = 'rgba(168,233,255,.3)'; ctx.fillRect(0, groundY, w, h - groundY); }
+  ctx.fillStyle = col('ink');
+  if (space) { ctx.globalAlpha = .5; for (let x = -((camX * ppm) % 24); x < w; x += 24) ctx.fillRect(x, groundY - 2, 12, 3); ctx.globalAlpha = 1; }
+  else ctx.fillRect(0, groundY - 3, w, 6);
+  for (let m = Math.max(0, Math.floor(camX)); m < camX + w / ppm + 1; m++) {
+    const x = (m - camX) * ppm;
+    const every = ppm >= 70 ? 1 : 5;
+    ctx.fillStyle = col('ink'); ctx.globalAlpha = .7; ctx.fillRect(x, groundY + 4, 2, m % 5 === 0 ? 18 : 10); ctx.globalAlpha = 1;
+    if (m % every === 0) txt(ctx, m + ' m', x + 5, groundY + 30, col('ink'), 13, 'left', 700);
   }
+  // znacznik startu
+  const sx = (0 - camX) * ppm;
+  if (sx > -10) { ctx.fillStyle = col('accent'); ctx.fillRect(sx - 2, groundY - 96, 4, 96); txt(ctx, 'start', sx + 8, groundY - 88, col('accent'), 12, 'left', 800); }
+  // skrzynia: gruby biały glif na śliwkowym tle
   const size = ppm * 1.1;
-  const cx = (lab.x - camX) * ppm, top = groundY - size;
-  ctx.fillStyle = col('crate'); ctx.fillRect(cx, top, size, size);
-  ctx.strokeStyle = col('space'); ctx.lineWidth = 2; ctx.strokeRect(cx + 4, top + 4, size - 8, size - 8);
-  ctx.beginPath(); ctx.moveTo(cx + 4, top + 4); ctx.lineTo(cx + size - 4, top + size - 4); ctx.stroke();
-  txt(ctx, '20 kg', cx + size / 2, top + size / 2, col('space'), 12, 'center', 700);
-  const sc = 0.7;
-  if (lab.push) arrow(ctx, cx - 6 - LAB.F * sc, top + size / 2, cx - 6, top + size / 2, col('amber'), 'F = 120 N');
-  const T = LAB.mu[lab.surf] * LAB.m * LAB.g;
+  const cx = (lab.x - camX) * ppm, top = groundY - 3 - size;
+  ctx.save(); ctx.translate(cx + size / 2, top + size / 2); ctx.rotate(lab.push ? 0.035 : 0);
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.lineWidth = 5; ctx.strokeStyle = col('ink'); ctx.fillStyle = col('space');
+  const k = size / 2 - 3;
+  ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(-k, -k, 2 * k, 2 * k, 8); else ctx.rect(-k, -k, 2 * k, 2 * k); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-k + 10, -k + 10); ctx.lineTo(k - 10, k - 10); ctx.moveTo(k - 10, -k + 10); ctx.lineTo(-k + 10, k - 10); ctx.stroke();
+  ctx.restore();
+  const r = c.getBoundingClientRect(); lab.crate = [r.left + cx, r.top + groundY - 6];
+  const sc = 0.7 * ppm / 56; // strzałki sił rosną razem ze skrzynią
+  if (lab.push) arrow(ctx, cx - 8 - LAB.F * sc, top + size / 2, cx - 8, top + size / 2, col('amber'), 'F = 120 N');
+  const T = labT();
   if (lab.v > 0.0001 && T > 0) {
     const L = Math.max(10, T * sc);
-    arrow(ctx, cx + size / 2, groundY - 6, cx + size / 2 - L, groundY - 6, col('cyan'), `T = ${Math.round(T)} N`, { x: cx + size / 2 - L / 2, y: groundY - 20 });
+    // tarcie działa na styku z podłogą: strzałka tuż pod podłogą, w lewo
+    arrow(ctx, cx + size / 2, groundY + 52, cx + size / 2 - L, groundY + 52, col('cyan'), `T = ${Math.round(T)} N`, { x: cx + size / 2 - L / 2, y: groundY + 70 });
   }
   if (lab.v > 0.05) {
     const L = Math.min(160, lab.v * 22);
     arrow(ctx, cx + size / 2, top - 22, cx + size / 2 + L, top - 22, col('ink'), `v = ${fmt(lab.v)} m/s`, { x: cx + size / 2 + L / 2, y: top - 38 });
   }
-  if (space) txt(ctx, 'brak tarcia i powietrza', 12, 18, col('muted'), 12);
+  txt(ctx, 'skrzynia 20 kg', w - 14, 20, col('muted'), 13, 'right', 700);
+  if (space) txt(ctx, 'brak tarcia i powietrza', 14, 20, col('muted'), 13, 'left', 700);
 }
 function holdButton(btn, on, off) {
   btn.addEventListener('pointerdown', e => { e.preventDefault(); btn.setPointerCapture?.(e.pointerId); btn.classList.add('active'); on(); });
@@ -815,10 +1203,11 @@ document.querySelectorAll('#labQ .opt').forEach(b => b.addEventListener('click',
   if (lab.qOk) return;
   document.querySelectorAll('#labQ .opt').forEach(o => o.classList.remove('good', 'bad'));
   if (b.dataset.ok === '1') {
-    b.classList.add('good'); lab.qOk = true;
+    b.classList.add('good'); lab.qOk = true; cheer(b);
     $('#labQfb').textContent = 'Tak! W kosmosie nic skrzyni nie hamowało, więc jechała cały czas tak samo szybko.';
     $('#labNext').disabled = false;
-  } else { b.classList.add('bad'); $('#labQfb').textContent = b.dataset.fb; }
+  } else { b.classList.add('bad'); oops(b); $('#labQfb').textContent = b.dataset.fb; }
+  $('#labQfb').style.color = b.dataset.ok === '1' ? 'var(--good)' : 'var(--wrong)';
 }));
 $('#labNext').addEventListener('click', () => cardsStart());
 
@@ -826,7 +1215,7 @@ $('#labNext').addEventListener('click', () => cardsStart());
 // każde pojęcie: karta → pytanie; po błędzie wyjaśnienie i drugie pytanie w innej formie
 const cards = { i: 0, phase: 0, sel: null, ready: false, answered: false, timer: null };
 function cardsStart() {
-  stopLoop(); show('cards'); setStep('cards');
+  stopLoop(); show('cards'); setStep('cards'); setWorld(1);
   say($('#say-cards'), 'Teraz pojęcia. Przeczytaj kartę. Potem odpowiedz na pytanie.');
   cards.i = 0; cardShow(0);
 }
@@ -879,11 +1268,13 @@ $('#cCheck').addEventListener('click', () => {
   let retry = false;
   if (o.ok) {
     fb.className = 'fb good'; tag.textContent = 'Dobrze!';
+    cheer($('#cOpts').querySelector('.opt.good'));
     S.terms[g.id] = cards.phase === 0 ? 'ok' : 'retry';
     const gain = cards.phase === 0 ? 5 : 2; setXP(gain);
     const x = document.createElement('p'); x.className = 'xp-pop'; x.textContent = `+${gain} XP`; fb.append(x);
   } else {
     fb.className = 'fb bad'; tag.textContent = 'Jeszcze nie.';
+    oops($('#cOpts').querySelector('.opt.bad'));
     add(o.fb);
     if (cards.phase === 0) { retry = true; add('Przeczytaj jeszcze raz część „Po prostu” na karcie. Za chwilę dostaniesz inne pytanie o to samo pojęcie.'); }
     else { S.terms[g.id] = 'weak'; add('To pojęcie trafia do powtórki. Wróci w kolejnych poziomach.'); }
@@ -920,6 +1311,7 @@ function termCounts() {
 function cardsSummary() {
   show('cardsum'); setStep('cards');
   const c = termCounts();
+  if (!c.weak.length) { const [x, y] = center($('#csTitle')); burst(x, y, true); }
   $('#csTitle').textContent = c.weak.length ? `Znasz ${c.ok + c.retry} z ${GLOS.length} pojęć. ${c.weak.length === 1 ? 'Jedno wróci' : 'Kilka wróci'} do powtórki.` : `Znasz wszystkie ${GLOS.length} pojęć!`;
   termList($('#csList'));
   renderGlossary(); saveTerms();
@@ -1173,9 +1565,9 @@ const Q = {
 };
 
 const STAGES = {
-  s1: { label: 'Etap ★ · Pamiętam', ids: ['p3', 'p4', 'p5'], spare: ['p1', 'p2'], minRead: 3 },
-  s2: { label: 'Etap ★★ · Rozumiem', ids: ['a1', 'b1', 'c1'], variants: { A: ['a2'], B: ['b2'], C: ['c2'] }, minRead: 5 },
-  s3: { label: 'Etap ★★★ · Stosuję', ids: ['d1'], minRead: 3 },
+  s1: { label: 'Etap ★: Pamiętam', ids: ['p3', 'p4', 'p5'], spare: ['p1', 'p2'], minRead: 3 },
+  s2: { label: 'Etap ★★: Rozumiem', ids: ['a1', 'b1', 'c1'], variants: { A: ['a2'], B: ['b2'], C: ['c2'] }, minRead: 5 },
+  s3: { label: 'Etap ★★★: Stosuję', ids: ['d1'], minRead: 3 },
 };
 
 let st = null; // bieżący etap quizu
@@ -1183,7 +1575,7 @@ function startStage(key) {
   stopLoop();
   const cfg = STAGES[key];
   st = { key, cfg, queue: cfg.ids.map(id => ({ id, original: true })), done: 0, firstTry: 0, spare: (cfg.spare || []).slice(), variants: JSON.parse(JSON.stringify(cfg.variants || {})), tries: {} };
-  show('quiz'); setStep(key);
+  show('quiz'); setStep(key); setWorld({ s1: 0, s2: 1, s3: 2 }[key]);
   say($('#say-quiz'), STAGE_SAY[key]);
   nextQuestion();
 }
@@ -1276,13 +1668,14 @@ $('#qCheck').addEventListener('click', () => {
   if (item.original) st.done++;
 
   const fb = $('#qFb'); fb.hidden = false; fb.className = 'fb ' + (ok ? 'good' : 'bad');
+  if (ok) cheer($('#qGroups .opt.good:last-of-type') || $('#qGroups .opt.good')); else oops($('#qGroups .opt.bad') || $('#qCheck'));
   fb.innerHTML = '';
   const tag = document.createElement('div'); tag.className = 'tag'; tag.textContent = ok ? 'Dobrze!' : 'Jeszcze nie.'; fb.append(tag);
   if (partial) { const p = document.createElement('p'); p.textContent = partial; fb.append(p); }
   fbs.forEach(s => { if (s) { const p = document.createElement('p'); p.textContent = s; fb.append(p); } });
   const ex = document.createElement('p'); ex.innerHTML = '<b>Wyjaśnienie:</b> '; ex.append(q.explain); fb.append(ex);
   if (gained) { const x = document.createElement('p'); x.className = 'xp-pop'; x.textContent = `+${gained} XP` + (cur.hintUsed && first ? ' (z podpowiedzią)' : ''); fb.append(x); }
-  const src = document.createElement('p'); src.className = 'src'; src.textContent = 'Spotkania z fizyką 7, temat 24, s. 162 · pojęcia w Słowniczku'; fb.append(src);
+  const src = document.createElement('p'); src.className = 'src'; src.textContent = 'Spotkania z fizyką 7, temat 24, s. 162. Pojęcia są w Słowniczku.'; fb.append(src);
 
   // po błędzie: nowe zadanie w innej sytuacji zamiast ponownego klikania tej samej odpowiedzi
   if (!ok) {
@@ -1321,7 +1714,7 @@ const DK = { goal: 60, acc: 2.5, burn: 18, speed: 1.4, maxV: 0.6 };
 const dock = { x: 0, v: 0, fuel: 100, thr: 0, state: 'fly', still: 0, hint: 0 };
 const thr = { back: false, fwd: false };
 function dockStart() {
-  show('dock'); setStep('s3');
+  show('dock'); setStep('s3'); setWorld(2);
   say($('#say-dock'), 'Siadam za sterami. Pamiętaj: w kosmosie nic statku nie hamuje.');
   S.dockAttempts = 1; dockReset();
   runLoop((t, dt) => { dockStep(dt); dockDraw(); });
@@ -1350,13 +1743,18 @@ function dockStep(dt) {
   $('#d-v').textContent = fmt(dock.v, 2) + ' m/s';
   $('#d-fuel').textContent = Math.round(dock.fuel) + '%';
   let s;
-  if (dock.thr && dock.fuel > 0) s = dock.thr > 0 ? 'Silnik pcha do przodu → statek przyspiesza.' : (dock.v > 0 ? 'Silnik wsteczny pcha do tyłu → statek zwalnia.' : 'Silnik wsteczny pcha do tyłu → statek leci do tyłu coraz szybciej.');
-  else if (Math.abs(dock.v) > 0.01) s = 'Silniki wyłączone. Nic nie pcha i nic nie hamuje → statek leci cały czas tak samo szybko.';
+  if (dock.thr && dock.fuel > 0) s = dock.thr > 0 ? 'Silnik pcha do przodu. Statek przyspiesza.' : (dock.v > 0 ? 'Silnik wsteczny pcha do tyłu. Statek zwalnia.' : 'Silnik wsteczny pcha do tyłu. Statek leci do tyłu coraz szybciej.');
+  else if (Math.abs(dock.v) > 0.01) s = 'Silniki wyłączone. Nic nie pcha i nic nie hamuje. Statek leci cały czas tak samo szybko.';
   else s = 'Statek stoi. Nic go nie pcha.';
   $('#dockStatus').textContent = s;
+  const firing = dock.thr && dock.fuel > 0;
+  WD.heat += ((firing ? 1 : 0) - WD.heat) * Math.min(1, dt * 4);
+  if (firing && dock.ship && !RM) emit(dock.ship[0] - (dock.thr > 0 ? 46 : 14), dock.ship[1], { count: 2, dir: dock.thr > 0 ? Math.PI : 0, spread: .5, speed: 200, life: .5, size: 5, type: 'dust', color: ['#ff7a3d', '#ffd2a0'] });
 }
 function dockWin() {
   dock.state = 'won'; dock.x = Math.min(dock.x, DK.goal); dock.v = 0;
+  $('#d-v').textContent = '0,00 m/s'; $('#d-dist').textContent = fmt(Math.max(0, DK.goal - dock.x)) + ' m';
+  if (dock.ship) { shock(dock.ship[0], dock.ship[1], 1.4, 1.6); burst(dock.ship[0], dock.ship[1], true); spill(dock.ship[0], dock.ship[1]); }
   setXP(S.dockAttempts <= 3 ? 15 : 8);
   const fb = $('#dockFb'); fb.hidden = false; fb.className = 'fb good';
   fb.innerHTML = `<div class="tag">Zadokowano!</div><p>Port złapał statek${S.dockAttempts > 1 ? ` w próbie nr ${S.dockAttempts}` : ' za pierwszym razem'}. Zostało ${Math.round(dock.fuel)}% paliwa.</p><p class="xp-pop">+${S.dockAttempts <= 3 ? 15 : 8} XP</p>`;
@@ -1366,6 +1764,7 @@ function dockWin() {
 }
 function dockFail(msg) {
   dock.state = 'fail';
+  oops($('#dockCanvas'));
   const fb = $('#dockFb'); fb.hidden = false; fb.className = 'fb bad';
   fb.innerHTML = `<div class="tag">Nie udało się.</div>`;
   const p = document.createElement('p'); p.textContent = msg; fb.append(p);
@@ -1386,24 +1785,26 @@ holdButton($('#thrFwd'), () => thr.fwd = true, () => thr.fwd = false);
 holdButton($('#thrBack'), () => thr.back = true, () => thr.back = false);
 
 function dockDraw() {
-  const { ctx, w, h } = fit($('#dockCanvas'), 0.38, 220, 330);
+  const { ctx, w, h, k } = fit($("#dockCanvas"), 0.38, 220, 330);
   starfield(ctx, w, h);
   const left = 40, right = w - 70, ppm = (right - left) / DK.goal;
   const y = h * 0.5;
   // stacja
   const sx = right;
-  ctx.fillStyle = col('line'); ctx.fillRect(sx + 8, y - 70, 60, 140);
-  ctx.fillStyle = col('panel-2'); ctx.fillRect(sx, y - 16, 12, 32);
-  ctx.fillStyle = col('amber'); ctx.fillRect(sx, y - 18, 3, 6); ctx.fillRect(sx, y + 12, 3, 6);
-  txt(ctx, 'PORT', sx + 38, y - 82, col('muted'), 11, 'center');
+  ctx.fillStyle = col('space'); ctx.strokeStyle = col('ink'); ctx.lineWidth = 4; ctx.lineJoin = 'round';
+  ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(sx + 8, y - 70, 58, 140, 10); else ctx.rect(sx + 8, y - 70, 58, 140); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = col('accent'); ctx.fillRect(sx, y - 16, 10, 32);
+  ctx.fillStyle = col('amber'); ctx.fillRect(sx, y - 20, 4, 6); ctx.fillRect(sx, y + 14, 4, 6);
+  txt(ctx, 'port', sx + 37, y - 84, col('ink'), 13, 'center', 800);
   // linijka
   ctx.fillStyle = col('muted');
-  for (let m = 0; m <= DK.goal; m += 10) { const x = left + m * ppm; ctx.fillRect(x, h - 26, 1, 8); txt(ctx, m + ' m', x, h - 10, col('muted'), 10, 'center'); }
+  for (let m = 0; m <= DK.goal; m += 10) { const x = left + m * ppm; ctx.fillRect(x, h - 26, 1, 8); txt(ctx, m + ' m', x, h - 10, col('ink'), 11, 'center', 700); }
   // statek (nos w punkcie x)
   const nx = left + Math.min(dock.x, DK.goal) * ppm;
+  const rc = $('#dockCanvas').getBoundingClientRect(); dock.ship = [rc.left + nx * k, rc.top + y * k];
   ctx.fillStyle = col('ink');
   ctx.beginPath(); ctx.moveTo(nx, y); ctx.lineTo(nx - 18, y - 12); ctx.lineTo(nx - 46, y - 12); ctx.lineTo(nx - 46, y + 12); ctx.lineTo(nx - 18, y + 12); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = col('cyan'); ctx.fillRect(nx - 30, y - 5, 8, 6);
+  ctx.fillStyle = col('accent'); ctx.fillRect(nx - 32, y - 5, 10, 6);
   const firing = dock.state === 'fly' && dock.fuel > 0 && dock.thr;
   if (firing) {
     ctx.fillStyle = col('amber');
@@ -1418,9 +1819,9 @@ function dockDraw() {
     arrow(ctx, nx - 23, y + 32, nx - 23 + L, y + 32, col('cyan'), `v = ${fmt(dock.v, 1)} m/s`, { x: nx - 23 + L / 2, y: y + 48 });
   }
   // paliwo
-  ctx.strokeStyle = col('line'); ctx.strokeRect(14, 14, 120, 10);
+  ctx.strokeStyle = col('muted'); ctx.lineWidth = 1; ctx.strokeRect(14, 14, 120, 10);
   ctx.fillStyle = dock.fuel > 25 ? col('ok') : col('bad'); ctx.fillRect(15, 15, 118 * dock.fuel / 100, 8);
-  txt(ctx, 'paliwo', 142, 19, col('muted'), 11);
+  txt(ctx, 'paliwo', 142, 19, col('ink'), 12, 'left', 700);
 }
 
 // ---------- klawiatura ----------
@@ -1441,24 +1842,42 @@ document.addEventListener('keyup', e => {
 function load() { try { return JSON.parse(localStorage.getItem('orion-m1') || 'null'); } catch { return null; } }
 function save(r) { try { localStorage.setItem('orion-m1', JSON.stringify(r)); } catch {} }
 function endScreen() {
-  stopLoop(); show('end'); setStep('end');
+  stopLoop(); show('end'); setStep('end'); setWorld(2);
   const n = starCount();
-  paintStars($('#endStars'), n);
   $('#endTitle').textContent = n === 3 ? 'Moduł naprawiony w 100%!' : n > 0 ? 'Moduł działa, ale trzeba go jeszcze dokręcić' : 'Moduł ruszył, ale trzeba do niego wrócić';
-  $('#endXp').textContent = `Zdobyte XP: ${S.xp}`;
-  $('#endEyebrow').textContent = heroReady() ? `Raport z naprawy · kapitan ${hero.name}` : 'Raport z naprawy';
+  $('#endXp').textContent = `${S.xp} XP za ten moduł`;
   say($('#say-end'), n === 3 ? 'Udało się! Orion leci dalej. Moduł 2 już czeka.' : n > 0 ? 'Dobra robota! Kilka rzeczy jeszcze poprawimy.' : 'Nie poddajemy się. Spróbujmy jeszcze raz, krok po kroku.');
+  // raport bohatera: co zrobił(a) w tym module, bez form zależnych od płci
+  const h = HEROES.find(x => x.id === hero.id) || HEROES[0];
+  const tc = termCounts();
+  const passed = [S.stars.s1, S.stars.s2, S.stars.s3];
+  const stages = ['Pamiętam', 'Rozumiem', 'Stosuję'].map((l, i) => `${l} ${passed[i] ? 'zaliczone' : 'do poprawy'}`).join(', ');
+  const dockTxt = S.dockAttempts <= 1 ? 'udane za pierwszym razem' : `udane w próbie nr ${S.dockAttempts}`;
+  $('#report').innerHTML = ava(h.id, 140) +
+    `<h2>Raport: ${esc(hero.name || h.label)}</h2><p class="role">${h.label} na statku Orion</p>` +
+    '<ul>' +
+    '<li>Laboratorium: trzy eksperymenty ze skrzynią w hangarze, na lodowisku i w kosmosie.</li>' +
+    `<li>Pojęcia: ${tc.ok} z ${GLOS.length} od razu, ${tc.retry} po powtórce.</li>` +
+    `<li>Zadania: ${S.firstTry} z ${Object.values(STAGES).reduce((a, s) => a + s.ids.length, 0)} dobrze za pierwszym razem.</li>` +
+    `<li>Dokowanie: ${dockTxt}.</li>` +
+    `<li>Etapy: ${stages}.</li>` +
+    '</ul>' +
+    `<p class="src">${n === 3 ? 'Wróć tu za 2 dni i zagraj jeszcze raz. Wtedy temat zostanie na dłużej.' : 'Zagraj jeszcze raz jutro. Pójdzie łatwiej.'} Materiał: Spotkania z fizyką 7, temat 24 „Pierwsza zasada dynamiki Newtona – bezwładność”, s. 162–168.</p>`;
+  termList($('#endTerms'));
   const ul = $('#endMis'); ul.innerHTML = '';
   const ids = Object.keys(S.mis).sort((a, b) => S.mis[b] - S.mis[a]);
   if (!ids.length) { const li = document.createElement('li'); li.textContent = 'Nic! Wszystko dobrze za pierwszym razem.'; ul.append(li); }
-  ids.forEach(id => { const li = document.createElement('li'); li.innerHTML = `<b></b> `; li.querySelector('b').textContent = MIS[id].name + ':'; li.append(MIS[id].tip); ul.append(li); });
-  const starTxt = ['Pamiętam', 'Rozumiem', 'Stosuję'].map((l, i) => `${l}: ${[S.stars.s1, S.stars.s2, S.stars.s3][i] ? 'zaliczone' : 'do poprawy'}`).join(', ');
-  termList($('#endTerms'));
-  const tc = termCounts();
-  const termTxt = ` Pojęcia: ${tc.ok} z ${GLOS.length} od razu, ${tc.retry} po powtórce` + (tc.weak.length ? `, do powtórki: ${tc.weak.join(', ')}.` : '.');
-  const misTxt = ids.length ? ' Pojawiły się błędne przekonania: ' + ids.map(id => MIS[id].name).join('; ') + '. Warto o nich porozmawiać.' : ' Bez błędnych przekonań.';
-  const heroTxt = heroReady() ? `Bohater w grze: ${hero.name} (${HEROES.find(h => h.id === hero.id).label}). ` : '';
-  $('#endParent').textContent = `${heroTxt}Temat 24 (I zasada dynamiki, bezwładność). ${starTxt}. Poprawne za pierwszym razem: ${S.firstTry} z ${S.asked} zadań. Dokowanie: ${S.dockAttempts} ${S.dockAttempts === 1 ? 'próba' : S.dockAttempts < 5 ? 'próby' : 'prób'}.${termTxt}${misTxt} ${n === 3 ? 'Za 2 dni warto powtórzyć poziom, żeby temat był opanowany.' : 'Proponuję powtórzyć poziom jutro.'}`;
+  ids.forEach(id => { const li = document.createElement('li'); li.innerHTML = '<b></b> '; li.querySelector('b').textContent = MIS[id].name + ':'; li.append(MIS[id].tip); ul.append(li); });
+  if (tc.weak.length) { const li = document.createElement('li'); li.innerHTML = '<b>Pojęcia:</b> '; li.append(tc.weak.join(', ') + '. Znajdziesz je w Słowniczku.'); ul.append(li); }
+  // fala uderzeniowa od środka, potem gwiazdki zapalają się po kolei
+  shock(innerWidth / 2, innerHeight / 2, 1.4, 1.8); burst(innerWidth / 2, innerHeight / 2, true);
+  [...$('#endStars').children].forEach((s, i) => {
+    s.classList.remove('on');
+    if (i >= n) return;
+    const light = () => { s.classList.add('on'); const [x, y] = center(s); burst(x, y, false); };
+    if (RM) light();
+    else gsap.fromTo(s, { scale: 0 }, { scale: 1, duration: .6, delay: .6 + i * .45, ease: 'back.out(2.5)', onStart: light, transformOrigin: 'center', clearProps: 'transform' });
+  });
   const best = load();
   if (!best || n > best.stars || (n === best.stars && S.xp > best.xp)) save({ stars: n, xp: S.xp, date: new Date().toISOString().slice(0, 10) });
 }
@@ -1466,15 +1885,24 @@ function resetAll() {
   Object.assign(S, { xp: 0, stars: { s1: false, s2: false, s3: false }, mis: {}, firstTry: 0, asked: 0, dockAttempts: 0, terms: {} });
   renderGlossary();
   $('#xp').textContent = '0'; refreshStars();
-  Object.assign(lab, { x: 0, v: 0, push: false, wasPush: false, release: null, done: { hangar: false, ice: false, space: false }, qOk: false });
-  labSetSurf('hangar'); labChecklist(); $('#labConclusion').hidden = true; $('#labNext').disabled = true; $('#labQfb').textContent = '';
+  Object.assign(lab, { x: 0, v: 0, push: false, wasPush: false, rel: null, done: { hangar: false, ice: false, space: false }, res: {}, qOk: false });
+  lab.surf = ''; labSetSurf('hangar'); labChecklist(); $('#labConclusion').hidden = true; $('#labNext').disabled = true; $('#labQfb').textContent = '';
   document.querySelectorAll('#labQ .opt').forEach(o => o.classList.remove('good', 'bad'));
   dock.hint = 0; $('#dockHint').hidden = true;
 }
 $('#startBtn').addEventListener('click', labStart);
-$('#againBtn').addEventListener('click', () => { resetAll(); show('start'); setStep(''); showBest(); });
-function showBest() { const b = load(); $('#best').textContent = b ? `Najlepszy wynik: ${'★'.repeat(b.stars)}${'☆'.repeat(3 - b.stars)} · ${b.xp} XP · ${b.date}` : ''; }
+$('#againBtn').addEventListener('click', () => { resetAll(); show('start'); setStep(''); setWorld(0); showBest(); });
+function showBest() { const b = load(); $('#best').textContent = b ? `Najlepszy wynik: ${'★'.repeat(b.stars)}${'☆'.repeat(3 - b.stars)}, ${b.xp} XP (${b.date})` : ''; }
 showBest();
 renderGlossary();
+
+// podgląd z konsoli, gdy karta jest w tle i requestAnimationFrame stoi: orion.tick(0.5) posuwa grę o pół sekundy
+window.orion = { WD, lab, dock, S, tick(dt = 1 / 60) {
+  const g = gsap.globalTimeline; g.time(g.time() + dt);
+  if (loopFn) { loopT += dt; loopFn(loopT, dt); }
+  worldFrame(dt);
+} };
 })();
 </script>
+</body>
+</html>
