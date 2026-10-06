@@ -34,12 +34,14 @@ h1, h2, h3 { font-family: var(--f-display); font-weight: 700; line-height: 1.1; 
 h1 { font-size: 30px; letter-spacing: .01em; }
 h2 { font-size: 26px; }
 h3 { font-size: 20px; }
-.meters { display: flex; gap: 10px; align-items: center; }
+.meters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .meter { font-family: var(--f-mono); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; display: flex; gap: 8px; align-items: baseline; font-variant-numeric: tabular-nums; }
 .meter span { font-size: 12px; color: var(--muted); letter-spacing: .1em; }
 .meter b { font-size: 18px; color: var(--amber); }
 .stars { font-size: 20px; letter-spacing: 2px; color: var(--line); }
 .stars .on { color: var(--amber); }
+.glos-btn { font-family: var(--f-mono); font-size: 13px; letter-spacing: .06em; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--cyan); background: transparent; color: var(--cyan); }
+.glos-btn[aria-expanded="true"] { background: var(--cyan); color: var(--space); }
 
 .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .steps li { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; padding: 5px 10px; border-radius: 4px; color: var(--muted); border: 1px solid var(--line); }
@@ -54,7 +56,7 @@ p { margin: 0; max-width: 65ch; }
 canvas { display: block; width: 100%; max-width: 100%; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); touch-action: none; }
 
 button { font: inherit; cursor: pointer; }
-button:focus-visible, a:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
 .btn { font-family: var(--f-display); font-weight: 700; font-size: 19px; letter-spacing: .04em; padding: 10px 22px; border-radius: 6px; border: 1px solid var(--amber); background: var(--amber); color: var(--space); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
@@ -78,9 +80,40 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--cyan); outline-
 .checklist li.ok { color: var(--ink); }
 .checklist li.ok::before { background: var(--ok); border-color: var(--ok); }
 
-.law { border-left: 4px solid var(--amber); background: var(--panel-2); padding: 12px 16px; border-radius: 0 8px 8px 0; display: grid; gap: 6px; }
-.law strong { font-family: var(--f-display); font-size: 18px; letter-spacing: .03em; color: var(--amber); }
 .src { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+
+/* słowniczek: karta pojęcia = definicja do zeszytu + po prostu + przykład */
+.defs { display: grid; gap: 10px; }
+.def { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.def summary { list-style: none; cursor: pointer; padding: 12px 16px; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.def summary::-webkit-details-marker { display: none; }
+.def summary b { font-family: var(--f-display); font-size: 20px; color: var(--amber); }
+.def summary span { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.def[open] summary span { visibility: hidden; }
+.def-body { padding: 0 16px 14px; display: grid; gap: 10px; }
+.def-row { display: grid; gap: 2px; }
+.def-row i { font-style: normal; font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.def-row.formal p { border-left: 4px solid var(--amber); padding-left: 12px; }
+.def-row.simple p { font-size: 18px; }
+
+/* etap „Pojęcia”: karta + pytanie sprawdzające */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 12px; }
+.card h2 { color: var(--amber); }
+.chip { justify-self: start; font-family: var(--f-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+.chip.new { border-color: var(--amber); color: var(--amber); }
+.dots { display: flex; gap: 6px; flex-wrap: wrap; }
+.dots i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); }
+.dots i.cur { border-color: var(--amber); }
+.dots i.ok { background: var(--ok); border-color: var(--ok); }
+.dots i.retry { background: var(--cyan); border-color: var(--cyan); }
+.dots i.weak { background: var(--bad); border-color: var(--bad); }
+.terms { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.terms li { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 8px 12px; background: var(--panel-2); border-radius: 6px; }
+.terms li span { font-family: var(--f-mono); font-size: 13px; }
+.st-ok { color: var(--ok); }
+.st-retry { color: var(--cyan); }
+.st-weak { color: var(--bad); }
+.def summary span.st-weak { visibility: visible !important; color: var(--bad); }
 
 .map { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
 .node { border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 2px; background: var(--panel); min-width: 0; }
@@ -123,6 +156,7 @@ a { color: var(--cyan); }
       <h1>Moduł 1 · Bezwładność</h1>
     </div>
     <div class="meters">
+      <button class="glos-btn" id="glosBtn" aria-expanded="false" aria-controls="glossary">Słowniczek</button>
       <div class="meter"><span>XP</span><b id="xp">0</b></div>
       <div class="meter stars" id="hudStars" aria-label="Gwiazdki"><i>★</i><i>★</i><i>★</i></div>
     </div>
@@ -130,20 +164,31 @@ a { color: var(--cyan); }
 
   <ol class="steps" id="steps">
     <li data-s="lab">Laboratorium</li>
+    <li data-s="cards">Pojęcia</li>
     <li data-s="s1">★ Pamiętam</li>
     <li data-s="s2">★★ Rozumiem</li>
     <li data-s="s3">★★★ Stosuję</li>
     <li data-s="end">Raport</li>
   </ol>
 
+  <section id="glossary" class="panel" hidden>
+    <div class="actions" style="justify-content: space-between">
+      <h2>Słowniczek</h2>
+      <button class="btn ghost" id="glosClose">Zamknij</button>
+    </div>
+    <p class="lead">Kliknij pojęcie, żeby je rozwinąć. Definicję warto zapisać w zeszycie.</p>
+    <div class="defs" id="glosList"></div>
+    <p class="src">Spotkania z fizyką 7, temat 24, s. 162</p>
+  </section>
+
   <main>
     <!-- START -->
     <section id="scr-start">
       <div class="panel">
         <span class="eyebrow">Komunikat z mostka</span>
-        <h2>Inżynierze, Orion ma awarię.</h2>
-        <p>Statek musi wrócić na Ziemię przed oknem startowym. System manewrowy nie działa, bo komputer pokładowy zapomniał, jak poruszają się ciała. Naprawisz go tylko wtedy, gdy sam to zrozumiesz.</p>
-        <p class="lead">Każdy moduł statku to jeden temat z działu „Dynamika”. Gwiazdki zdobywasz za myślenie, nie za szybkie klikanie.</p>
+        <h2>Orion ma awarię!</h2>
+        <p>Statek musi wrócić na Ziemię. Zepsuł się komputer, który steruje silnikami. Żeby go naprawić, musisz zrozumieć, jak poruszają się ciała.</p>
+        <p class="lead">Każdy moduł statku to jeden temat z działu „Dynamika”.</p>
       </div>
       <div class="map" aria-label="Mapa modułów">
         <div class="node active"><span class="n">TEMAT 24 · S. 162</span><b>I zasada dynamiki, bezwładność</b></div>
@@ -161,8 +206,8 @@ a { color: var(--cyan); }
     <section id="scr-lab" hidden>
       <div class="panel">
         <span class="eyebrow">Etap 0 · Laboratorium</span>
-        <h2>Jak zachowuje się skrzynia, gdy przestajesz ją pchać?</h2>
-        <p>Wybierz miejsce. Przytrzymaj <b>PCHAJ</b> (albo spację) przez chwilę, potem puść i obserwuj prędkość i strzałki sił. Zrób to w każdym z trzech miejsc.</p>
+        <h2>Co zrobi skrzynia, gdy przestaniesz ją pchać?</h2>
+        <p>Wybierz miejsce. Przytrzymaj <b>PCHAJ</b> (albo spację), a potem puść. Patrz, co robi skrzynia. Zrób to w trzech miejscach.</p>
       </div>
       <div class="seg" role="group" aria-label="Miejsce eksperymentu">
         <button id="surf-hangar" data-surf="hangar" aria-pressed="true">Hangar (szorstka podłoga)</button>
@@ -172,9 +217,9 @@ a { color: var(--cyan); }
       <canvas id="labCanvas" aria-label="Symulacja skrzyni"></canvas>
       <div class="readouts">
         <div class="ro"><span>Prędkość v</span><b id="ro-v">0,0 m/s</b></div>
-        <div class="ro"><span>Pchnięcie F</span><b id="ro-f">0 N</b></div>
+        <div class="ro"><span>Pchanie F</span><b id="ro-f">0 N</b></div>
         <div class="ro"><span>Tarcie T</span><b id="ro-t">0 N</b></div>
-        <div class="ro"><span>Wypadkowa</span><b id="ro-w">0 N</b></div>
+        <div class="ro"><span>Siła wypadkowa</span><b id="ro-w">0 N</b></div>
       </div>
       <p class="status" id="labStatus"></p>
       <div class="actions">
@@ -190,32 +235,59 @@ a { color: var(--cyan); }
         </ul>
       </div>
       <div class="panel" id="labConclusion" hidden>
-        <span class="eyebrow">Co zaobserwowano</span>
+        <span class="eyebrow">Co się stało?</span>
         <ul class="clean">
-          <li><b>Hangar:</b> po puszczeniu skrzynia szybko staje, bo hamuje ją duże tarcie.</li>
-          <li><b>Lodowisko:</b> tarcie jest malutkie, więc skrzynia zwalnia bardzo powoli.</li>
-          <li><b>Kosmos:</b> nie ma tarcia ani oporu powietrza. Po puszczeniu na skrzynię nie działa żadna siła, więc jedzie dalej ze stałą prędkością. Bez końca.</li>
+          <li><b>Hangar:</b> skrzynia szybko stanęła. Hamowało ją duże tarcie.</li>
+          <li><b>Lodowisko:</b> tarcie jest małe. Skrzynia zwalniała bardzo powoli.</li>
+          <li><b>Kosmos:</b> nie ma tarcia ani powietrza. Nic skrzyni nie hamowało, więc jechała dalej cały czas tak samo szybko.</li>
         </ul>
-        <p><b>Wniosek:</b> do samego ruchu siła nie jest potrzebna. Siła jest potrzebna, żeby prędkość <b>zmienić</b>: rozpędzić, zahamować albo skręcić.</p>
-        <div class="law">
-          <strong>I zasada dynamiki Newtona</strong>
-          <span>Jeżeli na ciało nie działa żadna siła lub działające siły się równoważą, to ciało pozostaje w spoczynku lub porusza się ruchem jednostajnym prostoliniowym.</span>
-        </div>
-        <div class="law">
-          <strong>Bezwładność</strong>
-          <span>To właściwość każdego ciała: ciało „trzyma się” swojego stanu ruchu. Stojące chce stać, jadące chce jechać dalej z tą samą prędkością. <b>Miarą bezwładności jest masa</b>: im większa masa, tym trudniej zmienić prędkość ciała.</span>
-        </div>
-        <p class="src">Więcej: Spotkania z fizyką 7, temat 24, s. 162</p>
+        <p><b>Wniosek:</b> żeby coś jechało, nie trzeba tego cały czas pchać. Siła jest potrzebna tylko wtedy, gdy chcesz prędkość <b>zmienić</b>: rozpędzić, zahamować albo skręcić.</p>
         <div class="group" id="labQ">
           <h3>Pytanie kontrolne</h3>
-          <p>W którym miejscu skrzynia po puszczeniu jechała ze stałą prędkością?</p>
-          <button class="opt" data-ok="0" data-fb="W hangarze skrzynia szybko się zatrzymała. Zwalniała, czyli jej prędkość się zmieniała.">W hangarze</button>
-          <button class="opt" data-ok="0" data-fb="Prawie! Na lodzie zwalniała bardzo powoli, ale jednak zwalniała, bo działało małe tarcie. Spójrz na odczyt prędkości.">Na lodowisku</button>
+          <p>Gdzie skrzynia po puszczeniu jechała cały czas tak samo szybko?</p>
+          <button class="opt" data-ok="0" data-fb="W hangarze skrzynia szybko stanęła. Czyli zwalniała.">W hangarze</button>
+          <button class="opt" data-ok="0" data-fb="Prawie! Na lodzie skrzynia też zwalniała, tylko bardzo powoli. Spójrz na prędkość.">Na lodowisku</button>
           <button class="opt" data-ok="1" data-fb="">W kosmosie</button>
           <p id="labQfb" class="status"></p>
         </div>
-        <div class="actions"><button class="btn" id="labNext" disabled>Dalej: ★ Pamiętam</button></div>
+        <div class="actions"><button class="btn" id="labNext" disabled>Dalej: Pojęcia</button></div>
       </div>
+    </section>
+
+    <!-- KARTY POJĘĆ -->
+    <section id="scr-cards" hidden>
+      <div class="qhead"><span class="eyebrow">Etap · Pojęcia</span><span id="cCount"></span></div>
+      <div class="dots" id="cDots" aria-hidden="true"></div>
+      <div id="cBody">
+        <div class="card">
+          <span class="chip" id="cTag"></span>
+          <h2 id="cTerm"></h2>
+          <div class="def-row formal"><i>Definicja (do zeszytu)</i><p id="cFormal"></p></div>
+          <div class="def-row simple"><i>Po prostu</i><p id="cSimple"></p></div>
+          <div class="def-row"><i>Przykład</i><p id="cExample"></p></div>
+        </div>
+      </div>
+      <p class="retry" id="cRetry" hidden>Przeczytaj kartę jeszcze raz i spróbuj z innym pytaniem.</p>
+      <div class="group">
+        <h3>Sprawdź się</h3>
+        <p id="cQ"></p>
+        <div class="group" id="cOpts"></div>
+      </div>
+      <div class="fb" id="cFb" hidden></div>
+      <div class="actions">
+        <button class="btn" id="cCheck" disabled>Sprawdź</button>
+        <button class="btn" id="cNext" hidden>Dalej</button>
+      </div>
+    </section>
+
+    <section id="scr-cardsum" hidden>
+      <div class="panel">
+        <span class="eyebrow">Pojęcia · podsumowanie</span>
+        <h2 id="csTitle"></h2>
+        <ul class="terms" id="csList"></ul>
+        <p class="lead">Wszystkie karty są w Słowniczku na górze strony. Możesz do nich wracać w każdej chwili.</p>
+      </div>
+      <div class="actions"><button class="btn" id="csNext">Dalej: ★ Pamiętam</button></div>
     </section>
 
     <!-- QUIZ (etapy Pamiętam / Rozumiem / pytanie po dokowaniu) -->
@@ -240,8 +312,8 @@ a { color: var(--cyan); }
     <section id="scr-dock" hidden>
       <div class="panel">
         <span class="eyebrow">Etap ★★★ · Stosuję</span>
-        <h2>Zadokuj Oriona przy stacji serwisowej</h2>
-        <p>Silnik działa tylko wtedy, gdy go trzymasz. Doleć do portu i zatrzymaj się przy nim z prędkością najwyżej <b>0,6 m/s</b>. Paliwa starczy na kilka sekund pracy silników.</p>
+        <h2>Zadokuj Oriona przy stacji</h2>
+        <p>Silnik działa tylko wtedy, gdy trzymasz przycisk. Doleć do portu i zatrzymaj się przy nim. Przy porcie prędkość może wynosić najwyżej <b>0,6 m/s</b>. Paliwa jest mało: starczy na kilka sekund.</p>
       </div>
       <canvas id="dockCanvas" aria-label="Symulacja dokowania"></canvas>
       <div class="readouts">
@@ -264,9 +336,13 @@ a { color: var(--cyan); }
     <section id="scr-end" hidden>
       <div class="panel">
         <span class="eyebrow">Raport z naprawy</span>
-        <h2 id="endTitle">Moduł manewrowy naprawiony</h2>
+        <h2 id="endTitle">Moduł naprawiony</h2>
         <div class="result-stars" id="endStars"><i>★</i><i>★</i><i>★</i></div>
         <p id="endXp" class="xp-pop"></p>
+      </div>
+      <div class="panel">
+        <h3>Pojęcia</h3>
+        <ul class="terms" id="endTerms"></ul>
       </div>
       <div class="panel" id="endMisWrap">
         <h3>Do powtórki</h3>
@@ -293,16 +369,180 @@ const col = n => css.getPropertyValue('--' + n).trim();
 const fmt = (n, d = 1) => n.toFixed(d).replace('.', ',');
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
+// ---------- słowniczek ----------
+const GLOS = [
+  { id: 'sila', term: 'Siła',
+    formal: 'Siła opisuje działanie jednego ciała na drugie. Ma wartość, kierunek i zwrot. Jednostką siły jest niuton (1 N).',
+    simple: 'Siła to pchnięcie albo pociągnięcie. Rysujemy ją jako strzałkę. Im dłuższa strzałka, tym mocniej pchamy. Grot strzałki pokazuje, w którą stronę.',
+    example: 'Pchasz wózek w sklepie, czyli działasz na niego siłą.' },
+  { id: 'wypadkowa', term: 'Siła wypadkowa',
+    formal: 'Siła wypadkowa to jedna siła, która daje taki sam skutek jak kilka sił działających razem.',
+    simple: 'Gdy kilka sił działa naraz, sprawdzamy, co z nich „zostaje”. Siły w tę samą stronę dodajemy, a w przeciwne strony odejmujemy.',
+    example: 'Pchasz skrzynię w prawo siłą 120 N, a tarcie hamuje ją w lewo siłą 70 N. Zostaje 50 N w prawo. To jest siła wypadkowa.' },
+  { id: 'rownowaga', term: 'Siły się równoważą',
+    formal: 'Siły się równoważą, gdy ich siła wypadkowa jest równa zero.',
+    simple: 'Siły są tak samo duże, ale działają w przeciwne strony. Znoszą się, jakby żadnej nie było.',
+    example: 'Przeciąganie liny, gdy obie drużyny są tak samo silne. Lina się nie przesuwa.' },
+  { id: 'jednostajny', term: 'Ruch jednostajny prostoliniowy',
+    formal: 'Ruch jednostajny prostoliniowy to ruch po linii prostej ze stałą prędkością.',
+    simple: 'Ciało jedzie prosto i cały czas tak samo szybko. Nie przyspiesza, nie zwalnia i nie skręca.',
+    example: 'Pociąg jedzie po prostym torze cały czas z prędkością 80 km/h.' },
+  { id: 'tarcie', term: 'Tarcie',
+    formal: 'Siła tarcia działa między stykającymi się powierzchniami i przeciwdziała ruchowi ciała.',
+    simple: 'Tarcie to siła, która hamuje. Działa zawsze w stronę przeciwną do ruchu. Na szorstkiej podłodze jest duże, na lodzie małe, a w kosmosie go nie ma.',
+    example: 'Hulajnoga sama zwalnia i staje, jeśli przestaniesz się odpychać.' },
+  { id: 'zasada1', term: 'I zasada dynamiki Newtona',
+    formal: 'Jeżeli na ciało nie działa żadna siła lub działające siły się równoważą, to ciało pozostaje w spoczynku lub porusza się ruchem jednostajnym prostoliniowym.',
+    simple: 'Jeśli nic ciała nie pcha i nic go nie hamuje (albo siły się znoszą), to: ciało, które stoi, dalej stoi. Ciało, które jedzie, jedzie dalej prosto i tak samo szybko.',
+    example: 'Sonda w kosmosie z wyłączonymi silnikami leci dalej prosto i tak samo szybko, bo nic jej nie hamuje.' },
+  { id: 'bezwladnosc', term: 'Bezwładność',
+    formal: 'Bezwładność to właściwość ciał. Polega na tym, że ciało samo nie zmienia swojej prędkości. Do zmiany prędkości potrzebna jest siła.',
+    simple: 'Każde ciało jest trochę „uparte”. Jak stoi, to chce dalej stać. Jak jedzie, to chce dalej jechać tak samo szybko i w tę samą stronę.',
+    example: 'Autobus nagle hamuje, a Ty lecisz do przodu. Twoje ciało „chce” jechać dalej.' },
+  { id: 'masa', term: 'Masa jako miara bezwładności',
+    formal: 'Masa jest miarą bezwładności ciała. Im większa masa, tym większa bezwładność. Jednostką masy jest kilogram (1 kg).',
+    simple: 'Im większa masa, tym ciało bardziej „uparte”: trudniej je rozpędzić i trudniej zatrzymać.',
+    example: 'Pełny wózek z zakupami trudniej ruszyć i zatrzymać niż pusty.' },
+];
+// skąd pojęcie: przypomnienie z wcześniejszych działów, nowe w temacie 24, zapowiedź tematu 28
+const TAG = {
+  sila: 'Przypomnienie · wcześniejszy dział', wypadkowa: 'Przypomnienie · wcześniejszy dział', rownowaga: 'Przypomnienie · wcześniejszy dział',
+  jednostajny: 'Przypomnienie · Kinematyka', tarcie: 'Zapowiedź · temat 28', zasada1: 'Nowe · temat 24', bezwladnosc: 'Nowe · temat 24', masa: 'Nowe · temat 24',
+};
+// dwa pytania na pojęcie: główne i drugie (po błędzie, w innej formie)
+const TQ = {
+  sila: [
+    { text: 'Co trzeba podać, żeby dokładnie opisać siłę?', opts: [
+      { t: 'Wartość, kierunek i zwrot', ok: true },
+      { t: 'Tylko wartość (ile niutonów)', fb: 'Sama wartość nie wystarczy. Trzeba też wiedzieć, w którą stronę działa siła.' },
+      { t: 'Masę i prędkość', fb: 'To cechy ciała, a nie siły. Siłę opisujemy przez wartość, kierunek i zwrot.' },
+      { t: 'Tylko kierunek', fb: 'Kierunek to za mało. Trzeba też wiedzieć, jak mocno (wartość) i w którą stronę (zwrot).' } ] },
+    { text: 'W jakich jednostkach mierzymy siłę?', opts: [
+      { t: 'W niutonach (N)', ok: true },
+      { t: 'W kilogramach (kg)', fb: 'W kilogramach mierzymy masę. Siłę mierzymy w niutonach.' },
+      { t: 'W metrach na sekundę (m/s)', fb: 'To jednostka prędkości. Siłę mierzymy w niutonach.' },
+      { t: 'W dżulach (J)', fb: 'W dżulach mierzymy energię. Poznasz ją w następnym dziale. Siłę mierzymy w niutonach.' } ] },
+  ],
+  wypadkowa: [
+    { text: 'Na skrzynię działają dwie siły: 100 N w prawo i 30 N w lewo. Jaka jest siła wypadkowa?', opts: [
+      { t: '70 N w prawo', ok: true },
+      { t: '130 N w prawo', fb: 'Siły działają w przeciwne strony, więc je odejmujemy, a nie dodajemy.' },
+      { t: '70 N w lewo', fb: 'Wartość dobra, ale strona zła. Wygrywa większa siła, czyli ta w prawo.' },
+      { t: '0 N', fb: 'Siły znoszą się tylko wtedy, gdy są tak samo duże. 100 N i 30 N to nie to samo.' } ] },
+    { text: 'Dwie osoby ciągną sanki w tę samą stronę: jedna siłą 40 N, druga siłą 60 N. Jaka jest siła wypadkowa?', opts: [
+      { t: '100 N w stronę, w którą ciągną', ok: true },
+      { t: '20 N', fb: 'Siły działają w tę samą stronę, więc je dodajemy, a nie odejmujemy.' },
+      { t: '60 N, bo liczy się tylko większa siła', fb: 'Liczą się obie siły. Gdy działają w tę samą stronę, dodajemy je.' },
+      { t: '50 N, czyli średnia', fb: 'Średniej nie liczymy. Siły w tę samą stronę dodajemy.' } ] },
+  ],
+  rownowaga: [
+    { text: 'Kiedy siły się równoważą?', opts: [
+      { t: 'Gdy siła wypadkowa jest równa zero', ok: true },
+      { t: 'Gdy na ciało działa tylko jedna siła', fb: 'Jedna siła nie ma się z czym znieść. Wtedy wypadkowa to właśnie ta jedna siła.' },
+      { t: 'Gdy ciało się porusza', fb: 'Siły mogą się równoważyć i wtedy, gdy ciało stoi, i wtedy, gdy jedzie tak samo szybko. Liczy się to, czy wypadkowa jest równa zero.' },
+      { t: 'Gdy wszystkie siły działają w tę samą stronę', fb: 'Siły w tę samą stronę się dodają, a nie znoszą.' } ] },
+    { text: 'Książka leży na stole. Ziemia ciągnie ją w dół siłą 5 N. Z jaką siłą stół pcha książkę w górę?', opts: [
+      { t: '5 N', ok: true },
+      { t: '0 N, bo stół nic nie robi', fb: 'Gdyby stół nie pchał w górę, książka spadłaby przez stół. Stół pcha w górę tak samo mocno, jak Ziemia ciągnie w dół.' },
+      { t: '10 N', fb: 'Wtedy książka poleciałaby w górę. Leży spokojnie, więc siły się znoszą.' },
+      { t: 'Mniej niż 5 N', fb: 'Wtedy książka zapadałaby się w stół. Leży spokojnie, więc siły się znoszą.' } ] },
+  ],
+  jednostajny: [
+    { text: 'Który ruch jest jednostajny prostoliniowy?', opts: [
+      { t: 'Pociąg jedzie po prostym torze cały czas 80 km/h', ok: true },
+      { t: 'Samochód rusza spod świateł', fb: 'Samochód przyspiesza, więc jego prędkość się zmienia.' },
+      { t: 'Rowerzysta jedzie po rondzie cały czas tak samo szybko', fb: 'Prędkość się nie zmienia, ale rowerzysta skręca. Ruch nie jest prostoliniowy.' },
+      { t: 'Piłka toczy się i powoli zatrzymuje', fb: 'Piłka zwalnia, więc jej prędkość się zmienia.' } ] },
+    { text: 'Uzupełnij: ruch jednostajny prostoliniowy to ruch po linii prostej ze ___ prędkością.', opts: [
+      { t: 'stałą', ok: true },
+      { t: 'rosnącą', fb: 'Gdy prędkość rośnie, to ruch przyspieszony.' },
+      { t: 'malejącą', fb: 'Gdy prędkość maleje, ciało zwalnia. To nie jest ruch jednostajny.' },
+      { t: 'dużą', fb: 'Prędkość może być mała albo duża. Ważne, żeby się nie zmieniała.' } ] },
+  ],
+  tarcie: [
+    { text: 'W którą stronę działa siła tarcia?', opts: [
+      { t: 'Przeciwnie do ruchu', ok: true },
+      { t: 'W stronę ruchu', fb: 'Tarcie hamuje, więc działa w stronę przeciwną do ruchu.' },
+      { t: 'Zawsze w dół', fb: 'W dół działa ciężar. Tarcie działa wzdłuż podłoża, przeciwnie do ruchu.' },
+      { t: 'Zawsze w górę', fb: 'Tarcie działa wzdłuż podłoża, przeciwnie do ruchu.' } ] },
+    { text: 'Gdzie tarcie jest najmniejsze?', opts: [
+      { t: 'Na gładkim lodzie', ok: true },
+      { t: 'Na asfalcie', fb: 'Na asfalcie tarcie jest duże. Przypomnij sobie hangar i lodowisko z laboratorium.' },
+      { t: 'Na dywanie', fb: 'Na dywanie tarcie jest duże. Przypomnij sobie lodowisko z laboratorium.' },
+      { t: 'Na piasku', fb: 'Na piasku tarcie jest duże. Przypomnij sobie lodowisko z laboratorium.' } ] },
+  ],
+  zasada1: [
+    { text: 'Uzupełnij I zasadę dynamiki: „Jeżeli na ciało nie działa żadna siła lub działające siły się ___, to ciało pozostaje w spoczynku lub porusza się ruchem jednostajnym prostoliniowym.”', opts: [
+      { t: 'równoważą', ok: true },
+      { t: 'zwiększają', fb: 'Gdyby siła rosła, prędkość ciała by się zmieniała. Chodzi o siły, które się znoszą, czyli równoważą.' },
+      { t: 'zmniejszają', fb: 'Nie chodzi o to, czy siły maleją, tylko czy się znoszą, czyli równoważą.' },
+      { t: 'dodają', fb: 'Gdy siły się dodają, wypadkowa rośnie i ciało zmienia prędkość. Chodzi o siły, które się równoważą.' } ] },
+    { text: 'Według I zasady dynamiki ciało, na które nie działa żadna siła…', opts: [
+      { t: '…stoi albo jedzie prosto, cały czas tak samo szybko.', ok: true },
+      { t: '…zawsze stoi.', fb: 'Stoi tylko wtedy, gdy wcześniej stało. Jeśli jechało, jedzie dalej tak samo szybko.' },
+      { t: '…zawsze zwalnia.', fb: 'Do zwalniania potrzebna jest siła, np. tarcie. Tu żadnej siły nie ma.' },
+      { t: '…zawsze przyspiesza.', fb: 'Do przyspieszania potrzebna jest siła. Tu żadnej siły nie ma.' } ] },
+  ],
+  bezwladnosc: [
+    { text: 'Czym jest bezwładność?', opts: [
+      { t: 'Właściwością ciał: ciało samo nie zmienia swojej prędkości', ok: true },
+      { t: 'Siłą, która pcha ciała do przodu', fb: 'Bezwładność to nie siła! To cecha ciała, jego „upór”.' },
+      { t: 'Tym, że ciało stoi w miejscu', fb: 'Bezwładność ma też ciało, które jedzie. Ono chce jechać dalej tak samo szybko.' },
+      { t: 'Inną nazwą tarcia', fb: 'Tarcie to siła, która hamuje. Bezwładność to cecha ciała, a nie siła.' } ] },
+    { text: 'Strzepujesz wodę z mokrych rąk. Ręce nagle się zatrzymują, a krople lecą dalej. Dlaczego?', opts: [
+      { t: 'Krople chcą dalej lecieć tak samo szybko. To bezwładność.', ok: true },
+      { t: 'Ręce odpychają krople.', fb: 'Ręce się zatrzymują, a krople nie, bo nic ich nie zatrzymuje. To bezwładność, a nie odpychanie.' },
+      { t: 'Krople są lżejsze od powietrza.', fb: 'Woda jest dużo cięższa od powietrza. Krople lecą dalej z powodu bezwładności.' },
+      { t: 'Woda nie ma masy.', fb: 'Woda ma masę, więc ma też bezwładność. Właśnie dlatego krople lecą dalej.' } ] },
+  ],
+  masa: [
+    { text: 'Która z tych rzeczy ma największą bezwładność?', opts: [
+      { t: 'Ciężarówka, 10 000 kg', ok: true },
+      { t: 'Samochód osobowy, 1200 kg', fb: 'Bezwładność zależy od masy. Największą masę ma ciężarówka.' },
+      { t: 'Rower, 15 kg', fb: 'Bezwładność zależy od masy. Rower ma małą masę.' },
+      { t: 'Piłka, 0,4 kg', fb: 'Bezwładność zależy od masy. Piłka ma najmniejszą masę z tych rzeczy.' } ] },
+    { text: 'Uzupełnij: im ___ masa ciała, tym trudniej zmienić jego prędkość.', opts: [
+      { t: 'większa', ok: true },
+      { t: 'mniejsza', fb: 'Odwrotnie. Małą masę łatwo rozpędzić i łatwo zatrzymać.' },
+      { t: 'szybsza', fb: 'Masa nie bywa szybka ani wolna. Chodzi o to, czy jest duża, czy mała.' },
+      { t: 'zmienna', fb: 'Chodzi o to, czy masa jest duża, czy mała. Im większa, tym trudniej zmienić prędkość.' } ] },
+  ],
+};
+const TERM_ST = { ok: 'znam od razu', retry: 'znam po powtórce', weak: 'do powtórki' };
+
+function defCard(g, open, status) {
+  const d = document.createElement('details'); d.className = 'def'; if (open) d.open = true;
+  d.innerHTML = '<summary><b></b><span>rozwiń</span></summary><div class="def-body">' +
+    '<div class="def-row formal"><i>Definicja (do zeszytu)</i><p></p></div>' +
+    '<div class="def-row simple"><i>Po prostu</i><p></p></div>' +
+    '<div class="def-row"><i>Przykład</i><p></p></div></div>';
+  d.querySelector('summary b').textContent = g.term;
+  const ps = d.querySelectorAll('.def-body p');
+  ps[0].textContent = g.formal; ps[1].textContent = g.simple; ps[2].textContent = g.example;
+  if (status === 'weak') { const s = d.querySelector('summary span'); s.textContent = 'do powtórki'; s.className = 'st-weak'; }
+  return d;
+}
+function renderGlossary() {
+  const box = $('#glosList'); box.innerHTML = '';
+  GLOS.forEach(g => box.append(defCard(g, false, S.terms[g.id])));
+}
+function toggleGlos(open) {
+  $('#glossary').hidden = !open; $('#glosBtn').setAttribute('aria-expanded', open);
+  if (open) $('#glossary').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+$('#glosBtn').addEventListener('click', () => toggleGlos($('#glossary').hidden));
+$('#glosClose').addEventListener('click', () => toggleGlos(false));
+
 // ---------- stan gry ----------
-const S = { xp: 0, stars: { s1: false, s2: false, s3: false }, mis: {}, firstTry: 0, asked: 0, dockAttempts: 0 };
+const S = { xp: 0, stars: { s1: false, s2: false, s3: false }, mis: {}, firstTry: 0, asked: 0, dockAttempts: 0, terms: {} };
 
 const MIS = {
-  ruch_sila: { name: '„Żeby coś się ruszało, musi działać siła”', tip: 'Siła jest potrzebna do zmiany prędkości, a nie do samego ruchu. Ciała na Ziemi zwalniają przez tarcie i opór powietrza.' },
-  pcha: { name: '„Przy hamowaniu coś pcha nas do przodu”', tip: 'Nic nas nie pcha. To pojazd zwalnia, a nasze ciało z powodu bezwładności zachowuje swoją prędkość.' },
-  kierunek: { name: '„Siła w stronę ruchu musi przeważać”', tip: 'Przy stałej prędkości siły się równoważą, niezależnie od tego, w którą stronę ciało jedzie.' },
-  masa: { name: '„Bezwładność zależy od rozmiaru, prędkości albo ciężaru”', tip: 'Miarą bezwładności jest masa. Bezwładność ma każde ciało, także stojące.' },
-  zasada: { name: 'Niepełna treść I zasady dynamiki', tip: 'Siły się równoważą (albo nie działają) → spoczynek LUB ruch jednostajny prostoliniowy.' },
-  niesie: { name: '„Ciało niesie w sobie siłę, którą dostało”', tip: 'Siła działa tylko w czasie kontaktu. Potem ciało ma prędkość, a nie siłę.' },
+  ruch_sila: { name: '„Żeby coś jechało, trzeba to cały czas pchać”', tip: 'Siła jest potrzebna tylko do zmiany prędkości. Rzeczy na Ziemi zwalniają, bo hamuje je tarcie i powietrze.' },
+  pcha: { name: '„Przy hamowaniu coś pcha nas do przodu”', tip: 'Nic nas nie pcha. To pojazd zwalnia, a nasze ciało chce jechać dalej (bezwładność).' },
+  kierunek: { name: '„Siła w stronę ruchu musi być większa”', tip: 'Gdy coś jedzie cały czas tak samo szybko, siły się znoszą. Nieważne, w którą stronę jedzie.' },
+  masa: { name: 'Od czego zależy bezwładność', tip: 'Bezwładność zależy od masy. Ma ją każde ciało, także takie, które stoi.' },
+  zasada: { name: 'Niepełna I zasada dynamiki', tip: 'Gdy siły się znoszą, ciało stoi ALBO jedzie prosto i tak samo szybko.' },
+  niesie: { name: '„Ciało zabiera siłę ze sobą”', tip: 'Siła działa tylko wtedy, gdy coś pcha albo ciągnie. Potem ciało ma prędkość, ale nie ma siły.' },
 };
 const addMis = id => { if (id) S.mis[id] = (S.mis[id] || 0) + 1; };
 
@@ -371,7 +611,7 @@ function starfield(ctx, w, h, shift = 0) {
 }
 
 // ---------- nawigacja ----------
-const ORDER = ['lab', 's1', 's2', 's3', 'end'];
+const ORDER = ['lab', 'cards', 's1', 's2', 's3', 'end'];
 function setStep(key) {
   const idx = ORDER.indexOf(key);
   document.querySelectorAll('#steps li').forEach(li => {
@@ -380,14 +620,14 @@ function setStep(key) {
   });
 }
 function show(id) {
-  ['start', 'lab', 'quiz', 'dock', 'end'].forEach(s => { $('#scr-' + s).hidden = s !== id; });
+  ['start', 'lab', 'cards', 'cardsum', 'quiz', 'dock', 'end'].forEach(s => { $('#scr-' + s).hidden = s !== id; });
+  toggleGlos(false);
   window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
 // ---------- LABORATORIUM ----------
 const LAB = { m: 20, F: 120, g: 9.81, mu: { hangar: 0.35, ice: 0.02, space: 0 } };
 const lab = { surf: 'hangar', x: 0, v: 0, push: false, wasPush: false, release: null, done: { hangar: false, ice: false, space: false }, qOk: false };
-const surfName = { hangar: 'w hangarze', ice: 'na lodowisku', space: 'w kosmosie' };
 
 function labStart() {
   show('lab'); setStep('lab');
@@ -419,10 +659,10 @@ function labStep(dt) {
   $('#ro-t').textContent = Math.round(Tact) + ' N';
   $('#ro-w').textContent = (W > 0.5 ? '+' : W < -0.5 ? '−' : '') + Math.round(Math.abs(W)) + ' N';
   let st;
-  if (!moving && !lab.push) st = 'Skrzynia stoi. Żadna siła jej nie rusza → pozostaje w spoczynku.';
-  else if (lab.push) st = `Pchasz. Wypadkowa ${Math.round(W)} N w przód → skrzynia przyspiesza.`;
-  else if (T > 0) st = `Nie pchasz. Działa tylko tarcie (${Math.round(T)} N) przeciwnie do ruchu → skrzynia zwalnia.`;
-  else st = 'Nie pchasz i nie ma tarcia. Wypadkowa = 0 N → skrzynia jedzie ze STAŁĄ prędkością.';
+  if (!moving && !lab.push) st = 'Skrzynia stoi. Nic jej nie pcha.';
+  else if (lab.push) st = T > 0 ? 'Pchasz mocniej, niż hamuje tarcie → skrzynia przyspiesza.' : 'Pchasz → skrzynia przyspiesza.';
+  else if (T > 0) st = 'Nie pchasz. Tarcie hamuje skrzynię → skrzynia zwalnia.';
+  else st = 'Nie pchasz i nic nie hamuje → skrzynia jedzie cały czas tak samo szybko!';
   $('#labStatus').textContent = st;
 }
 function labChecklist() {
@@ -488,11 +728,123 @@ document.querySelectorAll('#labQ .opt').forEach(b => b.addEventListener('click',
   document.querySelectorAll('#labQ .opt').forEach(o => o.classList.remove('good', 'bad'));
   if (b.dataset.ok === '1') {
     b.classList.add('good'); lab.qOk = true;
-    $('#labQfb').textContent = 'Tak! W kosmosie nic skrzyni nie hamowało, więc jej prędkość się nie zmieniała.';
+    $('#labQfb').textContent = 'Tak! W kosmosie nic skrzyni nie hamowało, więc jechała cały czas tak samo szybko.';
     $('#labNext').disabled = false;
   } else { b.classList.add('bad'); $('#labQfb').textContent = b.dataset.fb; }
 }));
-$('#labNext').addEventListener('click', () => startStage('s1'));
+$('#labNext').addEventListener('click', () => cardsStart());
+
+// ---------- KARTY POJĘĆ ----------
+// każde pojęcie: karta → pytanie; po błędzie wyjaśnienie i drugie pytanie w innej formie
+const cards = { i: 0, phase: 0, sel: null, ready: false, answered: false, timer: null };
+function cardsStart() {
+  stopLoop(); show('cards'); setStep('cards');
+  cards.i = 0; cardShow(0);
+}
+function cardDots() {
+  const box = $('#cDots'); box.innerHTML = '';
+  GLOS.forEach((g, i) => { const d = document.createElement('i'); d.className = S.terms[g.id] || (i === cards.i ? 'cur' : ''); box.append(d); });
+}
+function cardShow(phase) {
+  const g = GLOS[cards.i], q = TQ[g.id][phase];
+  Object.assign(cards, { phase, sel: null, ready: false, answered: false });
+  $('#cCount').textContent = `Pojęcie ${cards.i + 1} z ${GLOS.length}`;
+  const tag = $('#cTag'); tag.textContent = TAG[g.id]; tag.className = 'chip' + (TAG[g.id].startsWith('Nowe') ? ' new' : '');
+  $('#cTerm').textContent = g.term; $('#cFormal').textContent = g.formal; $('#cSimple').textContent = g.simple; $('#cExample').textContent = g.example;
+  $('#cRetry').hidden = phase === 0;
+  $('#cQ').textContent = q.text;
+  const box = $('#cOpts'); box.innerHTML = '';
+  shuffle(q.opts.map((o, i) => ({ o, i }))).forEach(({ o, i }) => {
+    const b = document.createElement('button'); b.className = 'opt'; b.textContent = o.t; b.dataset.i = i; b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', () => {
+      if (cards.answered) return;
+      box.querySelectorAll('.opt').forEach(x => x.setAttribute('aria-pressed', 'false'));
+      b.setAttribute('aria-pressed', 'true'); cards.sel = i; $('#cCheck').disabled = !cards.ready;
+    });
+    box.append(b);
+  });
+  $('#cFb').hidden = true; $('#cNext').hidden = true; $('#cCheck').hidden = false;
+  cardDots();
+  // czas na przeczytanie karty: dłużej przy pierwszym pytaniu
+  let left = phase === 0 ? 6 : 4;
+  const btn = $('#cCheck'); btn.disabled = true; btn.textContent = `Przeczytaj kartę… ${left}`;
+  clearInterval(cards.timer);
+  cards.timer = setInterval(() => {
+    left--;
+    if (left <= 0) { clearInterval(cards.timer); cards.ready = true; btn.textContent = 'Sprawdź'; btn.disabled = cards.sel === null; }
+    else btn.textContent = `Przeczytaj kartę… ${left}`;
+  }, 1000);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+$('#cCheck').addEventListener('click', () => {
+  const g = GLOS[cards.i], q = TQ[g.id][cards.phase], o = q.opts[cards.sel];
+  cards.answered = true;
+  $('#cOpts').querySelectorAll('.opt').forEach(b => {
+    b.disabled = true; const oi = +b.dataset.i;
+    if (q.opts[oi].ok) b.classList.add('good');
+    if (oi === cards.sel && !o.ok) b.classList.add('bad');
+  });
+  const fb = $('#cFb'); fb.hidden = false; fb.innerHTML = '';
+  const tag = document.createElement('div'); tag.className = 'tag'; fb.append(tag);
+  const add = s => { const p = document.createElement('p'); p.textContent = s; fb.append(p); };
+  let retry = false;
+  if (o.ok) {
+    fb.className = 'fb good'; tag.textContent = 'Dobrze!';
+    S.terms[g.id] = cards.phase === 0 ? 'ok' : 'retry';
+    const gain = cards.phase === 0 ? 5 : 2; setXP(gain);
+    const x = document.createElement('p'); x.className = 'xp-pop'; x.textContent = `+${gain} XP`; fb.append(x);
+  } else {
+    fb.className = 'fb bad'; tag.textContent = 'Jeszcze nie.';
+    add(o.fb);
+    if (cards.phase === 0) { retry = true; add('Przeczytaj jeszcze raz część „Po prostu” na karcie. Za chwilę dostaniesz inne pytanie o to samo pojęcie.'); }
+    else { S.terms[g.id] = 'weak'; add('To pojęcie trafia do powtórki. Wróci w kolejnych poziomach.'); }
+  }
+  cardDots();
+  $('#cCheck').hidden = true;
+  const nb = $('#cNext'); nb.hidden = false;
+  const label = retry ? 'Inne pytanie' : (cards.i < GLOS.length - 1 ? 'Następne pojęcie' : 'Podsumowanie');
+  if (o.ok) { nb.disabled = false; nb.textContent = label; }
+  else {
+    let left = 4; nb.disabled = true; nb.textContent = `Przeczytaj wyjaśnienie… ${left}`;
+    const tm = setInterval(() => { left--; if (left <= 0) { clearInterval(tm); nb.disabled = false; nb.textContent = label; } else nb.textContent = `Przeczytaj wyjaśnienie… ${left}`; }, 1000);
+  }
+  nb.onclick = () => {
+    if (retry) return cardShow(1);
+    if (cards.i < GLOS.length - 1) { cards.i++; return cardShow(0); }
+    cardsSummary();
+  };
+  fb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+function termList(ul) {
+  ul.innerHTML = '';
+  GLOS.forEach(g => {
+    const st = S.terms[g.id];
+    const li = document.createElement('li'); const b = document.createElement('b'); b.textContent = g.term;
+    const s = document.createElement('span'); s.className = st ? 'st-' + st : ''; s.textContent = st ? TERM_ST[st] : 'nie sprawdzono';
+    li.append(b, s); ul.append(li);
+  });
+}
+function termCounts() {
+  const v = Object.values(S.terms);
+  return { ok: v.filter(x => x === 'ok').length, retry: v.filter(x => x === 'retry').length, weak: GLOS.filter(g => S.terms[g.id] === 'weak').map(g => g.term) };
+}
+function cardsSummary() {
+  show('cardsum'); setStep('cards');
+  const c = termCounts();
+  $('#csTitle').textContent = c.weak.length ? `Znasz ${c.ok + c.retry} z ${GLOS.length} pojęć. ${c.weak.length === 1 ? 'Jedno wróci' : 'Kilka wróci'} do powtórki.` : `Znasz wszystkie ${GLOS.length} pojęć!`;
+  termList($('#csList'));
+  renderGlossary(); saveTerms();
+}
+$('#csNext').addEventListener('click', () => startStage('s1'));
+// pojęcia do powtórki zapisane dla kolejnych poziomów
+function saveTerms() {
+  try {
+    const all = JSON.parse(localStorage.getItem('orion-pojecia') || '{}');
+    const day = new Date().toISOString().slice(0, 10);
+    for (const id in S.terms) all[id] = { status: S.terms[id], date: day, temat: 24 };
+    localStorage.setItem('orion-pojecia', JSON.stringify(all));
+  } catch {}
+}
 
 // ---------- SCENY do pytań ----------
 function person(ctx, x, footY, ang, color, scale = 1) {
@@ -515,9 +867,9 @@ const SCENES = {
     ctx.fillStyle = col('muted'); ctx.fillRect(x - 18, y - 9, 36, 18);
     ctx.strokeStyle = col('ink'); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x - 26, y, 13, -1.2, 1.2); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x + 18, y); ctx.lineTo(x + 34, y - 10); ctx.stroke();
-    txt(ctx, 'silniki: WYŁ.', 14, 20, col('muted'), 12);
+    txt(ctx, 'silniki: WYŁĄCZONE', 14, 20, col('muted'), 12);
     txt(ctx, 'v = 15 km/s', x, y - 30, col('ink'), 13, 'center', 700);
-    if (t > 0) txt(ctx, 'równe odstępy kropek = stała prędkość', w / 2, h - 18, col('cyan'), 12, 'center');
+    if (t > 0) txt(ctx, 'kropki w równych odstępach = cały czas tak samo szybko', w / 2, h - 18, col('cyan'), 12, 'center');
   },
   puck(ctx, w, h, t) {
     ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, h);
@@ -532,7 +884,7 @@ const SCENES = {
     const marks = []; for (let k = 0; k * 0.5 <= run; k++) marks.push(x0 + (x1 - x0) * k * 0.5 / T);
     trail(ctx, marks, y + 22, col('space'));
     ctx.fillStyle = col('space'); ctx.beginPath(); ctx.ellipse(x, y, 14, 6, 0, 0, Math.PI * 2); ctx.fill();
-    txt(ctx, 'idealnie gładki lód: zero tarcia', 22, h * 0.25 - 14, col('muted'), 12);
+    txt(ctx, 'idealnie gładki lód: brak tarcia', 22, h * 0.25 - 14, col('muted'), 12);
   },
   bus(ctx, w, h, t, mode) {
     const T = 4.6, tt = t % T;
@@ -544,7 +896,6 @@ const SCENES = {
     }
     const k = (tt > 1 && tt < 2.6) ? Math.min(1, (tt - 1) / 0.25) * (tt > 2.2 ? Math.max(0, 1 - (tt - 2.2) / 0.4) : 1) : 0;
     const tilt = (mode === 'brake' ? 0.38 : -0.38) * k;
-    if (t === 0) { v = mode === 'brake' ? 1 : 0; }
     ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, h);
     const roadY = h * 0.82;
     ctx.fillStyle = col('floor'); ctx.fillRect(0, roadY, w, h - roadY);
@@ -575,7 +926,7 @@ const SCENES = {
     const L = Math.min(70, ch * 0.35), mid = floor - ch * 0.32;
     arrow(ctx, w / 2 + 40, mid, w / 2 + 40, mid - L, col('cyan'), 'podłoga', { x: w / 2 + 40 + 44, y: mid - L / 2 });
     arrow(ctx, w / 2 - 40, mid - L, w / 2 - 40, mid, col('amber'), 'ciężar', { x: w / 2 - 40 - 40, y: mid - L / 2 });
-    txt(ctx, 'v = 2 m/s w górę (stała)', 14, 18, col('muted'), 12);
+    txt(ctx, 'w górę, cały czas 2 m/s', 14, 18, col('muted'), 12);
   },
   para(ctx, w, h, t) {
     ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, h);
@@ -588,152 +939,152 @@ const SCENES = {
     const L = Math.min(64, h * 0.22);
     arrow(ctx, x + 50, y - 20, x + 50, y - 20 - L, col('cyan'), 'opór', { x: x + 50 + 30, y: y - 20 - L / 2 });
     arrow(ctx, x - 50, y - 20 - L, x - 50, y - 20, col('amber'), 'ciężar', { x: x - 50 - 36, y: y - 20 - L / 2 });
-    txt(ctx, 'v = 5 m/s w dół (stała)', 14, 18, col('muted'), 12);
+    txt(ctx, 'w dół, cały czas 5 m/s', 14, 18, col('muted'), 12);
   },
 };
 
 // ---------- PYTANIA ----------
 const Q = {
   p1: { concept: 'zasada', text: 'Dokończ I zasadę dynamiki: „Jeżeli na ciało nie działa żadna siła lub działające siły się równoważą, to ciało…”',
-    hint: 'Pomyśl o skrzyni w kosmosie. Stała? Jechała? Obie sytuacje są możliwe.',
+    hint: 'Przypomnij sobie skrzynię w kosmosie. Najpierw stała, a potem jechała.',
     opts: [
       { t: '…pozostaje w spoczynku lub porusza się ruchem jednostajnym prostoliniowym.', ok: true },
-      { t: '…zawsze pozostaje w spoczynku.', fb: 'To tylko połowa prawdy. Ciało, które już jedzie, nie zatrzyma się samo. Będzie jechać dalej ze stałą prędkością.', mis: 'zasada' },
-      { t: '…porusza się coraz wolniej, aż się zatrzyma.', fb: 'Zwalnianie to zmiana prędkości, a do zmiany prędkości potrzebna jest siła (np. tarcie).', mis: 'ruch_sila' },
-      { t: '…porusza się ruchem przyspieszonym.', fb: 'Przyspieszanie też jest zmianą prędkości. Wymaga siły, która nie jest zrównoważona.', mis: 'zasada' },
+      { t: '…zawsze pozostaje w spoczynku.', fb: 'To tylko połowa. Ciało, które już jedzie, samo się nie zatrzyma. Jedzie dalej tak samo szybko.', mis: 'zasada' },
+      { t: '…porusza się coraz wolniej, aż się zatrzyma.', fb: 'Zwalnianie to zmiana prędkości. A do zmiany prędkości potrzebna jest siła, na przykład tarcie.', mis: 'ruch_sila' },
+      { t: '…porusza się ruchem przyspieszonym.', fb: 'Przyspieszanie to też zmiana prędkości. Do tego potrzebna jest siła.', mis: 'zasada' },
     ],
-    explain: 'Gdy siły się równoważą, prędkość się nie zmienia: stojące stoi, jadące jedzie dalej prosto i równo.' },
-  p2: { concept: 'masa', text: 'Co jest miarą bezwładności ciała?',
-    hint: 'Co sprawia, że pełny wózek w sklepie trudniej rozpędzić niż pusty?',
+    explain: 'Gdy siły się znoszą, prędkość się nie zmienia. Ciało, które stoi, dalej stoi. Ciało, które jedzie, jedzie dalej prosto i tak samo szybko.' },
+  p2: { concept: 'masa', text: 'Od czego zależy bezwładność ciała? Co jest jej miarą?',
+    hint: 'Dlaczego pełny wózek w sklepie trudniej ruszyć niż pusty?',
     opts: [
       { t: 'Masa', ok: true },
-      { t: 'Prędkość', fb: 'Dwa samochody o tej samej masie tak samo trudno rozpędzić o tyle samo, niezależnie od tego, jak szybko już jadą. Liczy się masa.', mis: 'masa' },
-      { t: 'Objętość (rozmiar)', fb: 'Duży balon łatwo popchnąć, a małą ołowianą kulę trudno. Liczy się masa, a nie rozmiar.', mis: 'masa' },
-      { t: 'Siła ciężkości', fb: 'Na stacji kosmicznej ciała są w stanie nieważkości, a ciężki moduł nadal trudno rozpędzić. Miarą bezwładności jest masa.', mis: 'masa' },
+      { t: 'Prędkość', fb: 'Nie. Liczy się to, jaką masę ma ciało, a nie jak szybko jedzie.', mis: 'masa' },
+      { t: 'Rozmiar (objętość)', fb: 'Duży balon łatwo popchnąć, a małą metalową kulę trudno. Liczy się masa, a nie rozmiar.', mis: 'masa' },
+      { t: 'Siła ciężkości', fb: 'W kosmosie rzeczy nic nie ważą, a i tak ciężki moduł stacji trudno rozpędzić. Liczy się masa.', mis: 'masa' },
     ],
-    explain: 'Im większa masa, tym większa bezwładność, czyli tym trudniej zmienić prędkość ciała.' },
-  p3: { concept: 'rownowaga', text: 'Ciało porusza się ruchem jednostajnym prostoliniowym. Co wiesz o siłach, które na nie działają?',
-    hint: 'Prędkość się nie zmienia. Co by się stało, gdyby jedna siła przeważała?',
+    explain: 'Masa jest miarą bezwładności. Im większa masa, tym trudniej ciało rozpędzić albo zatrzymać.' },
+  p3: { concept: 'rownowaga', text: 'Ciało jedzie prosto i cały czas tak samo szybko (to ruch jednostajny prostoliniowy). Co wiesz o siłach, które na nie działają?',
+    hint: 'Prędkość się nie zmienia. Co by się stało, gdyby jedna siła była większa?',
     opts: [
-      { t: 'Nie działają żadne siły albo siły się równoważą.', ok: true },
-      { t: 'Musi działać siła w stronę ruchu, większa od oporów.', fb: 'Gdyby siła w przód była większa od oporów, ciało by przyspieszało. Przy stałej prędkości siły się równoważą.', mis: 'kierunek' },
-      { t: 'Działa na nie tylko siła ciężkości.', fb: 'Gdyby działała tylko siła ciężkości, ciało przyspieszałoby w dół. Ta siła musi być czymś zrównoważona.', mis: 'zasada' },
-      { t: 'Siły stopniowo maleją do zera.', fb: 'Ruch jednostajny nie wymaga, żeby siły malały. Wystarczy, że się równoważą.', mis: 'ruch_sila' },
+      { t: 'Nie działa żadna siła albo siły się równoważą (znoszą).', ok: true },
+      { t: 'Musi działać siła do przodu, większa niż hamowanie.', fb: 'Gdyby siła do przodu była większa, ciało by przyspieszało. A ono jedzie cały czas tak samo szybko.', mis: 'kierunek' },
+      { t: 'Działa na nie tylko siła ciężkości.', fb: 'Wtedy ciało spadałoby coraz szybciej. Coś musi tę siłę znosić.', mis: 'zasada' },
+      { t: 'Siły robią się coraz mniejsze.', fb: 'Siły nie muszą maleć. Wystarczy, że się znoszą.', mis: 'ruch_sila' },
     ],
-    explain: 'Stała prędkość = wypadkowa siła równa zero. To ta sama I zasada, tylko „od drugiej strony”.' },
-  p4: { concept: 'masa', text: 'Który wózek sklepowy trudniej rozpędzić i trudniej zatrzymać?',
+    explain: 'Prędkość się nie zmienia, więc siły się znoszą. To ta sama I zasada dynamiki.' },
+  p4: { concept: 'masa', text: 'Który wózek w sklepie trudniej rozpędzić i trudniej zatrzymać?',
     hint: 'Od czego zależy bezwładność?',
     opts: [
       { t: 'Pełny zakupów, bo ma większą masę, więc większą bezwładność.', ok: true },
       { t: 'Pusty, bo jest lżejszy i łatwiej się wymyka.', fb: 'Lżejszy wózek łatwiej rozpędzić i łatwiej zatrzymać. Mniejsza masa to mniejsza bezwładność.', mis: 'masa' },
-      { t: 'Oba tak samo, bo bezwładność nie zależy od masy.', fb: 'Zależy, i to bardzo! Masa jest miarą bezwładności.', mis: 'masa' },
-      { t: 'Żaden, bo bezwładność mają tylko ciała w ruchu.', fb: 'Bezwładność ma każde ciało, także stojące. Dlatego trzeba siły, żeby je ruszyć.', mis: 'masa' },
+      { t: 'Oba tak samo, bo bezwładność nie zależy od masy.', fb: 'Zależy! Masa jest miarą bezwładności.', mis: 'masa' },
+      { t: 'Żaden, bo bezwładność mają tylko rzeczy, które jadą.', fb: 'Bezwładność ma każde ciało, także takie, które stoi. Dlatego trzeba siły, żeby je ruszyć.', mis: 'masa' },
     ],
-    explain: 'Pełny wózek ma większą masę, więc większą bezwładność. Trudniej go rozpędzić i trudniej zahamować.' },
+    explain: 'Pełny wózek ma większą masę, więc większą bezwładność. Trudniej go ruszyć i trudniej zatrzymać.' },
   p5: { concept: 'zasada', text: 'Dlaczego w samochodzie zapina się pasy bezpieczeństwa?',
-    hint: 'Co się dzieje z ciałem pasażera, gdy samochód nagle zwalnia?',
+    hint: 'Co się dzieje z ciałem pasażera, gdy samochód nagle hamuje?',
     opts: [
-      { t: 'Przy gwałtownym hamowaniu nasze ciało z powodu bezwładności jedzie dalej do przodu. Pas działa na nas siłą i nas zatrzymuje.', ok: true },
-      { t: 'Pas chroni przed siłą, która przy hamowaniu pcha nas do przodu.', fb: 'Żadna siła nie pcha nas do przodu! To samochód zwalnia, a my z powodu bezwładności jedziemy dalej z tą samą prędkością.', mis: 'pcha' },
-      { t: 'Tylko po to, żeby nie zsuwać się z fotela na zakrętach.', fb: 'Na zakrętach też pomaga, ale najważniejsze jest hamowanie: bez pasa ciało jedzie dalej do przodu.', mis: 'pcha' },
-      { t: 'Bo tak każą przepisy. Z fizyką nie ma to związku.', fb: 'Przepisy wynikają właśnie z fizyki: z bezwładności ciała.', mis: 'zasada' },
+      { t: 'Gdy auto nagle hamuje, nasze ciało jedzie dalej do przodu (bezwładność). Pas nas przytrzymuje.', ok: true },
+      { t: 'Pas chroni przed siłą, która przy hamowaniu pcha nas do przodu.', fb: 'Nic nas nie pcha! To auto zwalnia, a my dalej jedziemy tak samo szybko, dopóki pas nas nie zatrzyma.', mis: 'pcha' },
+      { t: 'Tylko po to, żeby nie zsuwać się z fotela na zakrętach.', fb: 'Na zakrętach też pomaga, ale najważniejsze jest hamowanie. Bez pasa ciało jedzie dalej do przodu.', mis: 'pcha' },
+      { t: 'Bo tak każą przepisy. Fizyka nie ma tu nic do rzeczy.', fb: 'Przepisy są właśnie z powodu fizyki, czyli z powodu bezwładności.', mis: 'zasada' },
     ],
-    explain: 'Pas daje siłę, która zmienia naszą prędkość razem z samochodem. Bez pasa zatrzymałaby nas dopiero kierownica albo szyba.' },
+    explain: 'Bez pasa ciało jechałoby dalej, aż uderzy w kierownicę albo w szybę.' },
 
-  a1: { concept: 'A', scene: 'probe', text: 'Sonda kosmiczna leci daleko od planet i gwiazd z prędkością 15 km/s. Kończy się paliwo i silniki gasną. Co dalej?',
-    hint: 'Czy coś w pustym kosmosie może sondę hamować? Przypomnij sobie skrzynię w laboratorium.',
+  a1: { concept: 'A', scene: 'probe', text: 'Sonda kosmiczna leci daleko od planet i gwiazd z prędkością 15 km/s. Kończy się paliwo i silniki się wyłączają. Co dalej?',
+    hint: 'Czy w pustym kosmosie coś może sondę hamować? Przypomnij sobie skrzynię w laboratorium.',
     preds: [
-      { t: 'Leci dalej po prostej z prędkością 15 km/s.', ok: true },
-      { t: 'Powoli zwalnia, aż się zatrzyma.', fb: 'Na Ziemi wszystko zwalnia przez tarcie i opór powietrza. W pustym kosmosie ich nie ma, więc nic sondy nie hamuje.', mis: 'ruch_sila' },
-      { t: 'Od razu się zatrzymuje.', fb: 'Do zatrzymania potrzebna byłaby siła hamująca. Wyłączenie silników to brak siły, a nie hamowanie.', mis: 'ruch_sila' },
-      { t: 'Zaczyna spadać w dół.', fb: 'Daleko od planet i gwiazd nie ma „dołu”. Nic sondy nie przyciąga.' },
+      { t: 'Leci dalej prosto, cały czas 15 km/s.', ok: true },
+      { t: 'Powoli zwalnia, aż się zatrzyma.', fb: 'Na Ziemi rzeczy zwalniają przez tarcie i powietrze. W kosmosie tego nie ma, więc nic sondy nie hamuje.', mis: 'ruch_sila' },
+      { t: 'Od razu się zatrzymuje.', fb: 'Żeby się zatrzymać, coś musiałoby ją hamować. Wyłączenie silników to nie hamowanie.', mis: 'ruch_sila' },
+      { t: 'Zaczyna spadać w dół.', fb: 'Daleko od planet nie ma „dołu”. Nic sondy nie przyciąga.' },
     ],
     reasons: [
-      { t: 'Nie działa na nią żadna siła, więc jej prędkość się nie zmienia.', ok: true },
-      { t: 'Siła silników się wyczerpała, więc ruch musi wygasnąć.', fb: 'Ruch nie potrzebuje siły, żeby trwać. Siła jest potrzebna tylko do ZMIANY prędkości.', mis: 'ruch_sila' },
-      { t: 'Sonda ma rozpęd, który z czasem się zużywa.', fb: 'Nic takiego się nie zużywa. Ciała zwalniają tylko wtedy, gdy działa na nie siła, np. tarcie.', mis: 'niesie' },
+      { t: 'Nic jej nie pcha i nic nie hamuje, więc prędkość się nie zmienia.', ok: true },
+      { t: 'Siła silników się skończyła, więc sonda musi stanąć.', fb: 'Do jechania nie trzeba siły. Siła jest potrzebna tylko do zmiany prędkości.', mis: 'ruch_sila' },
+      { t: 'Sonda ma rozpęd, który z czasem się zużywa.', fb: 'Rozpęd sam się nie zużywa. Ciało zwalnia tylko wtedy, gdy coś je hamuje.', mis: 'niesie' },
     ],
-    explain: 'To I zasada dynamiki w czystej postaci. Sondy Voyager wystrzelone w 1977 roku od dziesięcioleci lecą przez kosmos bez pracy głównych silników.' },
-  a2: { concept: 'A', scene: 'puck', text: 'Wyobraź sobie lodowisko z idealnie gładkim lodem: zero tarcia i zero oporu powietrza. Uderzasz krążek kijem i krążek odrywa się od kija. Co robi krążek?',
-    hint: 'Kiedy kij przestaje dotykać krążka, czy coś jeszcze go pcha albo hamuje?',
+    explain: 'To właśnie I zasada dynamiki. Sondy Voyager wystartowały w 1977 roku i do dziś lecą przez kosmos, choć ich główne silniki nie pracują.' },
+  a2: { concept: 'A', scene: 'puck', text: 'Wyobraź sobie lodowisko z idealnie gładkim lodem. Nie ma tarcia ani powietrza. Uderzasz krążek kijem. Co robi krążek, gdy już odleci od kija?',
+    hint: 'Gdy kij już nie dotyka krążka, czy coś go jeszcze pcha albo hamuje?',
     preds: [
-      { t: 'Sunie dalej ze stałą prędkością po linii prostej.', ok: true },
-      { t: 'Stopniowo zwalnia i się zatrzymuje.', fb: 'Na prawdziwym lodzie tak, bo jest małe tarcie. Ale tu lód jest idealnie gładki, więc nic krążka nie hamuje.', mis: 'ruch_sila' },
-      { t: 'Przez chwilę jeszcze przyspiesza.', fb: 'Gdy krążek oderwał się od kija, kij już na niego nie działa. Bez siły nie ma przyspieszenia.', mis: 'niesie' },
-      { t: 'Skręca w bok.', fb: 'Do skręcenia potrzebna jest siła działająca w bok. Tu żadnej takiej nie ma.' },
+      { t: 'Jedzie dalej prosto, cały czas tak samo szybko.', ok: true },
+      { t: 'Zwalnia i staje.', fb: 'Na prawdziwym lodzie tak, bo jest trochę tarcia. Ale ten lód jest idealny i nic nie hamuje.', mis: 'ruch_sila' },
+      { t: 'Jeszcze chwilę przyspiesza.', fb: 'Kij już krążka nie dotyka, więc go nie pcha. Bez pchania nie ma przyspieszania.', mis: 'niesie' },
+      { t: 'Skręca w bok.', fb: 'Żeby skręcić, coś musiałoby pchnąć krążek w bok.' },
     ],
     reasons: [
-      { t: 'Po oderwaniu od kija siły się równoważą (ciężar i lód, który krążek podpiera), więc prędkość się nie zmienia.', ok: true },
-      { t: 'Kij przekazał krążkowi siłę, którą krążek niesie ze sobą.', fb: 'Siła działa tylko w chwili kontaktu. Krążek nie „niesie” siły. Ma prędkość i zachowuje ją z powodu bezwładności.', mis: 'niesie' },
-      { t: 'Krążek jest lekki, więc nie ma bezwładności.', fb: 'Każde ciało ma bezwładność. Lekkie ma mniejszą, ale nie zerową.', mis: 'masa' },
+      { t: 'Nic go nie pcha i nic nie hamuje, więc prędkość się nie zmienia.', ok: true },
+      { t: 'Kij dał krążkowi siłę, którą krążek zabrał ze sobą.', fb: 'Siła działa tylko wtedy, gdy kij dotyka krążka. Potem krążek ma prędkość, ale nie ma siły.', mis: 'niesie' },
+      { t: 'Krążek jest lekki, więc nie ma bezwładności.', fb: 'Każde ciało ma bezwładność. Lekkie ma małą, ale ma.', mis: 'masa' },
     ],
-    explain: 'Na prawdziwym lodowisku krążek zwalnia powoli przez niewielkie tarcie. Bez tarcia jechałby w nieskończoność.' },
-  b1: { concept: 'B', scene: 'busBrake', text: 'Stoisz w autobusie i nie trzymasz się poręczy. Kierowca gwałtownie hamuje. Co się z Tobą dzieje?',
-    hint: 'Hamulce działają na koła autobusu. Czy działają też na Twoją głowę i tułów?',
+    explain: 'Na prawdziwym lodowisku krążek powoli zwalnia, bo jest małe tarcie. Bez tarcia jechałby bez końca.' },
+  b1: { concept: 'B', scene: 'busBrake', text: 'Stoisz w autobusie i nie trzymasz się. Kierowca nagle hamuje. Co się z Tobą dzieje?',
+    hint: 'Hamulce zatrzymują koła autobusu. Czy zatrzymują też Twoją głowę i tułów?',
     preds: [
-      { t: 'Przechylam się do przodu (w stronę kierowcy).', ok: true },
-      { t: 'Przechylam się do tyłu.', fb: 'Do tyłu przechylasz się, gdy autobus RUSZA. Przy hamowaniu jest odwrotnie.' },
-      { t: 'Nic się nie dzieje, stoję prosto.', fb: 'Twoje stopy zwalniają razem z podłogą, ale reszta ciała chce jechać dalej. Dlatego się przechylasz.', mis: 'zasada' },
+      { t: 'Lecę do przodu (w stronę kierowcy).', ok: true },
+      { t: 'Lecę do tyłu.', fb: 'Do tyłu lecisz, gdy autobus RUSZA. Przy hamowaniu jest odwrotnie.' },
+      { t: 'Nic, stoję prosto.', fb: 'Stopy zwalniają razem z podłogą, ale reszta ciała chce jechać dalej. Dlatego lecisz do przodu.', mis: 'zasada' },
     ],
     reasons: [
-      { t: 'Moje ciało z powodu bezwładności dalej porusza się z prędkością, którą miało, a autobus pode mną zwalnia.', ok: true },
-      { t: 'Przy hamowaniu powstaje siła, która pcha pasażerów do przodu.', fb: 'Nic Cię nie pcha do przodu. Siła hamowania działa na autobus i przez podłogę na Twoje stopy. Dlatego stopy zwalniają, a reszta ciała „jedzie dalej”.', mis: 'pcha' },
-      { t: 'Powietrze w autobusie popycha mnie do przodu.', fb: 'Powietrze w autobusie porusza się razem z autobusem i nikogo nie popycha.', mis: 'pcha' },
+      { t: 'Moje ciało chce dalej jechać tak samo szybko (bezwładność), a autobus pode mną zwalnia.', ok: true },
+      { t: 'Przy hamowaniu pojawia się siła, która pcha mnie do przodu.', fb: 'Nic Cię nie pcha! Hamulce zatrzymują autobus. Stopy stoją na podłodze, więc zwalniają razem z nim. A głowa i tułów jadą dalej.', mis: 'pcha' },
+      { t: 'Powietrze w autobusie pcha mnie do przodu.', fb: 'Powietrze jedzie razem z autobusem i nikogo nie pcha.', mis: 'pcha' },
     ],
-    explain: 'Autobus zwalnia, bo działa na niego siła hamowania. Na Twój tułów ta siła nie działa, więc z powodu bezwładności jedzie on dalej, a Ty się przechylasz.' },
-  b2: { concept: 'B', scene: 'busStart', text: 'Autobus stoi na przystanku. Stoisz bez trzymania się poręczy. Autobus gwałtownie rusza. Co się dzieje?',
-    hint: 'Twoje ciało stało. Co bezwładność każe mu robić dalej?',
+    explain: 'Hamulce zatrzymują autobus, ale nie Twoje ciało. Twoje ciało chce jechać dalej, dlatego lecisz do przodu.' },
+  b2: { concept: 'B', scene: 'busStart', text: 'Autobus stoi na przystanku. Stoisz i nie trzymasz się. Autobus nagle rusza. Co się dzieje?',
+    hint: 'Twoje ciało stało. Co chce robić dalej?',
     preds: [
       { t: 'Przechylam się do tyłu.', ok: true },
-      { t: 'Przechylam się do przodu.', fb: 'Do przodu przechylasz się przy HAMOWANIU. Przy ruszaniu jest odwrotnie.' },
-      { t: 'Nic się nie dzieje.', fb: 'Podłoga rusza razem ze stopami, a tułów chce zostać w miejscu. Dlatego się przechylasz.', mis: 'zasada' },
+      { t: 'Przechylam się do przodu.', fb: 'Do przodu lecisz, gdy autobus HAMUJE. Przy ruszaniu jest odwrotnie.' },
+      { t: 'Nic się nie dzieje.', fb: 'Stopy ruszają razem z podłogą, a tułów chce zostać w miejscu. Dlatego się przechylasz.', mis: 'zasada' },
     ],
     reasons: [
-      { t: 'Moje ciało z powodu bezwładności chce pozostać w spoczynku, a autobus rusza i „wyjeżdża” spod moich stóp.', ok: true },
-      { t: 'Autobus pcha mnie do tyłu.', fb: 'Autobus działa na Twoje stopy siłą do PRZODU (przez tarcie podłogi). Przechylasz się do tyłu, bo górna część ciała nie dostaje tej siły od razu.', mis: 'pcha' },
+      { t: 'Moje ciało chce dalej stać w miejscu (bezwładność), a autobus rusza spod moich stóp.', ok: true },
+      { t: 'Autobus pcha mnie do tyłu.', fb: 'Autobus pcha Twoje stopy do PRZODU. Głowa i tułów zostają na chwilę w miejscu, dlatego przechylasz się do tyłu.', mis: 'pcha' },
       { t: 'Wiatr z otwartych drzwi.', fb: 'Drzwi są zamknięte, a i tak się przechylasz. To bezwładność.', mis: 'pcha' },
     ],
-    explain: 'Stojące ciało „chce” dalej stać. Stopy ruszają z podłogą, a tułów zostaje na chwilę z tyłu.' },
-  c1: { concept: 'C', scene: 'elevator', text: 'Jedziesz windą w górę ze stałą prędkością 2 m/s. Działają na Ciebie dwie siły: ciężar (w dół) i siła, z jaką podłoga windy działa na Ciebie (w górę). Jak mają się do siebie?',
-    hint: 'Prędkość windy jest STAŁA. Co mówi I zasada dynamiki o siłach przy stałej prędkości?',
+    explain: 'Ciało, które stoi, chce dalej stać. Stopy ruszają z autobusem, a tułów na chwilę zostaje z tyłu.' },
+  c1: { concept: 'C', scene: 'elevator', text: 'Jedziesz windą w górę, cały czas tak samo szybko (2 m/s). Działają na Ciebie dwie siły: ciężar ciągnie Cię w dół, a podłoga windy pcha Cię w górę. Która siła jest większa?',
+    hint: 'Winda jedzie cały czas tak samo szybko. Co mówi I zasada dynamiki?',
     preds: [
-      { t: 'Są równe, czyli się równoważą.', ok: true },
-      { t: 'Siła podłogi jest większa, bo jedziemy w górę.', fb: 'Gdyby siła w górę była większa, prędkość by rosła. Winda jedzie ze stałą prędkością, więc siły się równoważą. Kierunek ruchu nie mówi, która siła jest większa!', mis: 'kierunek' },
-      { t: 'Ciężar jest większy.', fb: 'Gdyby ciężar przeważał, prędkość w górę by malała. A jest stała.', mis: 'kierunek' },
+      { t: 'Są tak samo duże, czyli się znoszą.', ok: true },
+      { t: 'Podłoga pcha mocniej, bo jedziemy w górę.', fb: 'Gdyby podłoga pchała mocniej, winda jechałaby coraz szybciej. A jedzie cały czas tak samo. To, w którą stronę coś jedzie, nie mówi, która siła jest większa!', mis: 'kierunek' },
+      { t: 'Ciężar jest większy.', fb: 'Wtedy winda by zwalniała. A jedzie cały czas tak samo szybko.', mis: 'kierunek' },
     ],
     reasons: [
-      { t: 'Prędkość się nie zmienia, więc wypadkowa siła wynosi zero.', ok: true },
-      { t: 'Żeby coś jechało w górę, siła w górę musi przeważać.', fb: 'Przeważająca siła zmienia prędkość, a nie utrzymuje ruch. Do jazdy ze stałą prędkością wystarczy, że siły się równoważą.', mis: 'kierunek' },
-      { t: 'W jadącej windzie ciężar przestaje działać.', fb: 'Ciężar działa zawsze, także w windzie. Ziemia przyciąga Cię cały czas.', mis: 'zasada' },
+      { t: 'Prędkość się nie zmienia, więc siły się znoszą.', ok: true },
+      { t: 'Żeby jechać w górę, siła w górę musi być większa.', fb: 'Większa siła zmienia prędkość. Żeby jechać cały czas tak samo szybko, siły muszą się znosić.', mis: 'kierunek' },
+      { t: 'W windzie ciężar przestaje działać.', fb: 'Ziemia przyciąga Cię zawsze, także w windzie.', mis: 'zasada' },
     ],
-    explain: 'Stała prędkość oznacza wypadkową zero. Siły są przeciwnie skierowane i mają tę samą wartość.' },
-  c2: { concept: 'C', scene: 'para', text: 'Skoczek spadochronowy z otwartym spadochronem opada ze stałą prędkością 5 m/s. Jak ma się siła oporu powietrza do ciężaru skoczka?',
-    hint: 'Skoczek nie przyspiesza ani nie zwalnia. Co to mówi o siłach?',
+    explain: 'Stała prędkość oznacza, że siły się znoszą. Są tak samo duże i działają w przeciwne strony.' },
+  c2: { concept: 'C', scene: 'para', text: 'Skoczek ze spadochronem opada cały czas tak samo szybko (5 m/s). Działają na niego dwie siły: ciężar ciągnie w dół, a opór powietrza hamuje w górę. Która siła jest większa?',
+    hint: 'Skoczek nie przyspiesza i nie zwalnia. Co to mówi o siłach?',
     preds: [
-      { t: 'Są równe, czyli się równoważą.', ok: true },
-      { t: 'Ciężar jest większy, bo skoczek spada.', fb: 'Gdyby ciężar przeważał, skoczek spadałby coraz szybciej. A prędkość jest stała.', mis: 'kierunek' },
-      { t: 'Opór powietrza jest większy.', fb: 'Gdyby opór przeważał, skoczek zwalniałby. A prędkość jest stała.', mis: 'kierunek' },
+      { t: 'Są tak samo duże, czyli się znoszą.', ok: true },
+      { t: 'Ciężar jest większy, bo skoczek spada.', fb: 'Gdyby ciężar był większy, skoczek spadałby coraz szybciej. A spada cały czas tak samo.', mis: 'kierunek' },
+      { t: 'Opór powietrza jest większy.', fb: 'Wtedy skoczek by zwalniał. A spada cały czas tak samo szybko.', mis: 'kierunek' },
     ],
     reasons: [
-      { t: 'Prędkość jest stała, więc wypadkowa siła wynosi zero.', ok: true },
-      { t: 'Ciało może opadać tylko wtedy, gdy ciężar przeważa nad oporem.', fb: 'Przeważający ciężar oznacza przyspieszanie. Do opadania ze stałą prędkością siły muszą się równoważyć.', mis: 'kierunek' },
-      { t: 'Spadochron sprawia, że na skoczka nie działają żadne siły.', fb: 'Siły działają, i to dwie: ciężar w dół i opór powietrza w górę. Tylko się równoważą.', mis: 'zasada' },
+      { t: 'Prędkość się nie zmienia, więc siły się znoszą.', ok: true },
+      { t: 'Coś może spadać tylko wtedy, gdy ciężar jest większy od oporu.', fb: 'Większy ciężar oznacza spadanie coraz szybciej. Żeby spadać tak samo szybko, siły muszą się znosić.', mis: 'kierunek' },
+      { t: 'Spadochron sprawia, że na skoczka nie działa żadna siła.', fb: 'Działają dwie siły: ciężar w dół i opór powietrza w górę. Tylko się znoszą.', mis: 'zasada' },
     ],
-    explain: 'Do oporu powietrza wrócisz w temacie 28 „Opory ruchu” (s. 183).' },
+    explain: 'Prędkość jest stała, więc siły się znoszą. Do oporu powietrza wrócisz w temacie 28 „Opory ruchu” (s. 183).' },
 
   d1: { concept: 'D', text: 'Statek zadokował. Dlaczego trzeba było włączyć silnik w przeciwną stronę?',
     hint: 'Co robił statek, gdy silniki były wyłączone?',
     opts: [
-      { t: 'Po wyłączeniu silnika statek leciał ze stałą prędkością. Żeby go zatrzymać, potrzebna była siła skierowana przeciwnie do ruchu.', ok: true },
-      { t: 'Bo po wyłączeniu silnika statek sam przyspieszał.', fb: 'Bez siły prędkość się nie zmienia. Statek nie przyspieszał, tylko leciał ze stałą prędkością.', mis: 'niesie' },
-      { t: 'Bo w kosmosie statek zwalnia za wolno.', fb: 'W kosmosie bez silnika statek w ogóle nie zwalnia. Nie ma tarcia ani oporu powietrza.', mis: 'ruch_sila' },
-      { t: 'Żeby zużyć resztę paliwa przed dokowaniem.', fb: 'Paliwo zostało użyte do zmiany prędkości, czyli do hamowania. O to właśnie chodziło.' },
+      { t: 'Bez silnika statek leciał cały czas tak samo szybko. Żeby go zatrzymać, potrzebna była siła w przeciwną stronę.', ok: true },
+      { t: 'Bo po wyłączeniu silnika statek sam przyspieszał.', fb: 'Bez siły prędkość się nie zmienia. Statek nie przyspieszał, tylko leciał cały czas tak samo.', mis: 'niesie' },
+      { t: 'Bo w kosmosie statek zwalnia za wolno.', fb: 'W kosmosie statek bez silnika w ogóle nie zwalnia. Nie ma tarcia ani powietrza.', mis: 'ruch_sila' },
+      { t: 'Żeby zużyć resztę paliwa przed dokowaniem.', fb: 'Paliwo było potrzebne do hamowania, czyli do zmiany prędkości. O to właśnie chodziło.' },
     ],
-    explain: 'Do zmiany prędkości, także do hamowania, potrzebna jest siła. To dokładnie I zasada dynamiki.' },
+    explain: 'Żeby zmienić prędkość, także żeby zahamować, potrzebna jest siła. To I zasada dynamiki.' },
 };
 
 const STAGES = {
-  s1: { label: 'Etap ★ · Pamiętam', ids: ['p1', 'p2', 'p3'], spare: ['p4', 'p5'], minRead: 3 },
+  s1: { label: 'Etap ★ · Pamiętam', ids: ['p3', 'p4', 'p5'], spare: ['p1', 'p2'], minRead: 3 },
   s2: { label: 'Etap ★★ · Rozumiem', ids: ['a1', 'b1', 'c1'], variants: { A: ['a2'], B: ['b2'], C: ['c2'] }, minRead: 5 },
   s3: { label: 'Etap ★★★ · Stosuję', ids: ['d1'], minRead: 3 },
 };
@@ -751,6 +1102,7 @@ function nextQuestion() {
   if (!st.queue.length) return finishStage();
   const item = st.queue.shift();
   const q = Q[item.id];
+  if (cur) clearInterval(cur.timer);
   cur = { item, q, sel: { pred: null, reason: null, opt: null }, hintUsed: false, ready: false, answered: false };
   const originals = st.cfg.ids.length;
   $('#qStage').textContent = st.cfg.label;
@@ -786,11 +1138,10 @@ function nextQuestion() {
   } else $('#qSceneWrap').hidden = true;
   // czas na przeczytanie
   let left = st.cfg.minRead;
-  const btn = $('#qCheck'); btn.disabled = true; btn.textContent = `Czytaj uważnie… ${left}`;
-  clearInterval(cur.timer);
+  const btn = $('#qCheck'); btn.disabled = true; btn.textContent = `Przeczytaj uważnie… ${left}`;
   cur.timer = setInterval(() => {
     left--; if (left <= 0) { clearInterval(cur.timer); cur.ready = true; btn.textContent = 'Sprawdź'; updateCheck(); }
-    else btn.textContent = `Czytaj uważnie… ${left}`;
+    else btn.textContent = `Przeczytaj uważnie… ${left}`;
   }, 1000);
 }
 function updateCheck() {
@@ -818,8 +1169,8 @@ $('#qCheck').addEventListener('click', () => {
   if (q.preds) {
     const p = mark('pred', q.preds), r = mark('reason', q.reasons);
     ok = p && r;
-    if (p && !r) partial = 'Wynik przewidziany dobrze, ale uzasadnienie jest błędne. A to właśnie uzasadnienie pokazuje, czy temat jest zrozumiany.';
-    if (!p && r) partial = 'Uzasadnienie jest dobre, ale wniosek z niego nie pasuje. Przeczytaj jeszcze raz, co się stanie.';
+    if (p && !r) partial = '„Co się stanie” jest dobrze, ale „dlaczego” jest źle. A właśnie „dlaczego” pokazuje, że rozumiesz.';
+    if (!p && r) partial = '„Dlaczego” jest dobrze, ale „co się stanie” nie pasuje. Przeczytaj jeszcze raz.';
   } else ok = mark('opt', q.opts);
 
   S.asked++;
@@ -836,9 +1187,9 @@ $('#qCheck').addEventListener('click', () => {
   fbs.forEach(s => { if (s) { const p = document.createElement('p'); p.textContent = s; fb.append(p); } });
   const ex = document.createElement('p'); ex.innerHTML = '<b>Wyjaśnienie:</b> '; ex.append(q.explain); fb.append(ex);
   if (gained) { const x = document.createElement('p'); x.className = 'xp-pop'; x.textContent = `+${gained} XP` + (cur.hintUsed && first ? ' (z podpowiedzią)' : ''); fb.append(x); }
-  const src = document.createElement('p'); src.className = 'src'; src.textContent = 'Spotkania z fizyką 7, temat 24, s. 162'; fb.append(src);
+  const src = document.createElement('p'); src.className = 'src'; src.textContent = 'Spotkania z fizyką 7, temat 24, s. 162 · pojęcia w Słowniczku'; fb.append(src);
 
-  // po błędzie: nowy wariant zamiast ponownego klikania tej samej odpowiedzi
+  // po błędzie: nowe zadanie w innej sytuacji zamiast ponownego klikania tej samej odpowiedzi
   if (!ok) {
     const key = q.concept; st.tries[key] = (st.tries[key] || 0) + 1;
     if (st.tries[key] < 3) {
@@ -894,25 +1245,25 @@ function dockStep(dt) {
   const dist = DK.goal - dock.x;
   if (dock.x >= DK.goal) {
     if (Math.abs(dock.v) <= DK.maxV) return dockWin();
-    return dockFail(`Statek uderzył w stację z prędkością ${fmt(dock.v, 2)} m/s. Po wyłączeniu silnika statek nie zwalnia sam, bo w kosmosie nie ma tarcia ani oporu powietrza. Przed stacją trzeba zahamować silnikiem wstecznym.`);
+    return dockFail(`Statek uderzył w stację z prędkością ${fmt(dock.v, 2)} m/s. Bez silnika statek wcale nie zwalnia, bo w kosmosie nic go nie hamuje. Przed stacją włącz silnik wsteczny.`);
   }
   if (dist <= 1.5 && Math.abs(dock.v) <= 0.2 && !dock.thr) { dock.still += dt; if (dock.still > 0.8) return dockWin(); } else dock.still = 0;
-  if (dock.x < -6) return dockFail('Statek odleciał w przeciwną stronę. Silnik wsteczny dał siłę do tyłu tak długo, że statek zaczął się cofać, i nic go nie zatrzymało.');
-  if (dock.fuel <= 0 && dock.v < 0.15 && dist > 2) return dockFail('Skończyło się paliwo, a statek prawie stoi daleko od stacji. Rozpędzaj się krócej. W kosmosie wystarczy krótkie pchnięcie, bo potem statek sam leci dalej ze stałą prędkością.');
+  if (dock.x < -6) return dockFail('Statek odleciał do tyłu. Silnik wsteczny pracował za długo.');
+  if (dock.fuel <= 0 && dock.v < 0.15 && dist > 2) return dockFail('Skończyło się paliwo, a statek stoi daleko od stacji. Rozpędzaj się krócej. W kosmosie wystarczy krótkie pchnięcie, a statek sam poleci dalej.');
   $('#d-dist').textContent = fmt(Math.max(0, dist)) + ' m';
   $('#d-v').textContent = fmt(dock.v, 2) + ' m/s';
   $('#d-fuel').textContent = Math.round(dock.fuel) + '%';
   let s;
-  if (dock.thr && dock.fuel > 0) s = dock.thr > 0 ? 'Silnik pracuje do przodu → siła w przód → prędkość rośnie.' : (dock.v > 0 ? 'Silnik wsteczny: siła przeciwna do ruchu → statek zwalnia.' : 'Silnik wsteczny: siła do tyłu → statek przyspiesza w tył.');
-  else if (Math.abs(dock.v) > 0.01) s = 'Silniki wyłączone. Wypadkowa = 0 → statek leci ze STAŁĄ prędkością.';
-  else s = 'Statek stoi. Wypadkowa = 0 → pozostaje w spoczynku.';
+  if (dock.thr && dock.fuel > 0) s = dock.thr > 0 ? 'Silnik pcha do przodu → statek przyspiesza.' : (dock.v > 0 ? 'Silnik wsteczny pcha do tyłu → statek zwalnia.' : 'Silnik wsteczny pcha do tyłu → statek leci do tyłu coraz szybciej.');
+  else if (Math.abs(dock.v) > 0.01) s = 'Silniki wyłączone. Nic nie pcha i nic nie hamuje → statek leci cały czas tak samo szybko.';
+  else s = 'Statek stoi. Nic go nie pcha.';
   $('#dockStatus').textContent = s;
 }
 function dockWin() {
   dock.state = 'won'; dock.x = Math.min(dock.x, DK.goal); dock.v = 0;
   setXP(S.dockAttempts <= 3 ? 15 : 8);
   const fb = $('#dockFb'); fb.hidden = false; fb.className = 'fb good';
-  fb.innerHTML = `<div class="tag">Zadokowano!</div><p>Zaczepy portu złapały statek${S.dockAttempts > 1 ? ` w próbie nr ${S.dockAttempts}` : ' za pierwszym razem'}. Zostało ${Math.round(dock.fuel)}% paliwa.</p><p class="xp-pop">+${S.dockAttempts <= 3 ? 15 : 8} XP</p>`;
+  fb.innerHTML = `<div class="tag">Zadokowano!</div><p>Port złapał statek${S.dockAttempts > 1 ? ` w próbie nr ${S.dockAttempts}` : ' za pierwszym razem'}. Zostało ${Math.round(dock.fuel)}% paliwa.</p><p class="xp-pop">+${S.dockAttempts <= 3 ? 15 : 8} XP</p>`;
   const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Ostatnie pytanie'; b.addEventListener('click', () => startStage('s3'));
   const a = document.createElement('div'); a.className = 'actions'; a.append(b); fb.append(a);
   $('#dockStatus').textContent = 'Statek stoi przy porcie.';
@@ -922,13 +1273,13 @@ function dockFail(msg) {
   const fb = $('#dockFb'); fb.hidden = false; fb.className = 'fb bad';
   fb.innerHTML = `<div class="tag">Nie udało się.</div>`;
   const p = document.createElement('p'); p.textContent = msg; fb.append(p);
-  const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Spróbuj ponownie';
+  const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Spróbuj jeszcze raz';
   b.addEventListener('click', () => { S.dockAttempts++; dockReset(); });
   const a = document.createElement('div'); a.className = 'actions'; a.append(b); fb.append(a);
 }
 const DOCK_HINTS = [
-  'Po puszczeniu silnika statek nie zwolni sam. W kosmosie nie ma tarcia.',
-  'Plan: krótko silnik ▶ (ok. 1 s), potem lecisz bez silnika, a kilka metrów przed stacją tak samo krótko silnik wsteczny ◀.',
+  'Gdy puścisz silnik, statek sam nie zwolni. W kosmosie nic go nie hamuje.',
+  'Plan: krótko silnik ▶ (około 1 sekundy). Potem lecisz bez silnika. Kilka metrów przed stacją tak samo krótko silnik wsteczny ◀.',
 ];
 $('#dockHintBtn').addEventListener('click', () => {
   const h = $('#dockHint'); h.hidden = false;
@@ -964,7 +1315,7 @@ function dockDraw() {
     if (dock.thr > 0) { ctx.beginPath(); ctx.moveTo(nx - 46, y - 7); ctx.lineTo(nx - 46 - fl, y); ctx.lineTo(nx - 46, y + 7); ctx.fill(); }
     else { [-14, 14].forEach(o => { ctx.beginPath(); ctx.moveTo(nx - 14, y + o - 4); ctx.lineTo(nx - 14 + fl, y + o); ctx.lineTo(nx - 14, y + o + 4); ctx.fill(); }); }
     const L = 60 * dock.thr;
-    arrow(ctx, nx - 23, y - 34, nx - 23 + L, y - 34, col('amber'), 'F silnika', { x: nx - 23 + L / 2, y: y - 50 });
+    arrow(ctx, nx - 23, y - 34, nx - 23 + L, y - 34, col('amber'), 'siła silnika', { x: nx - 23 + L / 2, y: y - 50 });
   }
   if (Math.abs(dock.v) > 0.02) {
     const L = Math.max(-120, Math.min(120, dock.v * 18));
@@ -997,20 +1348,24 @@ function endScreen() {
   stopLoop(); show('end'); setStep('end');
   const n = starCount();
   paintStars($('#endStars'), n);
-  $('#endTitle').textContent = n === 3 ? 'Moduł manewrowy naprawiony w 100%' : n > 0 ? 'Moduł manewrowy działa, ale wymaga serwisu' : 'Moduł ruszył, ale trzeba do niego wrócić';
+  $('#endTitle').textContent = n === 3 ? 'Moduł naprawiony w 100%!' : n > 0 ? 'Moduł działa, ale trzeba go jeszcze dokręcić' : 'Moduł ruszył, ale trzeba do niego wrócić';
   $('#endXp').textContent = `Zdobyte XP: ${S.xp}`;
   const ul = $('#endMis'); ul.innerHTML = '';
   const ids = Object.keys(S.mis).sort((a, b) => S.mis[b] - S.mis[a]);
-  if (!ids.length) { const li = document.createElement('li'); li.textContent = 'Nic! Wszystkie odpowiedzi poprawne za pierwszym razem.'; ul.append(li); }
-  ids.forEach(id => { const li = document.createElement('li'); li.innerHTML = `<b></b> `; li.querySelector('b').textContent = MIS[id].name; li.append(MIS[id].tip); ul.append(li); });
+  if (!ids.length) { const li = document.createElement('li'); li.textContent = 'Nic! Wszystko dobrze za pierwszym razem.'; ul.append(li); }
+  ids.forEach(id => { const li = document.createElement('li'); li.innerHTML = `<b></b> `; li.querySelector('b').textContent = MIS[id].name + ':'; li.append(MIS[id].tip); ul.append(li); });
   const starTxt = ['Pamiętam', 'Rozumiem', 'Stosuję'].map((l, i) => `${l}: ${[S.stars.s1, S.stars.s2, S.stars.s3][i] ? 'zaliczone' : 'do poprawy'}`).join(', ');
+  termList($('#endTerms'));
+  const tc = termCounts();
+  const termTxt = ` Pojęcia: ${tc.ok} z ${GLOS.length} od razu, ${tc.retry} po powtórce` + (tc.weak.length ? `, do powtórki: ${tc.weak.join(', ')}.` : '.');
   const misTxt = ids.length ? ' Pojawiły się błędne przekonania: ' + ids.map(id => MIS[id].name).join('; ') + '. Warto o nich porozmawiać.' : ' Bez błędnych przekonań.';
-  $('#endParent').textContent = `Temat 24 (I zasada dynamiki, bezwładność). ${starTxt}. Poprawne za pierwszym razem: ${S.firstTry} z ${S.asked} zadań. Dokowanie: ${S.dockAttempts} ${S.dockAttempts === 1 ? 'próba' : S.dockAttempts < 5 ? 'próby' : 'prób'}.${misTxt} ${n === 3 ? 'Za 2 dni warto powtórzyć poziom, żeby temat był opanowany.' : 'Proponuję powtórzyć poziom jutro.'}`;
+  $('#endParent').textContent = `Temat 24 (I zasada dynamiki, bezwładność). ${starTxt}. Poprawne za pierwszym razem: ${S.firstTry} z ${S.asked} zadań. Dokowanie: ${S.dockAttempts} ${S.dockAttempts === 1 ? 'próba' : S.dockAttempts < 5 ? 'próby' : 'prób'}.${termTxt}${misTxt} ${n === 3 ? 'Za 2 dni warto powtórzyć poziom, żeby temat był opanowany.' : 'Proponuję powtórzyć poziom jutro.'}`;
   const best = load();
   if (!best || n > best.stars || (n === best.stars && S.xp > best.xp)) save({ stars: n, xp: S.xp, date: new Date().toISOString().slice(0, 10) });
 }
 function resetAll() {
-  Object.assign(S, { xp: 0, stars: { s1: false, s2: false, s3: false }, mis: {}, firstTry: 0, asked: 0, dockAttempts: 0 });
+  Object.assign(S, { xp: 0, stars: { s1: false, s2: false, s3: false }, mis: {}, firstTry: 0, asked: 0, dockAttempts: 0, terms: {} });
+  renderGlossary();
   $('#xp').textContent = '0'; refreshStars();
   Object.assign(lab, { x: 0, v: 0, push: false, wasPush: false, release: null, done: { hangar: false, ice: false, space: false }, qOk: false });
   labSetSurf('hangar'); labChecklist(); $('#labConclusion').hidden = true; $('#labNext').disabled = true; $('#labQfb').textContent = '';
@@ -1021,5 +1376,6 @@ $('#startBtn').addEventListener('click', labStart);
 $('#againBtn').addEventListener('click', () => { resetAll(); show('start'); setStep(''); showBest(); });
 function showBest() { const b = load(); $('#best').textContent = b ? `Najlepszy wynik: ${'★'.repeat(b.stars)}${'☆'.repeat(3 - b.stars)} · ${b.xp} XP · ${b.date}` : ''; }
 showBest();
+renderGlossary();
 })();
 </script>
