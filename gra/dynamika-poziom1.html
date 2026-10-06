@@ -1,0 +1,1025 @@
+<title>Misja Orion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&family=Saira+Condensed:wght@500;700&display=swap">
+<style>
+/* Layout: konsola pokładowa — pasek HUD, etapy misji, jeden panel roboczy naraz */
+:root {
+  --space: #0c1322;
+  --panel: #141e33;
+  --panel-2: #1b2844;
+  --line: #2b3c62;
+  --ink: #eaf0fa;
+  --muted: #9aabcb;
+  --amber: #ffb24a;
+  --cyan: #62d4e8;
+  --ok: #74df93;
+  --bad: #ff7d6e;
+  --ice: #bfe3f2;
+  --floor: #4a4f5e;
+  --crate: #c98a3d;
+  --f-display: "Saira Condensed", "Arial Narrow", sans-serif;
+  --f-body: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--space); color: var(--ink); }
+body { font-family: var(--f-body); font-size: 17px; line-height: 1.55; }
+.app { max-width: 880px; margin: 0 auto; padding-inline: 16px; padding-block: 16px 56px; display: grid; gap: 16px; }
+
+.hud { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--amber); }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; line-height: 1.1; text-wrap: balance; margin: 0; }
+h1 { font-size: 30px; letter-spacing: .01em; }
+h2 { font-size: 26px; }
+h3 { font-size: 20px; }
+.meters { display: flex; gap: 10px; align-items: center; }
+.meter { font-family: var(--f-mono); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; display: flex; gap: 8px; align-items: baseline; font-variant-numeric: tabular-nums; }
+.meter span { font-size: 12px; color: var(--muted); letter-spacing: .1em; }
+.meter b { font-size: 18px; color: var(--amber); }
+.stars { font-size: 20px; letter-spacing: 2px; color: var(--line); }
+.stars .on { color: var(--amber); }
+
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.steps li { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; padding: 5px 10px; border-radius: 4px; color: var(--muted); border: 1px solid var(--line); }
+.steps li.cur { color: var(--space); background: var(--amber); border-color: var(--amber); }
+.steps li.done { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, var(--line)); }
+
+section { display: grid; gap: 16px; }
+.lead { color: var(--muted); max-width: 62ch; margin: 0; }
+p { margin: 0; max-width: 65ch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 12px; min-width: 0; }
+
+canvas { display: block; width: 100%; max-width: 100%; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); touch-action: none; }
+
+button { font: inherit; cursor: pointer; }
+button:focus-visible, a:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+.btn { font-family: var(--f-display); font-weight: 700; font-size: 19px; letter-spacing: .04em; padding: 10px 22px; border-radius: 6px; border: 1px solid var(--amber); background: var(--amber); color: var(--space); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn.hold { min-width: 150px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.btn.hold.active { background: var(--cyan); border-color: var(--cyan); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { font-family: var(--f-mono); font-size: 13px; padding: 7px 12px; border-radius: 5px; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); }
+.seg button[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); }
+
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.ro { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-family: var(--f-mono); font-variant-numeric: tabular-nums; min-width: 0; }
+.ro span { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.ro b { font-size: 18px; }
+.status { font-family: var(--f-mono); font-size: 14px; color: var(--cyan); min-height: 2.6em; }
+
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.checklist li { display: flex; gap: 10px; align-items: baseline; color: var(--muted); }
+.checklist li::before { content: ""; flex: none; width: 14px; height: 14px; border-radius: 3px; border: 2px solid var(--line); transform: translateY(2px); }
+.checklist li.ok { color: var(--ink); }
+.checklist li.ok::before { background: var(--ok); border-color: var(--ok); }
+
+.law { border-left: 4px solid var(--amber); background: var(--panel-2); padding: 12px 16px; border-radius: 0 8px 8px 0; display: grid; gap: 6px; }
+.law strong { font-family: var(--f-display); font-size: 18px; letter-spacing: .03em; color: var(--amber); }
+.src { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+
+.map { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
+.node { border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 2px; background: var(--panel); min-width: 0; }
+.node .n { font-family: var(--f-mono); font-size: 11px; color: var(--muted); letter-spacing: .08em; }
+.node b { font-family: var(--f-display); font-size: 16px; line-height: 1.15; }
+.node.active { border-color: var(--amber); box-shadow: 0 0 0 1px var(--amber) inset; }
+.node.locked { opacity: .5; }
+
+.qhead { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-family: var(--f-mono); font-size: 13px; color: var(--muted); }
+.retry { font-family: var(--f-mono); font-size: 13px; color: var(--cyan); }
+.group { display: grid; gap: 8px; }
+.group h3 { font-size: 17px; color: var(--muted); font-family: var(--f-mono); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+.opt { text-align: left; padding: 11px 14px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); line-height: 1.4; }
+.opt:hover:not(:disabled) { border-color: var(--muted); }
+.opt[aria-pressed="true"] { border-color: var(--amber); box-shadow: 0 0 0 1px var(--amber) inset; }
+.opt.good { border-color: var(--ok); box-shadow: 0 0 0 1px var(--ok) inset; }
+.opt.bad { border-color: var(--bad); box-shadow: 0 0 0 1px var(--bad) inset; }
+.opt:disabled { cursor: default; }
+.hint { border: 1px dashed var(--cyan); color: var(--cyan); border-radius: 8px; padding: 10px 14px; }
+.fb { border-radius: 8px; padding: 14px 16px; display: grid; gap: 8px; background: var(--panel-2); border: 1px solid var(--line); }
+.fb.good { border-color: var(--ok); }
+.fb.bad { border-color: var(--bad); }
+.fb .tag { font-family: var(--f-display); font-size: 20px; font-weight: 700; }
+.fb.good .tag { color: var(--ok); }
+.fb.bad .tag { color: var(--bad); }
+.xp-pop { font-family: var(--f-mono); color: var(--amber); }
+
+.result-stars { font-size: 46px; letter-spacing: 6px; color: var(--line); }
+.result-stars .on { color: var(--amber); }
+ul.clean { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+a { color: var(--cyan); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <header class="hud">
+    <div>
+      <div class="eyebrow">Misja Orion · Świat: Dynamika</div>
+      <h1>Moduł 1 · Bezwładność</h1>
+    </div>
+    <div class="meters">
+      <div class="meter"><span>XP</span><b id="xp">0</b></div>
+      <div class="meter stars" id="hudStars" aria-label="Gwiazdki"><i>★</i><i>★</i><i>★</i></div>
+    </div>
+  </header>
+
+  <ol class="steps" id="steps">
+    <li data-s="lab">Laboratorium</li>
+    <li data-s="s1">★ Pamiętam</li>
+    <li data-s="s2">★★ Rozumiem</li>
+    <li data-s="s3">★★★ Stosuję</li>
+    <li data-s="end">Raport</li>
+  </ol>
+
+  <main>
+    <!-- START -->
+    <section id="scr-start">
+      <div class="panel">
+        <span class="eyebrow">Komunikat z mostka</span>
+        <h2>Inżynierze, Orion ma awarię.</h2>
+        <p>Statek musi wrócić na Ziemię przed oknem startowym. System manewrowy nie działa, bo komputer pokładowy zapomniał, jak poruszają się ciała. Naprawisz go tylko wtedy, gdy sam to zrozumiesz.</p>
+        <p class="lead">Każdy moduł statku to jeden temat z działu „Dynamika”. Gwiazdki zdobywasz za myślenie, nie za szybkie klikanie.</p>
+      </div>
+      <div class="map" aria-label="Mapa modułów">
+        <div class="node active"><span class="n">TEMAT 24 · S. 162</span><b>I zasada dynamiki, bezwładność</b></div>
+        <div class="node locked"><span class="n">TEMAT 25 · S. 169</span><b>II zasada dynamiki</b></div>
+        <div class="node locked"><span class="n">TEMAT 26 · S. 174</span><b>Swobodne spadanie ciał</b></div>
+        <div class="node locked"><span class="n">TEMAT 27 · S. 179</span><b>III zasada, odrzut</b></div>
+        <div class="node locked"><span class="n">TEMAT 28 · S. 183</span><b>Opory ruchu</b></div>
+        <div class="node locked"><span class="n">S. 190</span><b>Boss: powtórzenie działu</b></div>
+      </div>
+      <p class="src" id="best"></p>
+      <div class="actions"><button class="btn" id="startBtn">Rozpocznij naprawę</button></div>
+    </section>
+
+    <!-- LABORATORIUM -->
+    <section id="scr-lab" hidden>
+      <div class="panel">
+        <span class="eyebrow">Etap 0 · Laboratorium</span>
+        <h2>Jak zachowuje się skrzynia, gdy przestajesz ją pchać?</h2>
+        <p>Wybierz miejsce. Przytrzymaj <b>PCHAJ</b> (albo spację) przez chwilę, potem puść i obserwuj prędkość i strzałki sił. Zrób to w każdym z trzech miejsc.</p>
+      </div>
+      <div class="seg" role="group" aria-label="Miejsce eksperymentu">
+        <button id="surf-hangar" data-surf="hangar" aria-pressed="true">Hangar (szorstka podłoga)</button>
+        <button id="surf-ice" data-surf="ice" aria-pressed="false">Lodowisko</button>
+        <button id="surf-space" data-surf="space" aria-pressed="false">Kosmos</button>
+      </div>
+      <canvas id="labCanvas" aria-label="Symulacja skrzyni"></canvas>
+      <div class="readouts">
+        <div class="ro"><span>Prędkość v</span><b id="ro-v">0,0 m/s</b></div>
+        <div class="ro"><span>Pchnięcie F</span><b id="ro-f">0 N</b></div>
+        <div class="ro"><span>Tarcie T</span><b id="ro-t">0 N</b></div>
+        <div class="ro"><span>Wypadkowa</span><b id="ro-w">0 N</b></div>
+      </div>
+      <p class="status" id="labStatus"></p>
+      <div class="actions">
+        <button class="btn hold" id="pushBtn">PCHAJ</button>
+        <button class="btn ghost" id="labReset">Ustaw skrzynię od nowa</button>
+      </div>
+      <div class="panel">
+        <h3>Twoje eksperymenty</h3>
+        <ul class="checklist">
+          <li id="chk-hangar">Pchnij i puść skrzynię w hangarze</li>
+          <li id="chk-ice">Pchnij i puść skrzynię na lodowisku</li>
+          <li id="chk-space">Pchnij i puść skrzynię w kosmosie</li>
+        </ul>
+      </div>
+      <div class="panel" id="labConclusion" hidden>
+        <span class="eyebrow">Co zaobserwowano</span>
+        <ul class="clean">
+          <li><b>Hangar:</b> po puszczeniu skrzynia szybko staje, bo hamuje ją duże tarcie.</li>
+          <li><b>Lodowisko:</b> tarcie jest malutkie, więc skrzynia zwalnia bardzo powoli.</li>
+          <li><b>Kosmos:</b> nie ma tarcia ani oporu powietrza. Po puszczeniu na skrzynię nie działa żadna siła, więc jedzie dalej ze stałą prędkością. Bez końca.</li>
+        </ul>
+        <p><b>Wniosek:</b> do samego ruchu siła nie jest potrzebna. Siła jest potrzebna, żeby prędkość <b>zmienić</b>: rozpędzić, zahamować albo skręcić.</p>
+        <div class="law">
+          <strong>I zasada dynamiki Newtona</strong>
+          <span>Jeżeli na ciało nie działa żadna siła lub działające siły się równoważą, to ciało pozostaje w spoczynku lub porusza się ruchem jednostajnym prostoliniowym.</span>
+        </div>
+        <div class="law">
+          <strong>Bezwładność</strong>
+          <span>To właściwość każdego ciała: ciało „trzyma się” swojego stanu ruchu. Stojące chce stać, jadące chce jechać dalej z tą samą prędkością. <b>Miarą bezwładności jest masa</b>: im większa masa, tym trudniej zmienić prędkość ciała.</span>
+        </div>
+        <p class="src">Więcej: Spotkania z fizyką 7, temat 24, s. 162</p>
+        <div class="group" id="labQ">
+          <h3>Pytanie kontrolne</h3>
+          <p>W którym miejscu skrzynia po puszczeniu jechała ze stałą prędkością?</p>
+          <button class="opt" data-ok="0" data-fb="W hangarze skrzynia szybko się zatrzymała. Zwalniała, czyli jej prędkość się zmieniała.">W hangarze</button>
+          <button class="opt" data-ok="0" data-fb="Prawie! Na lodzie zwalniała bardzo powoli, ale jednak zwalniała, bo działało małe tarcie. Spójrz na odczyt prędkości.">Na lodowisku</button>
+          <button class="opt" data-ok="1" data-fb="">W kosmosie</button>
+          <p id="labQfb" class="status"></p>
+        </div>
+        <div class="actions"><button class="btn" id="labNext" disabled>Dalej: ★ Pamiętam</button></div>
+      </div>
+    </section>
+
+    <!-- QUIZ (etapy Pamiętam / Rozumiem / pytanie po dokowaniu) -->
+    <section id="scr-quiz" hidden>
+      <div class="qhead"><span class="eyebrow" id="qStage"></span><span id="qCount"></span></div>
+      <p class="retry" id="qRetry" hidden>Sprawdźmy to jeszcze raz, w innej sytuacji.</p>
+      <h2 id="qText"></h2>
+      <div id="qSceneWrap" hidden>
+        <canvas id="qCanvas" aria-label="Scena do zadania"></canvas>
+      </div>
+      <div id="qGroups" class="group"></div>
+      <div class="hint" id="qHint" hidden></div>
+      <div class="fb" id="qFb" hidden></div>
+      <div class="actions">
+        <button class="btn ghost" id="qHintBtn">Podpowiedź</button>
+        <button class="btn" id="qCheck" disabled>Sprawdź</button>
+        <button class="btn" id="qNext" hidden>Dalej</button>
+      </div>
+    </section>
+
+    <!-- DOKOWANIE -->
+    <section id="scr-dock" hidden>
+      <div class="panel">
+        <span class="eyebrow">Etap ★★★ · Stosuję</span>
+        <h2>Zadokuj Oriona przy stacji serwisowej</h2>
+        <p>Silnik działa tylko wtedy, gdy go trzymasz. Doleć do portu i zatrzymaj się przy nim z prędkością najwyżej <b>0,6 m/s</b>. Paliwa starczy na kilka sekund pracy silników.</p>
+      </div>
+      <canvas id="dockCanvas" aria-label="Symulacja dokowania"></canvas>
+      <div class="readouts">
+        <div class="ro"><span>Do portu</span><b id="d-dist">60,0 m</b></div>
+        <div class="ro"><span>Prędkość</span><b id="d-v">0,00 m/s</b></div>
+        <div class="ro"><span>Paliwo</span><b id="d-fuel">100%</b></div>
+        <div class="ro"><span>Próba</span><b id="d-att">1</b></div>
+      </div>
+      <p class="status" id="dockStatus"></p>
+      <div class="actions">
+        <button class="btn hold" id="thrBack">◀ Silnik wsteczny</button>
+        <button class="btn hold" id="thrFwd">Silnik ▶</button>
+        <button class="btn ghost" id="dockHintBtn">Podpowiedź</button>
+      </div>
+      <div class="hint" id="dockHint" hidden></div>
+      <div class="fb" id="dockFb" hidden></div>
+    </section>
+
+    <!-- RAPORT -->
+    <section id="scr-end" hidden>
+      <div class="panel">
+        <span class="eyebrow">Raport z naprawy</span>
+        <h2 id="endTitle">Moduł manewrowy naprawiony</h2>
+        <div class="result-stars" id="endStars"><i>★</i><i>★</i><i>★</i></div>
+        <p id="endXp" class="xp-pop"></p>
+      </div>
+      <div class="panel" id="endMisWrap">
+        <h3>Do powtórki</h3>
+        <ul class="clean" id="endMis"></ul>
+      </div>
+      <div class="panel">
+        <h3>Dla rodzica</h3>
+        <p id="endParent"></p>
+        <p class="src">Materiał: Spotkania z fizyką 7, temat 24 „Pierwsza zasada dynamiki Newtona – bezwładność”, s. 162–168. Jeśli coś nadal jest niejasne, warto przeczytać ten temat razem albo zadać pytanie w NotebookLM z wgranymi stronami podręcznika: <a href="https://notebooklm.google.com" target="_blank" rel="noopener">notebooklm.google.com</a></p>
+      </div>
+      <div class="map">
+        <div class="node"><span class="n">NASTĘPNY · S. 169</span><b>II zasada dynamiki</b><span class="src">wkrótce</span></div>
+      </div>
+      <div class="actions"><button class="btn ghost" id="againBtn">Zagraj od nowa</button></div>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const css = getComputedStyle(document.documentElement);
+const col = n => css.getPropertyValue('--' + n).trim();
+const fmt = (n, d = 1) => n.toFixed(d).replace('.', ',');
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+// ---------- stan gry ----------
+const S = { xp: 0, stars: { s1: false, s2: false, s3: false }, mis: {}, firstTry: 0, asked: 0, dockAttempts: 0 };
+
+const MIS = {
+  ruch_sila: { name: '„Żeby coś się ruszało, musi działać siła”', tip: 'Siła jest potrzebna do zmiany prędkości, a nie do samego ruchu. Ciała na Ziemi zwalniają przez tarcie i opór powietrza.' },
+  pcha: { name: '„Przy hamowaniu coś pcha nas do przodu”', tip: 'Nic nas nie pcha. To pojazd zwalnia, a nasze ciało z powodu bezwładności zachowuje swoją prędkość.' },
+  kierunek: { name: '„Siła w stronę ruchu musi przeważać”', tip: 'Przy stałej prędkości siły się równoważą, niezależnie od tego, w którą stronę ciało jedzie.' },
+  masa: { name: '„Bezwładność zależy od rozmiaru, prędkości albo ciężaru”', tip: 'Miarą bezwładności jest masa. Bezwładność ma każde ciało, także stojące.' },
+  zasada: { name: 'Niepełna treść I zasady dynamiki', tip: 'Siły się równoważą (albo nie działają) → spoczynek LUB ruch jednostajny prostoliniowy.' },
+  niesie: { name: '„Ciało niesie w sobie siłę, którą dostało”', tip: 'Siła działa tylko w czasie kontaktu. Potem ciało ma prędkość, a nie siłę.' },
+};
+const addMis = id => { if (id) S.mis[id] = (S.mis[id] || 0) + 1; };
+
+function setXP(d) { S.xp += d; $('#xp').textContent = S.xp; }
+function paintStars(el, n) { [...el.children].forEach((c, i) => c.classList.toggle('on', i < n)); }
+const starCount = () => (S.stars.s1 ? 1 : 0) + (S.stars.s2 ? 1 : 0) + (S.stars.s3 ? 1 : 0);
+function refreshStars() { paintStars($('#hudStars'), starCount()); }
+
+// ---------- pętla animacji (jedna naraz) ----------
+let raf = null;
+function runLoop(fn) {
+  stopLoop();
+  let t0 = null, last = null;
+  const step = now => {
+    if (t0 === null) { t0 = now; last = now; }
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    fn((now - t0) / 1000, dt);
+    raf = requestAnimationFrame(step);
+  };
+  raf = requestAnimationFrame(step);
+}
+function stopLoop() { if (raf) cancelAnimationFrame(raf); raf = null; }
+
+function fit(c, ratio, minH = 200, maxH = 380) {
+  const w = c.clientWidth || 600;
+  const h = Math.max(minH, Math.min(maxH, Math.round(w * ratio)));
+  const dpr = window.devicePixelRatio || 1;
+  if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) {
+    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); c.style.height = h + 'px';
+  }
+  const ctx = c.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+
+function arrow(ctx, x1, y1, x2, y2, color, label, lpos) {
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  if (len < 3) return;
+  const a = Math.atan2(y2 - y1, x2 - x1), hl = Math.min(12, len * 0.6);
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2 - Math.cos(a) * hl * 0.8, y2 - Math.sin(a) * hl * 0.8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - Math.cos(a - 0.45) * hl, y2 - Math.sin(a - 0.45) * hl);
+  ctx.lineTo(x2 - Math.cos(a + 0.45) * hl, y2 - Math.sin(a + 0.45) * hl);
+  ctx.closePath(); ctx.fill();
+  if (label) {
+    ctx.font = '700 13px ' + col('f-mono');
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const p = lpos || { x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 14 };
+    ctx.fillText(label, p.x, p.y);
+  }
+}
+function txt(ctx, s, x, y, color, size = 13, align = 'left', weight = 500) {
+  ctx.font = `${weight} ${size}px ${col('f-mono')}`; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillText(s, x, y);
+}
+let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const STARS = Array.from({ length: 110 }, () => ({ x: rnd(), y: rnd(), r: rnd() * 1.4 + 0.3, z: rnd() * 0.6 + 0.2 }));
+function starfield(ctx, w, h, shift = 0) {
+  ctx.fillStyle = col('space'); ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = col('muted');
+  for (const s of STARS) {
+    let x = (s.x * w - shift * s.z) % w; if (x < 0) x += w;
+    ctx.globalAlpha = 0.35 + s.z; ctx.beginPath(); ctx.arc(x, s.y * h, s.r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ---------- nawigacja ----------
+const ORDER = ['lab', 's1', 's2', 's3', 'end'];
+function setStep(key) {
+  const idx = ORDER.indexOf(key);
+  document.querySelectorAll('#steps li').forEach(li => {
+    const i = ORDER.indexOf(li.dataset.s);
+    li.classList.toggle('cur', i === idx); li.classList.toggle('done', idx > -1 && i < idx);
+  });
+}
+function show(id) {
+  ['start', 'lab', 'quiz', 'dock', 'end'].forEach(s => { $('#scr-' + s).hidden = s !== id; });
+  window.scrollTo({ top: 0, behavior: 'auto' });
+}
+
+// ---------- LABORATORIUM ----------
+const LAB = { m: 20, F: 120, g: 9.81, mu: { hangar: 0.35, ice: 0.02, space: 0 } };
+const lab = { surf: 'hangar', x: 0, v: 0, push: false, wasPush: false, release: null, done: { hangar: false, ice: false, space: false }, qOk: false };
+const surfName = { hangar: 'w hangarze', ice: 'na lodowisku', space: 'w kosmosie' };
+
+function labStart() {
+  show('lab'); setStep('lab');
+  runLoop((t, dt) => { labStep(dt); labDraw(); });
+}
+function labSetSurf(s) {
+  lab.surf = s; lab.x = 0; lab.v = 0; lab.release = null;
+  document.querySelectorAll('[data-surf]').forEach(b => b.setAttribute('aria-pressed', b.dataset.surf === s));
+}
+function labStep(dt) {
+  const T = LAB.mu[lab.surf] * LAB.m * LAB.g;
+  const F = lab.push ? LAB.F : 0;
+  if (lab.v > 0.0001) { lab.v = Math.max(0, lab.v + (F - T) / LAB.m * dt); }
+  else if (F > T) { lab.v += (F - T) / LAB.m * dt; }
+  else lab.v = 0;
+  lab.x += lab.v * dt;
+  if (lab.wasPush && !lab.push && lab.v > 0.3) lab.release = { surf: lab.surf, t: performance.now() };
+  lab.wasPush = lab.push;
+  if (lab.release && lab.release.surf === lab.surf && !lab.push) {
+    if (lab.v < 0.01 || performance.now() - lab.release.t > 3500) {
+      lab.done[lab.surf] = true; lab.release = null; labChecklist();
+    }
+  }
+  const moving = lab.v > 0.0001;
+  const Tact = moving ? T : (F > 0 ? Math.min(F, T) : 0);
+  const W = F - Tact;
+  $('#ro-v').textContent = fmt(lab.v) + ' m/s';
+  $('#ro-f').textContent = Math.round(F) + ' N';
+  $('#ro-t').textContent = Math.round(Tact) + ' N';
+  $('#ro-w').textContent = (W > 0.5 ? '+' : W < -0.5 ? '−' : '') + Math.round(Math.abs(W)) + ' N';
+  let st;
+  if (!moving && !lab.push) st = 'Skrzynia stoi. Żadna siła jej nie rusza → pozostaje w spoczynku.';
+  else if (lab.push) st = `Pchasz. Wypadkowa ${Math.round(W)} N w przód → skrzynia przyspiesza.`;
+  else if (T > 0) st = `Nie pchasz. Działa tylko tarcie (${Math.round(T)} N) przeciwnie do ruchu → skrzynia zwalnia.`;
+  else st = 'Nie pchasz i nie ma tarcia. Wypadkowa = 0 N → skrzynia jedzie ze STAŁĄ prędkością.';
+  $('#labStatus').textContent = st;
+}
+function labChecklist() {
+  for (const k in lab.done) $('#chk-' + k).classList.toggle('ok', lab.done[k]);
+  if (lab.done.hangar && lab.done.ice && lab.done.space && $('#labConclusion').hidden) {
+    $('#labConclusion').hidden = false;
+    setXP(10);
+  }
+}
+function labDraw() {
+  const c = $('#labCanvas');
+  const { ctx, w, h } = fit(c, 0.4, 220, 340);
+  const ppm = Math.max(34, Math.min(56, w / 14));
+  const camX = lab.x - (w * 0.38) / ppm;
+  const space = lab.surf === 'space';
+  const groundY = space ? h * 0.62 : h * 0.72;
+  if (space) starfield(ctx, w, h, camX * ppm * 0.6);
+  else {
+    ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, groundY);
+    ctx.strokeStyle = col('line'); ctx.lineWidth = 2;
+    const panelW = 3 * ppm, off = ((camX * ppm * 0.5) % panelW + panelW) % panelW;
+    for (let x = -off; x < w; x += panelW) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, groundY); ctx.stroke(); }
+    ctx.fillStyle = lab.surf === 'ice' ? col('ice') : col('floor');
+    ctx.fillRect(0, groundY, w, h - groundY);
+    ctx.fillStyle = lab.surf === 'ice' ? col('space') : col('muted');
+    const first = Math.floor(camX);
+    for (let m = first; m < camX + w / ppm + 1; m++) {
+      const x = (m - camX) * ppm;
+      ctx.fillRect(x, groundY, 2, m % 5 === 0 ? 12 : 6);
+      if (m % 5 === 0) txt(ctx, m + ' m', x + 4, groundY + 22, lab.surf === 'ice' ? col('space') : col('muted'), 11);
+    }
+  }
+  const size = ppm * 1.1;
+  const cx = (lab.x - camX) * ppm, top = groundY - size;
+  ctx.fillStyle = col('crate'); ctx.fillRect(cx, top, size, size);
+  ctx.strokeStyle = col('space'); ctx.lineWidth = 2; ctx.strokeRect(cx + 4, top + 4, size - 8, size - 8);
+  ctx.beginPath(); ctx.moveTo(cx + 4, top + 4); ctx.lineTo(cx + size - 4, top + size - 4); ctx.stroke();
+  txt(ctx, '20 kg', cx + size / 2, top + size / 2, col('space'), 12, 'center', 700);
+  const sc = 0.7;
+  if (lab.push) arrow(ctx, cx - 6 - LAB.F * sc, top + size / 2, cx - 6, top + size / 2, col('amber'), 'F = 120 N');
+  const T = LAB.mu[lab.surf] * LAB.m * LAB.g;
+  if (lab.v > 0.0001 && T > 0) {
+    const L = Math.max(10, T * sc);
+    arrow(ctx, cx + size / 2, groundY - 6, cx + size / 2 - L, groundY - 6, col('cyan'), `T = ${Math.round(T)} N`, { x: cx + size / 2 - L / 2, y: groundY - 20 });
+  }
+  if (lab.v > 0.05) {
+    const L = Math.min(160, lab.v * 22);
+    arrow(ctx, cx + size / 2, top - 22, cx + size / 2 + L, top - 22, col('ink'), `v = ${fmt(lab.v)} m/s`, { x: cx + size / 2 + L / 2, y: top - 38 });
+  }
+  if (space) txt(ctx, 'brak tarcia i powietrza', 12, 18, col('muted'), 12);
+}
+function holdButton(btn, on, off) {
+  btn.addEventListener('pointerdown', e => { e.preventDefault(); btn.setPointerCapture?.(e.pointerId); btn.classList.add('active'); on(); });
+  const up = () => { btn.classList.remove('active'); off(); };
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => btn.addEventListener(ev, up));
+  btn.addEventListener('contextmenu', e => e.preventDefault());
+}
+holdButton($('#pushBtn'), () => lab.push = true, () => lab.push = false);
+document.querySelectorAll('[data-surf]').forEach(b => b.addEventListener('click', () => labSetSurf(b.dataset.surf)));
+$('#labReset').addEventListener('click', () => labSetSurf(lab.surf));
+document.querySelectorAll('#labQ .opt').forEach(b => b.addEventListener('click', () => {
+  if (lab.qOk) return;
+  document.querySelectorAll('#labQ .opt').forEach(o => o.classList.remove('good', 'bad'));
+  if (b.dataset.ok === '1') {
+    b.classList.add('good'); lab.qOk = true;
+    $('#labQfb').textContent = 'Tak! W kosmosie nic skrzyni nie hamowało, więc jej prędkość się nie zmieniała.';
+    $('#labNext').disabled = false;
+  } else { b.classList.add('bad'); $('#labQfb').textContent = b.dataset.fb; }
+}));
+$('#labNext').addEventListener('click', () => startStage('s1'));
+
+// ---------- SCENY do pytań ----------
+function person(ctx, x, footY, ang, color, scale = 1) {
+  ctx.save(); ctx.translate(x, footY); ctx.rotate(ang);
+  ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineWidth = 6 * scale; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-6 * scale, 0); ctx.lineTo(0, -26 * scale); ctx.lineTo(6 * scale, 0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -26 * scale); ctx.lineTo(0, -56 * scale); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -50 * scale); ctx.lineTo(-10 * scale, -34 * scale); ctx.moveTo(0, -50 * scale); ctx.lineTo(10 * scale, -34 * scale); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, -66 * scale, 9 * scale, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+function trail(ctx, xs, y, color) { ctx.fillStyle = color; xs.forEach(x => { ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill(); }); ctx.globalAlpha = 1; }
+
+const SCENES = {
+  probe(ctx, w, h, t) {
+    starfield(ctx, w, h);
+    const T = 4.2, tt = t % T, x0 = w * 0.12, x1 = w * 0.86, x = x0 + (x1 - x0) * tt / T, y = h * 0.52;
+    const marks = []; for (let k = 0; k * 0.6 <= tt; k++) marks.push(x0 + (x1 - x0) * k * 0.6 / T);
+    trail(ctx, marks, y + 30, col('cyan'));
+    ctx.fillStyle = col('muted'); ctx.fillRect(x - 18, y - 9, 36, 18);
+    ctx.strokeStyle = col('ink'); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x - 26, y, 13, -1.2, 1.2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + 18, y); ctx.lineTo(x + 34, y - 10); ctx.stroke();
+    txt(ctx, 'silniki: WYŁ.', 14, 20, col('muted'), 12);
+    txt(ctx, 'v = 15 km/s', x, y - 30, col('ink'), 13, 'center', 700);
+    if (t > 0) txt(ctx, 'równe odstępy kropek = stała prędkość', w / 2, h - 18, col('cyan'), 12, 'center');
+  },
+  puck(ctx, w, h, t) {
+    ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = col('ice'); ctx.fillRect(16, h * 0.25, w - 32, h * 0.55);
+    const y = h * 0.6, T = 4, x0 = w * 0.16, x1 = w * 0.86;
+    const tt = t % (T + 0.6);
+    const run = Math.max(0, Math.min(T, tt - 0.4));
+    const x = x0 + (x1 - x0) * run / T;
+    ctx.strokeStyle = col('crate'); ctx.lineWidth = 6; ctx.lineCap = 'round';
+    const sx = tt < 0.4 ? x0 - 40 + tt * 70 : x0 - 12;
+    ctx.beginPath(); ctx.moveTo(sx - 30, y - 70); ctx.lineTo(sx, y + 4); ctx.lineTo(sx + 16, y + 4); ctx.stroke();
+    const marks = []; for (let k = 0; k * 0.5 <= run; k++) marks.push(x0 + (x1 - x0) * k * 0.5 / T);
+    trail(ctx, marks, y + 22, col('space'));
+    ctx.fillStyle = col('space'); ctx.beginPath(); ctx.ellipse(x, y, 14, 6, 0, 0, Math.PI * 2); ctx.fill();
+    txt(ctx, 'idealnie gładki lód: zero tarcia', 22, h * 0.25 - 14, col('muted'), 12);
+  },
+  bus(ctx, w, h, t, mode) {
+    const T = 4.6, tt = t % T;
+    let v, d, a;
+    if (mode === 'brake') {
+      if (tt < 1) { v = 1; d = tt; a = 0; } else if (tt < 2.2) { const s = tt - 1; v = 1 - s / 1.2; d = 1 + s - s * s / 2.4; a = -1; } else { v = 0; d = 1.6; a = 0; }
+    } else {
+      if (tt < 1) { v = 0; d = 0; a = 0; } else if (tt < 2.2) { const s = tt - 1; v = s / 1.2; d = s * s / 2.4; a = 1; } else { v = 1; d = 0.6 + (tt - 2.2); a = 0; }
+    }
+    const k = (tt > 1 && tt < 2.6) ? Math.min(1, (tt - 1) / 0.25) * (tt > 2.2 ? Math.max(0, 1 - (tt - 2.2) / 0.4) : 1) : 0;
+    const tilt = (mode === 'brake' ? 0.38 : -0.38) * k;
+    if (t === 0) { v = mode === 'brake' ? 1 : 0; }
+    ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, h);
+    const roadY = h * 0.82;
+    ctx.fillStyle = col('floor'); ctx.fillRect(0, roadY, w, h - roadY);
+    ctx.fillStyle = col('muted'); const off = (d * 260) % 80;
+    for (let x = -off; x < w; x += 80) ctx.fillRect(x, roadY + (h - roadY) / 2 - 2, 40, 4);
+    const bw = Math.min(w - 60, 520), bx = (w - bw) / 2, by = h * 0.2, bh = roadY - by - 14;
+    ctx.fillStyle = col('line'); ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = col('space'); ctx.fillRect(bx + 10, by + 10, bw - 20, bh - 28);
+    ctx.fillStyle = col('muted');
+    [bx + 60, bx + bw - 60].forEach(x => { ctx.beginPath(); ctx.arc(x, roadY - 6, 16, 0, Math.PI * 2); ctx.fill(); });
+    ctx.fillStyle = col('amber'); ctx.fillRect(bx + bw - 6, by + bh - 40, 6, 14);
+    person(ctx, bx + bw * 0.45, by + bh - 18, tilt, col('ink'), Math.min(1.2, bh / 110));
+    const label = mode === 'brake' ? (a < 0 ? 'autobus HAMUJE' : v > 0 ? 'autobus jedzie' : 'autobus stoi') : (a > 0 ? 'autobus RUSZA' : v > 0 ? 'autobus jedzie' : 'autobus stoi');
+    txt(ctx, label, bx + 16, by - 12, col('ink'), 13, 'left', 700);
+    if (v > 0.02) arrow(ctx, bx + bw - 120, by - 12, bx + bw - 120 + 70 * v, by - 12, col('ink'), '', null);
+    txt(ctx, 'kierunek jazdy →', bx + bw, by - 12, col('muted'), 11, 'right');
+  },
+  busBrake(ctx, w, h, t) { SCENES.bus(ctx, w, h, t, 'brake'); },
+  busStart(ctx, w, h, t) { SCENES.bus(ctx, w, h, t, 'start'); },
+  elevator(ctx, w, h, t) {
+    ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, h);
+    const cw = Math.min(200, w * 0.4), cx = w / 2 - cw / 2, cy = h * 0.12, ch = h * 0.76;
+    ctx.strokeStyle = col('line'); ctx.lineWidth = 2; const off = (t * 50) % 36;
+    for (let y = -36 + off; y < h; y += 36) { ctx.beginPath(); ctx.moveTo(cx - 30, y); ctx.lineTo(cx - 10, y); ctx.moveTo(cx + cw + 10, y); ctx.lineTo(cx + cw + 30, y); ctx.stroke(); }
+    ctx.fillStyle = col('space'); ctx.fillRect(cx, cy, cw, ch);
+    ctx.strokeStyle = col('muted'); ctx.strokeRect(cx, cy, cw, ch);
+    const floor = cy + ch - 6; person(ctx, w / 2, floor, 0, col('ink'), Math.min(1.1, ch / 120));
+    const L = Math.min(70, ch * 0.35), mid = floor - ch * 0.32;
+    arrow(ctx, w / 2 + 40, mid, w / 2 + 40, mid - L, col('cyan'), 'podłoga', { x: w / 2 + 40 + 44, y: mid - L / 2 });
+    arrow(ctx, w / 2 - 40, mid - L, w / 2 - 40, mid, col('amber'), 'ciężar', { x: w / 2 - 40 - 40, y: mid - L / 2 });
+    txt(ctx, 'v = 2 m/s w górę (stała)', 14, 18, col('muted'), 12);
+  },
+  para(ctx, w, h, t) {
+    ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = col('line');
+    for (let i = 0; i < 6; i++) { const y = ((i * 70 - t * 45) % (h + 80) + h + 80) % (h + 80) - 40; const x = (i * 137) % w; ctx.beginPath(); ctx.ellipse(x, y, 46, 14, 0, 0, Math.PI * 2); ctx.fill(); }
+    const x = w / 2, y = h * 0.66, R = Math.min(80, h * 0.28);
+    ctx.fillStyle = col('crate'); ctx.beginPath(); ctx.arc(x, y - R * 1.4, R, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = col('muted'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - R, y - R * 1.4); ctx.lineTo(x, y - 60); ctx.lineTo(x + R, y - R * 1.4); ctx.stroke();
+    person(ctx, x, y + 6, 0, col('ink'), 0.9);
+    const L = Math.min(64, h * 0.22);
+    arrow(ctx, x + 50, y - 20, x + 50, y - 20 - L, col('cyan'), 'opór', { x: x + 50 + 30, y: y - 20 - L / 2 });
+    arrow(ctx, x - 50, y - 20 - L, x - 50, y - 20, col('amber'), 'ciężar', { x: x - 50 - 36, y: y - 20 - L / 2 });
+    txt(ctx, 'v = 5 m/s w dół (stała)', 14, 18, col('muted'), 12);
+  },
+};
+
+// ---------- PYTANIA ----------
+const Q = {
+  p1: { concept: 'zasada', text: 'Dokończ I zasadę dynamiki: „Jeżeli na ciało nie działa żadna siła lub działające siły się równoważą, to ciało…”',
+    hint: 'Pomyśl o skrzyni w kosmosie. Stała? Jechała? Obie sytuacje są możliwe.',
+    opts: [
+      { t: '…pozostaje w spoczynku lub porusza się ruchem jednostajnym prostoliniowym.', ok: true },
+      { t: '…zawsze pozostaje w spoczynku.', fb: 'To tylko połowa prawdy. Ciało, które już jedzie, nie zatrzyma się samo. Będzie jechać dalej ze stałą prędkością.', mis: 'zasada' },
+      { t: '…porusza się coraz wolniej, aż się zatrzyma.', fb: 'Zwalnianie to zmiana prędkości, a do zmiany prędkości potrzebna jest siła (np. tarcie).', mis: 'ruch_sila' },
+      { t: '…porusza się ruchem przyspieszonym.', fb: 'Przyspieszanie też jest zmianą prędkości. Wymaga siły, która nie jest zrównoważona.', mis: 'zasada' },
+    ],
+    explain: 'Gdy siły się równoważą, prędkość się nie zmienia: stojące stoi, jadące jedzie dalej prosto i równo.' },
+  p2: { concept: 'masa', text: 'Co jest miarą bezwładności ciała?',
+    hint: 'Co sprawia, że pełny wózek w sklepie trudniej rozpędzić niż pusty?',
+    opts: [
+      { t: 'Masa', ok: true },
+      { t: 'Prędkość', fb: 'Dwa samochody o tej samej masie tak samo trudno rozpędzić o tyle samo, niezależnie od tego, jak szybko już jadą. Liczy się masa.', mis: 'masa' },
+      { t: 'Objętość (rozmiar)', fb: 'Duży balon łatwo popchnąć, a małą ołowianą kulę trudno. Liczy się masa, a nie rozmiar.', mis: 'masa' },
+      { t: 'Siła ciężkości', fb: 'Na stacji kosmicznej ciała są w stanie nieważkości, a ciężki moduł nadal trudno rozpędzić. Miarą bezwładności jest masa.', mis: 'masa' },
+    ],
+    explain: 'Im większa masa, tym większa bezwładność, czyli tym trudniej zmienić prędkość ciała.' },
+  p3: { concept: 'rownowaga', text: 'Ciało porusza się ruchem jednostajnym prostoliniowym. Co wiesz o siłach, które na nie działają?',
+    hint: 'Prędkość się nie zmienia. Co by się stało, gdyby jedna siła przeważała?',
+    opts: [
+      { t: 'Nie działają żadne siły albo siły się równoważą.', ok: true },
+      { t: 'Musi działać siła w stronę ruchu, większa od oporów.', fb: 'Gdyby siła w przód była większa od oporów, ciało by przyspieszało. Przy stałej prędkości siły się równoważą.', mis: 'kierunek' },
+      { t: 'Działa na nie tylko siła ciężkości.', fb: 'Gdyby działała tylko siła ciężkości, ciało przyspieszałoby w dół. Ta siła musi być czymś zrównoważona.', mis: 'zasada' },
+      { t: 'Siły stopniowo maleją do zera.', fb: 'Ruch jednostajny nie wymaga, żeby siły malały. Wystarczy, że się równoważą.', mis: 'ruch_sila' },
+    ],
+    explain: 'Stała prędkość = wypadkowa siła równa zero. To ta sama I zasada, tylko „od drugiej strony”.' },
+  p4: { concept: 'masa', text: 'Który wózek sklepowy trudniej rozpędzić i trudniej zatrzymać?',
+    hint: 'Od czego zależy bezwładność?',
+    opts: [
+      { t: 'Pełny zakupów, bo ma większą masę, więc większą bezwładność.', ok: true },
+      { t: 'Pusty, bo jest lżejszy i łatwiej się wymyka.', fb: 'Lżejszy wózek łatwiej rozpędzić i łatwiej zatrzymać. Mniejsza masa to mniejsza bezwładność.', mis: 'masa' },
+      { t: 'Oba tak samo, bo bezwładność nie zależy od masy.', fb: 'Zależy, i to bardzo! Masa jest miarą bezwładności.', mis: 'masa' },
+      { t: 'Żaden, bo bezwładność mają tylko ciała w ruchu.', fb: 'Bezwładność ma każde ciało, także stojące. Dlatego trzeba siły, żeby je ruszyć.', mis: 'masa' },
+    ],
+    explain: 'Pełny wózek ma większą masę, więc większą bezwładność. Trudniej go rozpędzić i trudniej zahamować.' },
+  p5: { concept: 'zasada', text: 'Dlaczego w samochodzie zapina się pasy bezpieczeństwa?',
+    hint: 'Co się dzieje z ciałem pasażera, gdy samochód nagle zwalnia?',
+    opts: [
+      { t: 'Przy gwałtownym hamowaniu nasze ciało z powodu bezwładności jedzie dalej do przodu. Pas działa na nas siłą i nas zatrzymuje.', ok: true },
+      { t: 'Pas chroni przed siłą, która przy hamowaniu pcha nas do przodu.', fb: 'Żadna siła nie pcha nas do przodu! To samochód zwalnia, a my z powodu bezwładności jedziemy dalej z tą samą prędkością.', mis: 'pcha' },
+      { t: 'Tylko po to, żeby nie zsuwać się z fotela na zakrętach.', fb: 'Na zakrętach też pomaga, ale najważniejsze jest hamowanie: bez pasa ciało jedzie dalej do przodu.', mis: 'pcha' },
+      { t: 'Bo tak każą przepisy. Z fizyką nie ma to związku.', fb: 'Przepisy wynikają właśnie z fizyki: z bezwładności ciała.', mis: 'zasada' },
+    ],
+    explain: 'Pas daje siłę, która zmienia naszą prędkość razem z samochodem. Bez pasa zatrzymałaby nas dopiero kierownica albo szyba.' },
+
+  a1: { concept: 'A', scene: 'probe', text: 'Sonda kosmiczna leci daleko od planet i gwiazd z prędkością 15 km/s. Kończy się paliwo i silniki gasną. Co dalej?',
+    hint: 'Czy coś w pustym kosmosie może sondę hamować? Przypomnij sobie skrzynię w laboratorium.',
+    preds: [
+      { t: 'Leci dalej po prostej z prędkością 15 km/s.', ok: true },
+      { t: 'Powoli zwalnia, aż się zatrzyma.', fb: 'Na Ziemi wszystko zwalnia przez tarcie i opór powietrza. W pustym kosmosie ich nie ma, więc nic sondy nie hamuje.', mis: 'ruch_sila' },
+      { t: 'Od razu się zatrzymuje.', fb: 'Do zatrzymania potrzebna byłaby siła hamująca. Wyłączenie silników to brak siły, a nie hamowanie.', mis: 'ruch_sila' },
+      { t: 'Zaczyna spadać w dół.', fb: 'Daleko od planet i gwiazd nie ma „dołu”. Nic sondy nie przyciąga.' },
+    ],
+    reasons: [
+      { t: 'Nie działa na nią żadna siła, więc jej prędkość się nie zmienia.', ok: true },
+      { t: 'Siła silników się wyczerpała, więc ruch musi wygasnąć.', fb: 'Ruch nie potrzebuje siły, żeby trwać. Siła jest potrzebna tylko do ZMIANY prędkości.', mis: 'ruch_sila' },
+      { t: 'Sonda ma rozpęd, który z czasem się zużywa.', fb: 'Nic takiego się nie zużywa. Ciała zwalniają tylko wtedy, gdy działa na nie siła, np. tarcie.', mis: 'niesie' },
+    ],
+    explain: 'To I zasada dynamiki w czystej postaci. Sondy Voyager wystrzelone w 1977 roku od dziesięcioleci lecą przez kosmos bez pracy głównych silników.' },
+  a2: { concept: 'A', scene: 'puck', text: 'Wyobraź sobie lodowisko z idealnie gładkim lodem: zero tarcia i zero oporu powietrza. Uderzasz krążek kijem i krążek odrywa się od kija. Co robi krążek?',
+    hint: 'Kiedy kij przestaje dotykać krążka, czy coś jeszcze go pcha albo hamuje?',
+    preds: [
+      { t: 'Sunie dalej ze stałą prędkością po linii prostej.', ok: true },
+      { t: 'Stopniowo zwalnia i się zatrzymuje.', fb: 'Na prawdziwym lodzie tak, bo jest małe tarcie. Ale tu lód jest idealnie gładki, więc nic krążka nie hamuje.', mis: 'ruch_sila' },
+      { t: 'Przez chwilę jeszcze przyspiesza.', fb: 'Gdy krążek oderwał się od kija, kij już na niego nie działa. Bez siły nie ma przyspieszenia.', mis: 'niesie' },
+      { t: 'Skręca w bok.', fb: 'Do skręcenia potrzebna jest siła działająca w bok. Tu żadnej takiej nie ma.' },
+    ],
+    reasons: [
+      { t: 'Po oderwaniu od kija siły się równoważą (ciężar i lód, który krążek podpiera), więc prędkość się nie zmienia.', ok: true },
+      { t: 'Kij przekazał krążkowi siłę, którą krążek niesie ze sobą.', fb: 'Siła działa tylko w chwili kontaktu. Krążek nie „niesie” siły. Ma prędkość i zachowuje ją z powodu bezwładności.', mis: 'niesie' },
+      { t: 'Krążek jest lekki, więc nie ma bezwładności.', fb: 'Każde ciało ma bezwładność. Lekkie ma mniejszą, ale nie zerową.', mis: 'masa' },
+    ],
+    explain: 'Na prawdziwym lodowisku krążek zwalnia powoli przez niewielkie tarcie. Bez tarcia jechałby w nieskończoność.' },
+  b1: { concept: 'B', scene: 'busBrake', text: 'Stoisz w autobusie i nie trzymasz się poręczy. Kierowca gwałtownie hamuje. Co się z Tobą dzieje?',
+    hint: 'Hamulce działają na koła autobusu. Czy działają też na Twoją głowę i tułów?',
+    preds: [
+      { t: 'Przechylam się do przodu (w stronę kierowcy).', ok: true },
+      { t: 'Przechylam się do tyłu.', fb: 'Do tyłu przechylasz się, gdy autobus RUSZA. Przy hamowaniu jest odwrotnie.' },
+      { t: 'Nic się nie dzieje, stoję prosto.', fb: 'Twoje stopy zwalniają razem z podłogą, ale reszta ciała chce jechać dalej. Dlatego się przechylasz.', mis: 'zasada' },
+    ],
+    reasons: [
+      { t: 'Moje ciało z powodu bezwładności dalej porusza się z prędkością, którą miało, a autobus pode mną zwalnia.', ok: true },
+      { t: 'Przy hamowaniu powstaje siła, która pcha pasażerów do przodu.', fb: 'Nic Cię nie pcha do przodu. Siła hamowania działa na autobus i przez podłogę na Twoje stopy. Dlatego stopy zwalniają, a reszta ciała „jedzie dalej”.', mis: 'pcha' },
+      { t: 'Powietrze w autobusie popycha mnie do przodu.', fb: 'Powietrze w autobusie porusza się razem z autobusem i nikogo nie popycha.', mis: 'pcha' },
+    ],
+    explain: 'Autobus zwalnia, bo działa na niego siła hamowania. Na Twój tułów ta siła nie działa, więc z powodu bezwładności jedzie on dalej, a Ty się przechylasz.' },
+  b2: { concept: 'B', scene: 'busStart', text: 'Autobus stoi na przystanku. Stoisz bez trzymania się poręczy. Autobus gwałtownie rusza. Co się dzieje?',
+    hint: 'Twoje ciało stało. Co bezwładność każe mu robić dalej?',
+    preds: [
+      { t: 'Przechylam się do tyłu.', ok: true },
+      { t: 'Przechylam się do przodu.', fb: 'Do przodu przechylasz się przy HAMOWANIU. Przy ruszaniu jest odwrotnie.' },
+      { t: 'Nic się nie dzieje.', fb: 'Podłoga rusza razem ze stopami, a tułów chce zostać w miejscu. Dlatego się przechylasz.', mis: 'zasada' },
+    ],
+    reasons: [
+      { t: 'Moje ciało z powodu bezwładności chce pozostać w spoczynku, a autobus rusza i „wyjeżdża” spod moich stóp.', ok: true },
+      { t: 'Autobus pcha mnie do tyłu.', fb: 'Autobus działa na Twoje stopy siłą do PRZODU (przez tarcie podłogi). Przechylasz się do tyłu, bo górna część ciała nie dostaje tej siły od razu.', mis: 'pcha' },
+      { t: 'Wiatr z otwartych drzwi.', fb: 'Drzwi są zamknięte, a i tak się przechylasz. To bezwładność.', mis: 'pcha' },
+    ],
+    explain: 'Stojące ciało „chce” dalej stać. Stopy ruszają z podłogą, a tułów zostaje na chwilę z tyłu.' },
+  c1: { concept: 'C', scene: 'elevator', text: 'Jedziesz windą w górę ze stałą prędkością 2 m/s. Działają na Ciebie dwie siły: ciężar (w dół) i siła, z jaką podłoga windy działa na Ciebie (w górę). Jak mają się do siebie?',
+    hint: 'Prędkość windy jest STAŁA. Co mówi I zasada dynamiki o siłach przy stałej prędkości?',
+    preds: [
+      { t: 'Są równe, czyli się równoważą.', ok: true },
+      { t: 'Siła podłogi jest większa, bo jedziemy w górę.', fb: 'Gdyby siła w górę była większa, prędkość by rosła. Winda jedzie ze stałą prędkością, więc siły się równoważą. Kierunek ruchu nie mówi, która siła jest większa!', mis: 'kierunek' },
+      { t: 'Ciężar jest większy.', fb: 'Gdyby ciężar przeważał, prędkość w górę by malała. A jest stała.', mis: 'kierunek' },
+    ],
+    reasons: [
+      { t: 'Prędkość się nie zmienia, więc wypadkowa siła wynosi zero.', ok: true },
+      { t: 'Żeby coś jechało w górę, siła w górę musi przeważać.', fb: 'Przeważająca siła zmienia prędkość, a nie utrzymuje ruch. Do jazdy ze stałą prędkością wystarczy, że siły się równoważą.', mis: 'kierunek' },
+      { t: 'W jadącej windzie ciężar przestaje działać.', fb: 'Ciężar działa zawsze, także w windzie. Ziemia przyciąga Cię cały czas.', mis: 'zasada' },
+    ],
+    explain: 'Stała prędkość oznacza wypadkową zero. Siły są przeciwnie skierowane i mają tę samą wartość.' },
+  c2: { concept: 'C', scene: 'para', text: 'Skoczek spadochronowy z otwartym spadochronem opada ze stałą prędkością 5 m/s. Jak ma się siła oporu powietrza do ciężaru skoczka?',
+    hint: 'Skoczek nie przyspiesza ani nie zwalnia. Co to mówi o siłach?',
+    preds: [
+      { t: 'Są równe, czyli się równoważą.', ok: true },
+      { t: 'Ciężar jest większy, bo skoczek spada.', fb: 'Gdyby ciężar przeważał, skoczek spadałby coraz szybciej. A prędkość jest stała.', mis: 'kierunek' },
+      { t: 'Opór powietrza jest większy.', fb: 'Gdyby opór przeważał, skoczek zwalniałby. A prędkość jest stała.', mis: 'kierunek' },
+    ],
+    reasons: [
+      { t: 'Prędkość jest stała, więc wypadkowa siła wynosi zero.', ok: true },
+      { t: 'Ciało może opadać tylko wtedy, gdy ciężar przeważa nad oporem.', fb: 'Przeważający ciężar oznacza przyspieszanie. Do opadania ze stałą prędkością siły muszą się równoważyć.', mis: 'kierunek' },
+      { t: 'Spadochron sprawia, że na skoczka nie działają żadne siły.', fb: 'Siły działają, i to dwie: ciężar w dół i opór powietrza w górę. Tylko się równoważą.', mis: 'zasada' },
+    ],
+    explain: 'Do oporu powietrza wrócisz w temacie 28 „Opory ruchu” (s. 183).' },
+
+  d1: { concept: 'D', text: 'Statek zadokował. Dlaczego trzeba było włączyć silnik w przeciwną stronę?',
+    hint: 'Co robił statek, gdy silniki były wyłączone?',
+    opts: [
+      { t: 'Po wyłączeniu silnika statek leciał ze stałą prędkością. Żeby go zatrzymać, potrzebna była siła skierowana przeciwnie do ruchu.', ok: true },
+      { t: 'Bo po wyłączeniu silnika statek sam przyspieszał.', fb: 'Bez siły prędkość się nie zmienia. Statek nie przyspieszał, tylko leciał ze stałą prędkością.', mis: 'niesie' },
+      { t: 'Bo w kosmosie statek zwalnia za wolno.', fb: 'W kosmosie bez silnika statek w ogóle nie zwalnia. Nie ma tarcia ani oporu powietrza.', mis: 'ruch_sila' },
+      { t: 'Żeby zużyć resztę paliwa przed dokowaniem.', fb: 'Paliwo zostało użyte do zmiany prędkości, czyli do hamowania. O to właśnie chodziło.' },
+    ],
+    explain: 'Do zmiany prędkości, także do hamowania, potrzebna jest siła. To dokładnie I zasada dynamiki.' },
+};
+
+const STAGES = {
+  s1: { label: 'Etap ★ · Pamiętam', ids: ['p1', 'p2', 'p3'], spare: ['p4', 'p5'], minRead: 3 },
+  s2: { label: 'Etap ★★ · Rozumiem', ids: ['a1', 'b1', 'c1'], variants: { A: ['a2'], B: ['b2'], C: ['c2'] }, minRead: 5 },
+  s3: { label: 'Etap ★★★ · Stosuję', ids: ['d1'], minRead: 3 },
+};
+
+let st = null; // bieżący etap quizu
+function startStage(key) {
+  stopLoop();
+  const cfg = STAGES[key];
+  st = { key, cfg, queue: cfg.ids.map(id => ({ id, original: true })), done: 0, firstTry: 0, spare: (cfg.spare || []).slice(), variants: JSON.parse(JSON.stringify(cfg.variants || {})), tries: {} };
+  show('quiz'); setStep(key);
+  nextQuestion();
+}
+let cur = null;
+function nextQuestion() {
+  if (!st.queue.length) return finishStage();
+  const item = st.queue.shift();
+  const q = Q[item.id];
+  cur = { item, q, sel: { pred: null, reason: null, opt: null }, hintUsed: false, ready: false, answered: false };
+  const originals = st.cfg.ids.length;
+  $('#qStage').textContent = st.cfg.label;
+  $('#qCount').textContent = item.original ? `Zadanie ${Math.min(st.done + 1, originals)} z ${originals}` : 'Dodatkowe zadanie';
+  $('#qRetry').hidden = item.original;
+  $('#qText').textContent = q.text;
+  $('#qHint').hidden = true; $('#qHint').textContent = q.hint;
+  $('#qFb').hidden = true; $('#qFb').className = 'fb';
+  $('#qHintBtn').hidden = false; $('#qHintBtn').disabled = false;
+  $('#qNext').hidden = true; $('#qCheck').hidden = false;
+  const g = $('#qGroups'); g.innerHTML = '';
+  const mk = (title, list, slot) => {
+    const box = document.createElement('div'); box.className = 'group';
+    if (title) { const h = document.createElement('h3'); h.textContent = title; box.append(h); }
+    shuffle(list.map((o, i) => ({ o, i }))).forEach(({ o, i }) => {
+      const b = document.createElement('button'); b.className = 'opt'; b.textContent = o.t; b.dataset.slot = slot; b.dataset.i = i;
+      b.setAttribute('aria-pressed', 'false');
+      b.addEventListener('click', () => {
+        if (cur.answered) return;
+        box.querySelectorAll('.opt').forEach(x => x.setAttribute('aria-pressed', 'false'));
+        b.setAttribute('aria-pressed', 'true'); cur.sel[slot] = i; updateCheck();
+      });
+      box.append(b);
+    });
+    g.append(box);
+  };
+  if (q.preds) { mk('1. Co się stanie?', q.preds, 'pred'); mk('2. Dlaczego?', q.reasons, 'reason'); }
+  else mk('', q.opts, 'opt');
+  // scena: statyczna przed odpowiedzią, żeby nie zdradzić wyniku
+  if (q.scene) {
+    $('#qSceneWrap').hidden = false;
+    requestAnimationFrame(() => { const { ctx, w, h } = fit($('#qCanvas'), 0.36, 200, 300); SCENES[q.scene](ctx, w, h, 0); });
+  } else $('#qSceneWrap').hidden = true;
+  // czas na przeczytanie
+  let left = st.cfg.minRead;
+  const btn = $('#qCheck'); btn.disabled = true; btn.textContent = `Czytaj uważnie… ${left}`;
+  clearInterval(cur.timer);
+  cur.timer = setInterval(() => {
+    left--; if (left <= 0) { clearInterval(cur.timer); cur.ready = true; btn.textContent = 'Sprawdź'; updateCheck(); }
+    else btn.textContent = `Czytaj uważnie… ${left}`;
+  }, 1000);
+}
+function updateCheck() {
+  const q = cur.q;
+  const chosen = q.preds ? (cur.sel.pred !== null && cur.sel.reason !== null) : cur.sel.opt !== null;
+  $('#qCheck').disabled = !(cur.ready && chosen);
+}
+$('#qHintBtn').addEventListener('click', () => { cur.hintUsed = true; $('#qHint').hidden = false; $('#qHintBtn').disabled = true; });
+$('#qCheck').addEventListener('click', () => {
+  const q = cur.q; cur.answered = true;
+  const item = cur.item;
+  let ok, fbs = [];
+  const mark = (slot, list) => {
+    const i = cur.sel[slot]; const o = list[i];
+    document.querySelectorAll(`.opt[data-slot="${slot}"]`).forEach(b => {
+      b.disabled = true;
+      const oi = +b.dataset.i;
+      if (list[oi].ok) b.classList.add('good');
+      if (oi === i && !o.ok) b.classList.add('bad');
+    });
+    if (!o.ok) { fbs.push(o.fb); addMis(o.mis); }
+    return !!o.ok;
+  };
+  let partial = '';
+  if (q.preds) {
+    const p = mark('pred', q.preds), r = mark('reason', q.reasons);
+    ok = p && r;
+    if (p && !r) partial = 'Wynik przewidziany dobrze, ale uzasadnienie jest błędne. A to właśnie uzasadnienie pokazuje, czy temat jest zrozumiany.';
+    if (!p && r) partial = 'Uzasadnienie jest dobre, ale wniosek z niego nie pasuje. Przeczytaj jeszcze raz, co się stanie.';
+  } else ok = mark('opt', q.opts);
+
+  S.asked++;
+  const first = item.original;
+  let gained = 0;
+  if (ok) { gained = first ? (cur.hintUsed ? 6 : 10) : 4; if (first) { st.firstTry++; S.firstTry++; } }
+  if (gained) setXP(gained);
+  if (item.original) st.done++;
+
+  const fb = $('#qFb'); fb.hidden = false; fb.className = 'fb ' + (ok ? 'good' : 'bad');
+  fb.innerHTML = '';
+  const tag = document.createElement('div'); tag.className = 'tag'; tag.textContent = ok ? 'Dobrze!' : 'Jeszcze nie.'; fb.append(tag);
+  if (partial) { const p = document.createElement('p'); p.textContent = partial; fb.append(p); }
+  fbs.forEach(s => { if (s) { const p = document.createElement('p'); p.textContent = s; fb.append(p); } });
+  const ex = document.createElement('p'); ex.innerHTML = '<b>Wyjaśnienie:</b> '; ex.append(q.explain); fb.append(ex);
+  if (gained) { const x = document.createElement('p'); x.className = 'xp-pop'; x.textContent = `+${gained} XP` + (cur.hintUsed && first ? ' (z podpowiedzią)' : ''); fb.append(x); }
+  const src = document.createElement('p'); src.className = 'src'; src.textContent = 'Spotkania z fizyką 7, temat 24, s. 162'; fb.append(src);
+
+  // po błędzie: nowy wariant zamiast ponownego klikania tej samej odpowiedzi
+  if (!ok) {
+    const key = q.concept; st.tries[key] = (st.tries[key] || 0) + 1;
+    if (st.tries[key] < 3) {
+      let nextId = null;
+      if (st.variants[key] && st.variants[key].length) nextId = st.variants[key].shift();
+      else if (st.spare.length) nextId = st.spare.shift();
+      else nextId = item.id;
+      st.queue.push({ id: nextId, original: false });
+    }
+  }
+  if (q.scene) runLoop(t => { const { ctx, w, h } = fit($('#qCanvas'), 0.36, 200, 300); SCENES[q.scene](ctx, w, h, t + 0.001); });
+
+  $('#qCheck').hidden = true; $('#qHintBtn').hidden = true;
+  const nb = $('#qNext'); nb.hidden = false;
+  if (ok) { nb.disabled = false; nb.textContent = 'Dalej'; }
+  else {
+    let left = 4; nb.disabled = true; nb.textContent = `Przeczytaj wyjaśnienie… ${left}`;
+    const tm = setInterval(() => { left--; if (left <= 0) { clearInterval(tm); nb.disabled = false; nb.textContent = 'Rozumiem, dalej'; } else nb.textContent = `Przeczytaj wyjaśnienie… ${left}`; }, 1000);
+  }
+  fb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+$('#qNext').addEventListener('click', () => { stopLoop(); nextQuestion(); });
+
+// kolejność etapów: lab → s1 → s2 → dokowanie → s3 (pytanie) → raport
+function finishStage() {
+  const k = st.key, n = st.cfg.ids.length;
+  if (k === 's1') { S.stars.s1 = st.firstTry >= Math.ceil(n * 2 / 3); refreshStars(); startStage('s2'); }
+  else if (k === 's2') { S.stars.s2 = st.firstTry >= Math.ceil(n * 2 / 3); refreshStars(); dockStart(); }
+  else if (k === 's3') { S.stars.s3 = S.dockAttempts <= 3 && st.firstTry === 1; refreshStars(); endScreen(); }
+}
+
+// ---------- DOKOWANIE ----------
+const DK = { goal: 60, acc: 2.5, burn: 18, speed: 1.4, maxV: 0.6 };
+const dock = { x: 0, v: 0, fuel: 100, thr: 0, state: 'fly', still: 0, hint: 0 };
+const thr = { back: false, fwd: false };
+function dockStart() {
+  show('dock'); setStep('s3');
+  S.dockAttempts = 1; dockReset();
+  runLoop((t, dt) => { dockStep(dt); dockDraw(); });
+}
+function dockReset() {
+  Object.assign(dock, { x: 0, v: 0, fuel: 100, thr: 0, state: 'fly', still: 0 });
+  $('#d-att').textContent = S.dockAttempts;
+  $('#dockFb').hidden = true;
+}
+function dockStep(dt) {
+  if (dock.state !== 'fly') return;
+  dt *= DK.speed;
+  dock.thr = (thr.fwd ? 1 : 0) - (thr.back ? 1 : 0);
+  let a = 0;
+  if (dock.thr && dock.fuel > 0) { a = DK.acc * dock.thr; dock.fuel = Math.max(0, dock.fuel - DK.burn * dt); }
+  dock.v += a * dt; dock.x += dock.v * dt;
+  const dist = DK.goal - dock.x;
+  if (dock.x >= DK.goal) {
+    if (Math.abs(dock.v) <= DK.maxV) return dockWin();
+    return dockFail(`Statek uderzył w stację z prędkością ${fmt(dock.v, 2)} m/s. Po wyłączeniu silnika statek nie zwalnia sam, bo w kosmosie nie ma tarcia ani oporu powietrza. Przed stacją trzeba zahamować silnikiem wstecznym.`);
+  }
+  if (dist <= 1.5 && Math.abs(dock.v) <= 0.2 && !dock.thr) { dock.still += dt; if (dock.still > 0.8) return dockWin(); } else dock.still = 0;
+  if (dock.x < -6) return dockFail('Statek odleciał w przeciwną stronę. Silnik wsteczny dał siłę do tyłu tak długo, że statek zaczął się cofać, i nic go nie zatrzymało.');
+  if (dock.fuel <= 0 && dock.v < 0.15 && dist > 2) return dockFail('Skończyło się paliwo, a statek prawie stoi daleko od stacji. Rozpędzaj się krócej. W kosmosie wystarczy krótkie pchnięcie, bo potem statek sam leci dalej ze stałą prędkością.');
+  $('#d-dist').textContent = fmt(Math.max(0, dist)) + ' m';
+  $('#d-v').textContent = fmt(dock.v, 2) + ' m/s';
+  $('#d-fuel').textContent = Math.round(dock.fuel) + '%';
+  let s;
+  if (dock.thr && dock.fuel > 0) s = dock.thr > 0 ? 'Silnik pracuje do przodu → siła w przód → prędkość rośnie.' : (dock.v > 0 ? 'Silnik wsteczny: siła przeciwna do ruchu → statek zwalnia.' : 'Silnik wsteczny: siła do tyłu → statek przyspiesza w tył.');
+  else if (Math.abs(dock.v) > 0.01) s = 'Silniki wyłączone. Wypadkowa = 0 → statek leci ze STAŁĄ prędkością.';
+  else s = 'Statek stoi. Wypadkowa = 0 → pozostaje w spoczynku.';
+  $('#dockStatus').textContent = s;
+}
+function dockWin() {
+  dock.state = 'won'; dock.x = Math.min(dock.x, DK.goal); dock.v = 0;
+  setXP(S.dockAttempts <= 3 ? 15 : 8);
+  const fb = $('#dockFb'); fb.hidden = false; fb.className = 'fb good';
+  fb.innerHTML = `<div class="tag">Zadokowano!</div><p>Zaczepy portu złapały statek${S.dockAttempts > 1 ? ` w próbie nr ${S.dockAttempts}` : ' za pierwszym razem'}. Zostało ${Math.round(dock.fuel)}% paliwa.</p><p class="xp-pop">+${S.dockAttempts <= 3 ? 15 : 8} XP</p>`;
+  const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Ostatnie pytanie'; b.addEventListener('click', () => startStage('s3'));
+  const a = document.createElement('div'); a.className = 'actions'; a.append(b); fb.append(a);
+  $('#dockStatus').textContent = 'Statek stoi przy porcie.';
+}
+function dockFail(msg) {
+  dock.state = 'fail';
+  const fb = $('#dockFb'); fb.hidden = false; fb.className = 'fb bad';
+  fb.innerHTML = `<div class="tag">Nie udało się.</div>`;
+  const p = document.createElement('p'); p.textContent = msg; fb.append(p);
+  const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Spróbuj ponownie';
+  b.addEventListener('click', () => { S.dockAttempts++; dockReset(); });
+  const a = document.createElement('div'); a.className = 'actions'; a.append(b); fb.append(a);
+}
+const DOCK_HINTS = [
+  'Po puszczeniu silnika statek nie zwolni sam. W kosmosie nie ma tarcia.',
+  'Plan: krótko silnik ▶ (ok. 1 s), potem lecisz bez silnika, a kilka metrów przed stacją tak samo krótko silnik wsteczny ◀.',
+];
+$('#dockHintBtn').addEventListener('click', () => {
+  const h = $('#dockHint'); h.hidden = false;
+  h.textContent = DOCK_HINTS.slice(0, dock.hint + 1).join(' ');
+  dock.hint = Math.min(DOCK_HINTS.length - 1, dock.hint + 1);
+});
+holdButton($('#thrFwd'), () => thr.fwd = true, () => thr.fwd = false);
+holdButton($('#thrBack'), () => thr.back = true, () => thr.back = false);
+
+function dockDraw() {
+  const { ctx, w, h } = fit($('#dockCanvas'), 0.38, 220, 330);
+  starfield(ctx, w, h);
+  const left = 40, right = w - 70, ppm = (right - left) / DK.goal;
+  const y = h * 0.5;
+  // stacja
+  const sx = right;
+  ctx.fillStyle = col('line'); ctx.fillRect(sx + 8, y - 70, 60, 140);
+  ctx.fillStyle = col('panel-2'); ctx.fillRect(sx, y - 16, 12, 32);
+  ctx.fillStyle = col('amber'); ctx.fillRect(sx, y - 18, 3, 6); ctx.fillRect(sx, y + 12, 3, 6);
+  txt(ctx, 'PORT', sx + 38, y - 82, col('muted'), 11, 'center');
+  // linijka
+  ctx.fillStyle = col('muted');
+  for (let m = 0; m <= DK.goal; m += 10) { const x = left + m * ppm; ctx.fillRect(x, h - 26, 1, 8); txt(ctx, m + ' m', x, h - 10, col('muted'), 10, 'center'); }
+  // statek (nos w punkcie x)
+  const nx = left + Math.min(dock.x, DK.goal) * ppm;
+  ctx.fillStyle = col('ink');
+  ctx.beginPath(); ctx.moveTo(nx, y); ctx.lineTo(nx - 18, y - 12); ctx.lineTo(nx - 46, y - 12); ctx.lineTo(nx - 46, y + 12); ctx.lineTo(nx - 18, y + 12); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = col('cyan'); ctx.fillRect(nx - 30, y - 5, 8, 6);
+  const firing = dock.state === 'fly' && dock.fuel > 0 && dock.thr;
+  if (firing) {
+    ctx.fillStyle = col('amber');
+    const fl = 14 + Math.random() * 10;
+    if (dock.thr > 0) { ctx.beginPath(); ctx.moveTo(nx - 46, y - 7); ctx.lineTo(nx - 46 - fl, y); ctx.lineTo(nx - 46, y + 7); ctx.fill(); }
+    else { [-14, 14].forEach(o => { ctx.beginPath(); ctx.moveTo(nx - 14, y + o - 4); ctx.lineTo(nx - 14 + fl, y + o); ctx.lineTo(nx - 14, y + o + 4); ctx.fill(); }); }
+    const L = 60 * dock.thr;
+    arrow(ctx, nx - 23, y - 34, nx - 23 + L, y - 34, col('amber'), 'F silnika', { x: nx - 23 + L / 2, y: y - 50 });
+  }
+  if (Math.abs(dock.v) > 0.02) {
+    const L = Math.max(-120, Math.min(120, dock.v * 18));
+    arrow(ctx, nx - 23, y + 32, nx - 23 + L, y + 32, col('cyan'), `v = ${fmt(dock.v, 1)} m/s`, { x: nx - 23 + L / 2, y: y + 48 });
+  }
+  // paliwo
+  ctx.strokeStyle = col('line'); ctx.strokeRect(14, 14, 120, 10);
+  ctx.fillStyle = dock.fuel > 25 ? col('ok') : col('bad'); ctx.fillRect(15, 15, 118 * dock.fuel / 100, 8);
+  txt(ctx, 'paliwo', 142, 19, col('muted'), 11);
+}
+
+// ---------- klawiatura ----------
+document.addEventListener('keydown', e => {
+  if (!$('#scr-lab').hidden && e.code === 'Space') { e.preventDefault(); lab.push = true; $('#pushBtn').classList.add('active'); }
+  if (!$('#scr-dock').hidden) {
+    if (e.code === 'ArrowRight') { e.preventDefault(); thr.fwd = true; $('#thrFwd').classList.add('active'); }
+    if (e.code === 'ArrowLeft') { e.preventDefault(); thr.back = true; $('#thrBack').classList.add('active'); }
+  }
+});
+document.addEventListener('keyup', e => {
+  if (e.code === 'Space') { lab.push = false; $('#pushBtn').classList.remove('active'); }
+  if (e.code === 'ArrowRight') { thr.fwd = false; $('#thrFwd').classList.remove('active'); }
+  if (e.code === 'ArrowLeft') { thr.back = false; $('#thrBack').classList.remove('active'); }
+});
+
+// ---------- RAPORT ----------
+function load() { try { return JSON.parse(localStorage.getItem('orion-m1') || 'null'); } catch { return null; } }
+function save(r) { try { localStorage.setItem('orion-m1', JSON.stringify(r)); } catch {} }
+function endScreen() {
+  stopLoop(); show('end'); setStep('end');
+  const n = starCount();
+  paintStars($('#endStars'), n);
+  $('#endTitle').textContent = n === 3 ? 'Moduł manewrowy naprawiony w 100%' : n > 0 ? 'Moduł manewrowy działa, ale wymaga serwisu' : 'Moduł ruszył, ale trzeba do niego wrócić';
+  $('#endXp').textContent = `Zdobyte XP: ${S.xp}`;
+  const ul = $('#endMis'); ul.innerHTML = '';
+  const ids = Object.keys(S.mis).sort((a, b) => S.mis[b] - S.mis[a]);
+  if (!ids.length) { const li = document.createElement('li'); li.textContent = 'Nic! Wszystkie odpowiedzi poprawne za pierwszym razem.'; ul.append(li); }
+  ids.forEach(id => { const li = document.createElement('li'); li.innerHTML = `<b></b> `; li.querySelector('b').textContent = MIS[id].name; li.append(MIS[id].tip); ul.append(li); });
+  const starTxt = ['Pamiętam', 'Rozumiem', 'Stosuję'].map((l, i) => `${l}: ${[S.stars.s1, S.stars.s2, S.stars.s3][i] ? 'zaliczone' : 'do poprawy'}`).join(', ');
+  const misTxt = ids.length ? ' Pojawiły się błędne przekonania: ' + ids.map(id => MIS[id].name).join('; ') + '. Warto o nich porozmawiać.' : ' Bez błędnych przekonań.';
+  $('#endParent').textContent = `Temat 24 (I zasada dynamiki, bezwładność). ${starTxt}. Poprawne za pierwszym razem: ${S.firstTry} z ${S.asked} zadań. Dokowanie: ${S.dockAttempts} ${S.dockAttempts === 1 ? 'próba' : S.dockAttempts < 5 ? 'próby' : 'prób'}.${misTxt} ${n === 3 ? 'Za 2 dni warto powtórzyć poziom, żeby temat był opanowany.' : 'Proponuję powtórzyć poziom jutro.'}`;
+  const best = load();
+  if (!best || n > best.stars || (n === best.stars && S.xp > best.xp)) save({ stars: n, xp: S.xp, date: new Date().toISOString().slice(0, 10) });
+}
+function resetAll() {
+  Object.assign(S, { xp: 0, stars: { s1: false, s2: false, s3: false }, mis: {}, firstTry: 0, asked: 0, dockAttempts: 0 });
+  $('#xp').textContent = '0'; refreshStars();
+  Object.assign(lab, { x: 0, v: 0, push: false, wasPush: false, release: null, done: { hangar: false, ice: false, space: false }, qOk: false });
+  labSetSurf('hangar'); labChecklist(); $('#labConclusion').hidden = true; $('#labNext').disabled = true; $('#labQfb').textContent = '';
+  document.querySelectorAll('#labQ .opt').forEach(o => o.classList.remove('good', 'bad'));
+  dock.hint = 0; $('#dockHint').hidden = true;
+}
+$('#startBtn').addEventListener('click', labStart);
+$('#againBtn').addEventListener('click', () => { resetAll(); show('start'); setStep(''); showBest(); });
+function showBest() { const b = load(); $('#best').textContent = b ? `Najlepszy wynik: ${'★'.repeat(b.stars)}${'☆'.repeat(3 - b.stars)} · ${b.xp} XP · ${b.date}` : ''; }
+showBest();
+})();
+</script>
