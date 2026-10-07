@@ -179,6 +179,16 @@ ul.clean { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
 .def-row i { font-style: normal; font-weight: 800; font-size: 14px; color: var(--accent); }
 .def-row.formal p { border-left: 4px solid var(--accent); padding-left: 12px; }
 .def-row.simple p { font-size: 19px; font-weight: 700; }
+/* „jak czytać wzór”: wzór dużo, każda litera osobno, trójkąt F / m · a */
+.keys { display: grid; gap: 8px; background: var(--veil-2); border-radius: 14px; padding: 12px 16px; }
+.keys .kf { font-family: var(--f-display); font-size: 1.5em; font-weight: 800; color: var(--white); letter-spacing: .02em; }
+.keys .kr { color: var(--ash); font-style: italic; }
+.keys dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; align-items: baseline; }
+.keys dt { font-weight: 800; color: var(--accent); }
+.keys dd { margin: 0; }
+.keys .tri { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.keys .tri svg { width: 120px; height: auto; flex: none; }
+.keys .tri p { flex: 1 1 220px; margin: 0; }
 
 /* etap „Pojęcia”: karta + pytanie sprawdzające */
 .card { background: var(--veil); border-radius: 22px; padding: 22px 24px; display: grid; gap: 14px; }
@@ -460,7 +470,7 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
           <li><b>2 razy większa masa</b> (50 kg → 100 kg, ta sama siła): prędkość rosła 2 razy wolniej.</li>
           <li>Gdy silnik się wyłączył, sanie jechały dalej cały czas tak samo szybko. To I zasada z modułu 1.</li>
         </ul>
-        <p><b>Wniosek:</b> przyspieszenie zależy od siły i od masy. Liczymy je tak: <b>a = F : m</b>. Na przykład 200 N : 50 kg = 4 m/s². To jest II zasada dynamiki.</p>
+        <p><b>Wniosek:</b> przyspieszenie zależy od siły i od masy. Żeby je policzyć, dzielimy siłę przez masę. Na przykład 200 N : 50 kg = 4 m/s². Krótko zapisujemy to tak: <b>a = F : m</b> (a to przyspieszenie, F to siła, m to masa). To jest II zasada dynamiki.</p>
         <div class="group" id="labQ">
           <h3>Pytanie kontrolne</h3>
           <p>Silnik 200 N rozpędza sanie z jedną skrzynią (50 kg). Prędkość rośnie o 4 m/s co sekundę. Dokładasz drugą skrzynię (razem 100 kg). O ile teraz rośnie prędkość co sekundę?</p>
@@ -492,6 +502,7 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
           <span class="chip" id="cTag"></span>
           <h2 id="cTerm"></h2>
           <div class="def-row formal"><i>Definicja (do zeszytu)</i><p id="cFormal"></p></div>
+          <div class="def-row" id="cKeysRow" hidden><i id="cKeysT"></i><div id="cKeys"></div></div>
           <div class="def-row simple"><i>Po prostu</i><p id="cSimple"></p></div>
           <div class="def-row"><i>Przykład</i><p id="cExample"></p></div>
         </div>
@@ -787,7 +798,10 @@ const GLOS = [
   { id: 'przyspieszenie', term: 'Przyspieszenie',
     formal: 'Przyspieszenie mówi, o ile zmienia się prędkość ciała w jednostce czasu: a = Δv : t. Jednostką przyspieszenia jest 1 m/s² (metr na sekundę do kwadratu).',
     simple: 'Przyspieszenie mówi, o ile rośnie prędkość w każdej sekundzie. a = 3 m/s² znaczy: co sekundę prędkość rośnie o 3 m/s.',
-    example: 'Rower rusza. Po 1 s jedzie 2 m/s, po 2 s jedzie 4 m/s, po 3 s jedzie 6 m/s. Co sekundę o 2 m/s więcej, więc a = 2 m/s².' },
+    keys: { title: 'Jak czytać ten wzór', formula: 'a = Δv : t', read: '„a równa się delta v podzielone przez t”',
+      items: [['a', 'przyspieszenie'], ['Δv', 'o ile zmieniła się prędkość. Znaczek Δ (delta) znaczy „zmiana”.'], ['t', 'czas, w którym prędkość się zmieniła'],
+        [':', 'dzielenie'], ['m/s²', 'jednostka przyspieszenia: o ile m/s rośnie prędkość w każdej sekundzie']] },
+    example: 'Rower rusza. Po 1 s jedzie 2 m/s, po 2 s 4 m/s, po 3 s 6 m/s. W ciągu 3 s prędkość wzrosła o 6 m/s. a = 6 m/s : 3 s = 2 m/s². Czyli co sekundę o 2 m/s szybciej.' },
   { id: 'przyspieszony', term: 'Ruch jednostajnie przyspieszony',
     formal: 'Ruch jednostajnie przyspieszony prostoliniowy to ruch po linii prostej, w którym prędkość rośnie o tyle samo w jednakowych odstępach czasu. Przyspieszenie jest stałe.',
     simple: 'Ciało jedzie prosto i co sekundę przyspiesza o tyle samo.',
@@ -799,14 +813,24 @@ const GLOS = [
   { id: 'zasada2', term: 'II zasada dynamiki Newtona',
     formal: 'Jeżeli na ciało działa stała siła niezrównoważona, to ciało porusza się ruchem jednostajnie przyspieszonym. Przyspieszenie jest wprost proporcjonalne do siły i odwrotnie proporcjonalne do masy ciała: a = F : m.',
     simple: 'Gdy siły się nie znoszą, ciało przyspiesza. 2 razy większa siła: 2 razy większe przyspieszenie. 2 razy większa masa: 2 razy mniejsze przyspieszenie.',
+    keys: { title: 'Trudne słowa',
+      items: [['stała siła', 'siła, która cały czas jest tak samo duża'],
+        ['wprost proporcjonalne do siły', 'ile razy większa siła, tyle razy większe przyspieszenie'],
+        ['odwrotnie proporcjonalne do masy', 'ile razy większa masa, tyle razy mniejsze przyspieszenie']] },
     example: 'Pchasz tak samo mocno pusty wózek i pełny. Pusty rozpędza się szybciej, bo ma mniejszą masę.' },
   { id: 'wzor', term: 'Wzór: a = F : m',
     formal: 'Przyspieszenie ciała to siła wypadkowa podzielona przez masę ciała: a = F : m. Z tego wzoru wynika też: F = m · a.',
-    simple: 'Siła podzielona przez masę daje przyspieszenie. Jeśli znasz masę i przyspieszenie, siłę dostaniesz z mnożenia: F = m · a.',
-    example: 'Siła 200 N, masa 50 kg. a = 200 N : 50 kg = 4 m/s².' },
+    simple: 'Szukasz przyspieszenia? Podziel siłę przez masę. Szukasz siły? Pomnóż masę przez przyspieszenie.',
+    keys: { title: 'Jak czytać ten wzór', formula: 'a = F : m', read: '„przyspieszenie równa się siła podzielona przez masę”', tri: true,
+      items: [['a', 'przyspieszenie, w m/s²'], ['F', 'siła (ta, która „zostaje”, czyli wypadkowa), w niutonach (N)'], ['m', 'masa, w kilogramach (kg)'],
+        [':', 'dzielenie'], ['·', 'mnożenie']] },
+    example: 'Siła 200 N, masa 50 kg. Szukam a: a = 200 : 50 = 4 m/s². W drugą stronę: masa 50 kg, przyspieszenie 4 m/s². Szukam F: F = 50 · 4 = 200 N.' },
   { id: 'niuton', term: 'Niuton (1 N)',
     formal: '1 N to wartość siły, która ciału o masie 1 kg nadaje przyspieszenie 1 m/s². Zapisujemy: 1 N = 1 kg · m/s².',
     simple: 'Niuton to taka siła, która rozpędza 1 kg tak, że co sekundę jedzie on o 1 m/s szybciej.',
+    keys: { title: 'Jak czytać ten zapis', formula: '1 N = 1 kg · m/s²', read: '„jeden niuton to jeden kilogram razy metr na sekundę do kwadratu”',
+      items: [['Co to jest?', 'To nie jest zadanie do policzenia. To „przepis” na jednostkę: z czego składa się niuton.'],
+        ['Skąd się bierze?', 'Ze wzoru F = m · a. Masę (kg) mnożymy przez przyspieszenie (m/s²). Wychodzą kg · m/s², czyli niutony.']] },
     example: 'Ziemia przyciąga tabliczkę czekolady (100 g) siłą około 1 N.' },
   { id: 'kierunek', term: 'Kierunek przyspieszenia',
     formal: 'Przyspieszenie ma taki sam kierunek i zwrot jak siła wypadkowa działająca na ciało.',
@@ -872,12 +896,12 @@ const TQ = {
     { text: 'Jak obliczyć przyspieszenie, gdy znasz siłę F i masę m?', opts: [
       { t: 'a = F : m', ok: true },
       { t: 'a = F · m', fb: 'Gdyby mnożyć, cięższe ciało przyspieszałoby bardziej. A jest odwrotnie. Siłę dzielimy przez masę.' },
-      { t: 'a = m : F', fb: 'Dzielenie w złą stronę. Na górze jest siła: a = F : m.' },
+      { t: 'a = m : F', fb: 'Dzielenie w złą stronę. Najpierw siła, potem dzielimy przez masę: a = F : m.' },
       { t: 'a = F + m', fb: 'Siły i masy nie dodajemy. Siłę dzielimy przez masę.' } ] },
     { text: 'Siła 300 N działa na sanie o masie 100 kg. Jakie jest ich przyspieszenie?', opts: [
       { t: '3 m/s²', ok: true },
       { t: '30 000 m/s²', fb: 'To wynik mnożenia. Siłę dzielimy przez masę: 300 : 100 = 3.' },
-      { t: '0,33 m/s²', fb: 'Dzielenie w złą stronę. Na górze jest siła: 300 : 100 = 3.' },
+      { t: '0,33 m/s²', fb: 'Dzielenie w złą stronę. Siłę dzielimy przez masę: 300 : 100 = 3.' },
       { t: '300 m/s²', fb: 'Trzeba jeszcze podzielić przez masę: 300 : 100 = 3.' } ] },
   ],
   niuton: [
@@ -1040,6 +1064,25 @@ const TQ_M1 = {
   ],
 };
 
+// blok „jak czytać wzór”: wzór, jak go przeczytać na głos, co znaczy każda litera
+const TRI_SVG = '<svg viewBox="0 0 120 104" aria-hidden="true"><path d="M60 4 L116 100 L4 100 Z" fill="none" stroke="currentColor" stroke-width="3"/>' +
+  '<line x1="30" y1="56" x2="90" y2="56" stroke="currentColor" stroke-width="3"/><line x1="60" y1="56" x2="60" y2="100" stroke="currentColor" stroke-width="3"/>' +
+  '<g font-size="24" font-weight="800" text-anchor="middle" fill="currentColor"><text x="60" y="46">F</text><text x="40" y="88">m</text><text x="80" y="88">a</text></g></svg>';
+function keysBox(k) {
+  const box = document.createElement('div'); box.className = 'keys';
+  if (k.formula) { const f = document.createElement('div'); f.className = 'kf'; f.textContent = k.formula; box.append(f); }
+  if (k.read) { const r = document.createElement('div'); r.className = 'kr'; r.textContent = 'Czytamy: ' + k.read; box.append(r); }
+  const dl = document.createElement('dl');
+  k.items.forEach(([a, b]) => { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = a; dd.textContent = b; dl.append(dt, dd); });
+  box.append(dl);
+  if (k.tri) {
+    const t = document.createElement('div'); t.className = 'tri';
+    t.innerHTML = TRI_SVG + '<p><b>Sztuczka z trójkątem.</b> Zakryj palcem literę, której szukasz. Zostaje przepis. ' +
+      'Zakryjesz a: zostaje F nad m, czyli a = F : m (dzielisz). Zakryjesz F: zostaje m obok a, czyli F = m · a (mnożysz).</p>';
+    box.append(t);
+  }
+  return box;
+}
 function defCard(g, open, status) {
   const d = document.createElement('details'); d.className = 'def'; if (open) d.open = true;
   d.innerHTML = '<summary><b></b><span>rozwiń</span></summary><div class="def-body">' +
@@ -1049,6 +1092,11 @@ function defCard(g, open, status) {
   d.querySelector('summary b').textContent = g.term;
   const ps = d.querySelectorAll('.def-body p');
   ps[0].textContent = g.formal; ps[1].textContent = g.simple; ps[2].textContent = g.example;
+  if (g.keys) {
+    const r = document.createElement('div'); r.className = 'def-row';
+    const t = document.createElement('i'); t.textContent = g.keys.title;
+    r.append(t, keysBox(g.keys)); ps[0].parentNode.after(r);
+  }
   if (status === 'weak') { const s = d.querySelector('summary span'); s.textContent = 'do powtórki'; s.className = 'st-weak'; }
   return d;
 }
@@ -1162,8 +1210,8 @@ const MIS = {
   masa: { name: '„Masa nie ma znaczenia”', tip: 'Ta sama siła mniejszej masie daje większe przyspieszenie. a = F : m.' },
   proporcja: { name: 'Ile razy więcej?', tip: '2 razy większa siła: 2 razy większe przyspieszenie. 2 razy większa masa: 2 razy mniejsze przyspieszenie.' },
   mnoz: { name: 'Mnożenie zamiast dzielenia', tip: 'Przyspieszenie: siłę DZIELIMY przez masę, a = F : m. Siłę liczymy z mnożenia: F = m · a.' },
-  odwr: { name: 'Dzielenie w złą stronę', tip: 'a = F : m. Siła jest „na górze”, masa „na dole”.' },
-  v_a: { name: 'Prędkość zamiast przyspieszenia', tip: 'We wzorze F = m · a jest przyspieszenie, a nie prędkość. Najpierw policz a = v : t.' },
+  odwr: { name: 'Dzielenie w złą stronę', tip: 'a = F : m. Najpierw siła, potem dzielimy przez masę. W trójkącie F jest nad m.' },
+  v_a: { name: 'Prędkość zamiast przyspieszenia', tip: 'We wzorze F = m · a jest przyspieszenie, a nie prędkość. Najpierw policz przyspieszenie: o ile wzrosła prędkość, podzielone przez czas.' },
   kierunek: { name: '„Siła od razu zmienia kierunek ruchu”', tip: 'Siła przeciwna do ruchu najpierw hamuje ciało. Przyspieszenie ma zwrot siły, a nie prędkości.' },
 };
 const addMis = id => { if (id) S.mis[id] = (S.mis[id] || 0) + 1; };
@@ -1434,6 +1482,8 @@ function cardShow(phase) {
   const tg = g.prev ? 'Powtórka z modułu 1' : TAG[g.id];
   const tag = $('#cTag'); tag.textContent = tg; tag.className = 'chip' + (tg.startsWith('Nowe') ? ' new' : '');
   $('#cTerm').textContent = g.term; $('#cFormal').textContent = g.formal; $('#cSimple').textContent = g.simple; $('#cExample').textContent = g.example;
+  $('#cKeysRow').hidden = !g.keys; $('#cKeys').innerHTML = '';
+  if (g.keys) { $('#cKeysT').textContent = g.keys.title; $('#cKeys').append(keysBox(g.keys)); }
   $('#cRetry').hidden = phase === 0;
   $('#cQ').textContent = q.text;
   const box = $('#cOpts'); box.innerHTML = '';
@@ -1577,7 +1627,17 @@ function drawCart(ctx, x, y, wd, ht, label, color) {
   ctx.fillStyle = color; ctx.beginPath(); ctx.roundRect(x, y - ht, wd, ht - 10, 6); ctx.fill(); ctx.stroke();
   ctx.fillStyle = col('muted');
   [x + wd * .22, x + wd * .78].forEach(cx => { ctx.beginPath(); ctx.arc(cx, y - 6, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); });
-  txt(ctx, label, x + wd / 2, y - ht / 2 - 4, '#15102a', 14, 'center', 800);
+  // podpis musi zmieścić się w pudle: najpierw w jednej linii, a jak za długi, to w dwóch („z ładunkiem:” / „30 kg”)
+  const room = wd - 12, fits = (s, size) => { ctx.font = `800 ${size}px ${col('f-mono')}`; return ctx.measureText(s).width <= room; };
+  const cy = y - ht / 2 - 4, parts = label.split(': ');
+  if (fits(label, 14) || parts.length < 2) {
+    let size = 14; while (size > 9 && !fits(label, size)) size--;
+    txt(ctx, label, x + wd / 2, cy, '#15102a', size, 'center', 800);
+  } else {
+    const lines = [parts[0] + ':', parts[1]];
+    let size = 14; while (size > 9 && !lines.every(s => fits(s, size))) size--;
+    lines.forEach((s, k) => txt(ctx, s, x + wd / 2, cy + (k - .5) * (size + 2), '#15102a', size, 'center', 800));
+  }
 }
 
 // przed odpowiedzią: wstęp, który niczego nie zdradza (silnik pracuje, prędkość „?”)
@@ -1608,7 +1668,7 @@ const SCENES = {
   carts(ctx, w, h, t, o = { m: [10, 30], lab: ['pusty: 10 kg', 'z ładunkiem: 30 kg'] }) {
     ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, h);
     const T = 5, tt = t > 0 ? t % (T + .6) : 0, run = Math.max(0, Math.min(T, tt - .3));
-    const x0 = 30, cw = Math.min(110, w * .18), lanes = [h * .42, h * .84];
+    const x0 = 30, cw = Math.min(110, Math.max(80, w * .18)), lanes = [h * .42, h * .84];
     const a1 = (w * .9 - cw - x0) / 6, as = [a1, a1 * o.m[0] / o.m[1]];
     const pos = a => run <= 2 ? a * run * run / 2 : a * 2 + 2 * a * (run - 2);
     lanes.forEach((y, i) => {
@@ -1955,9 +2015,9 @@ const FLY = [
   { ask: 'F', unit: 'N', ans: 6000, T: 5,
     task: 'Ostatnia bramka. Orion z ładunkiem ma masę 3000 kg. Rusza z miejsca i po 5 s ma mieć prędkość 10 m/s. Jaką siłą ma pchać silnik?',
     hint: 'Dwa kroki. Najpierw przyspieszenie: o ile ma rosnąć prędkość w każdej sekundzie? Potem F = m · a.',
-    sol: ['Dane: m = 3000 kg, v = 10 m/s, t = 5 s', 'Krok 1: a = v : t = 10 m/s : 5 s = 2 m/s²', 'Krok 2: F = m · a', 'F = 3000 kg · 2 m/s² = 6000 N'],
+    sol: ['Dane: m = 3000 kg, Δv = 10 m/s, t = 5 s', 'Krok 1: a = Δv : t = 10 m/s : 5 s = 2 m/s² (prędkość wzrosła od 0 do 10 m/s)', 'Krok 2: F = m · a', 'F = 3000 kg · 2 m/s² = 6000 N'],
     sim: x => ({ ship: x / 3000, gate: 2 }),
-    traps: { 30000: ['W miejsce przyspieszenia wstawiono prędkość. Najpierw policz a = v : t.', 'v_a'], 15000: ['W miejsce przyspieszenia wstawiono czas. Najpierw policz a = v : t.', 'v_a'], 2: ['To jest przyspieszenie. Dobrze! Teraz policz siłę: F = m · a.', null] } },
+    traps: { 30000: ['W miejsce przyspieszenia wstawiono prędkość. Najpierw policz przyspieszenie: o ile wzrosła prędkość, podzielone przez czas.', 'v_a'], 15000: ['W miejsce przyspieszenia wstawiono czas. Najpierw policz przyspieszenie: o ile wzrosła prędkość, podzielone przez czas.', 'v_a'], 2: ['To jest przyspieszenie. Dobrze! Teraz policz siłę: F = m · a.', null] } },
 ];
 const fly = { r: 0, tries: 0, state: 'input', t: 0, ship: 0, gate: 0, hint: false, ok: false, pos: null };
 function flyStart() {
