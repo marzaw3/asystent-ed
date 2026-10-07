@@ -58,7 +58,7 @@ body { font-family: var(--f-body); font-size: 18px; line-height: 1.5; overflow-x
   background: var(--accent); pointer-events: none; opacity: 0; transform: scale(0); }
 
 /* cała szerokość ekranu; ekrany robocze to dwie kolumny (.split): co robisz | wyniki i pytania */
-.app { position: relative; z-index: 3; padding: 14px clamp(16px, 3vw, 48px) 40px; display: grid; gap: 16px; }
+.app { position: relative; z-index: 3; padding: 14px clamp(16px, 3vw, 48px) 16px; display: grid; gap: 16px; }
 
 /* HUD: jedna linia — tytuł, bohater, etapy, słowniczek, XP, gwiazdki */
 .hud { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 26px; font-weight: 700; text-shadow: var(--shadow); }
@@ -101,7 +101,7 @@ main > section { margin-top: 1vh; }
 #labQ { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 #labQ > :not(.opt) { grid-column: 1 / -1; }
 #labQ .opt { text-align: center; padding: 12px 10px; }
-.split.fill { min-height: calc(100dvh - 90px); align-items: center; }
+.split.fill { min-height: calc(100dvh - 120px); align-items: center; }
 .title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; }
 .title-row p { flex: 1 1 280px; font-size: 16px; }
 h2 .label { display: block; margin-bottom: 4px; font-family: var(--f-body); letter-spacing: 0; }
@@ -122,7 +122,7 @@ a { color: var(--accent); }
 canvas.scene { display: block; width: 100%; border-radius: 20px; background: transparent; touch-action: none;
   box-shadow: inset 0 0 0 2px var(--rim); }
 /* data-fit="css": wysokość sceny ustala CSS, fit() tylko ją odczytuje */
-#labCanvas { height: clamp(280px, calc(100dvh - 400px), 620px); }
+#labCanvas { height: clamp(280px, calc(100dvh - 440px), 620px); }
 #dockCanvas { height: clamp(280px, calc(100dvh - 300px), 640px); }
 
 
@@ -279,6 +279,58 @@ ul.clean { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
 .report li::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); transform: translateY(-1px); }
 @media (max-width: 560px) { .report { grid-template-columns: 1fr; } .report > svg { grid-row: auto; } }
 
+/* laboratorium: po trzech eksperymentach wniosek zastępuje stanowisko (przełącza labConclude) */
+.lab-rig { display: contents; }
+#scr-lab.concluded .lab-rig, #scr-lab:not(.concluded) #labConclusion { display: none; }
+
+/* desktop: ekran mieści się w oknie. Prawa kolumna nie wychodzi poza okno; jeśli treści jest za dużo,
+   przewija się sama, a przyciski (Sprawdź / Dalej) zostają przyklejone na dole, zawsze widoczne */
+@media (min-width: 901px) {
+  .split > .col.side { position: sticky; top: 12px; max-height: calc(100dvh - 100px); overflow-y: auto; overscroll-behavior: contain;
+    scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.3) transparent; padding: 4px 6px 0 4px; margin: -4px -6px 0 -4px; }
+  .split > .col.side .actions { position: sticky; bottom: 0; z-index: 1; padding: 14px 0 10px;
+    background: linear-gradient(rgba(20,10,30,0), rgba(20,10,30,.92) 38%); }
+}
+/* niskie okno (laptop): mniejsze odstępy, postacie i sceny, żeby wszystko weszło bez przewijania */
+@media (min-width: 901px) and (max-height: 860px) {
+  body { font-size: 16px; }
+  .app { padding-top: 8px; padding-bottom: 6px; gap: 10px; }
+  main > section { margin-top: 0; }
+  .split.fill { min-height: calc(100dvh - 80px); }
+  section, .split > .col { gap: 10px; }
+  h1 { font-size: clamp(36px, min(6.4vw, 11dvh), 104px); }
+  h2 { font-size: clamp(20px, min(2.3vw, 4.2dvh), 34px); }
+  .lead { font-size: 18px; }
+  .map { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .node { min-height: 0; padding: 10px 12px; }
+  .heroes { gap: 8px; }
+  .hero-opt { padding: 10px 8px; gap: 4px; }
+  .hero-opt svg { width: clamp(48px, 9dvh, 80px); height: clamp(48px, 9dvh, 80px); }
+  .name-row input { font-size: 18px; padding: 8px 14px; }
+  .say svg { width: 44px; height: 44px; }
+  .say .bubble { padding: 8px 14px; }
+  .btn { padding: 11px 22px; font-size: 16px; }
+  .btn.hold { padding: 13px 26px; font-size: 19px; min-width: 140px; }
+  .seg button { padding: 7px 14px; font-size: 16px; }
+  .opt, #scr-cards .opt, #scr-quiz .opt { padding: 10px 16px; font-size: 16px; }
+  .exps { gap: 6px; }
+  .exp { padding: 8px 14px; font-size: 15px; }
+  .panel { padding: 14px 18px; gap: 8px; }
+  .ro b { font-size: clamp(18px, 2.4vw, 26px); }
+  #labCanvas { height: clamp(140px, calc(100dvh - 462px), 620px); }
+  #dockCanvas { height: clamp(170px, calc(100dvh - 250px), 640px); }
+  #scr-quiz #qCanvas { height: clamp(150px, calc(100dvh - 380px), 520px); }
+  #scr-cards .card, #scr-quiz > .col:not(.side) { min-height: 0; max-height: calc(100dvh - 90px); padding: clamp(16px, 2.2vw, 36px); gap: 14px; }
+  #scr-cards .def-row p { font-size: clamp(16px, 1.2vw, 20px); }
+  #scr-cards .def-row.simple p { font-size: clamp(18px, 1.5vw, 24px); }
+  #scr-cards .card h2 { font-size: clamp(26px, min(3.2vw, 6dvh), 48px); }
+  #scr-quiz #qText { font-size: clamp(20px, min(2.4vw, 4.4dvh), 40px); }
+  .fb { padding: 12px 16px; gap: 6px; }
+  .fb .tag { font-size: 19px; }
+  .bigstars { font-size: clamp(44px, min(10vw, 12dvh), 104px); }
+  .report { padding: 16px 20px; }
+}
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -351,6 +403,7 @@ ul.clean { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
       <div class="title-row">
         <h2><span class="label">Laboratorium</span> Co zrobi skrzynia, gdy przestaniesz ją pchać?</h2>
       </div>
+      <div class="lab-rig">
       <div class="title-row">
         <div class="seg" role="group" aria-label="Miejsce eksperymentu">
           <button id="surf-hangar" data-surf="hangar" aria-pressed="true">Hangar (szorstka podłoga)</button>
@@ -372,13 +425,10 @@ ul.clean { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
         <div class="actions">
           <button class="btn hold" id="pushBtn">Pchaj</button>
           <button class="btn ghost" id="labReset">Ustaw skrzynię od nowa</button>
+          <button class="btn" id="labShowConc" hidden>Wniosek</button>
         </div>
       </div>
-     </div>
-     <div class="col side">
-      <div class="say" id="say-lab"></div>
-      <h3>Twoje eksperymenty</h3>
-      <div class="exps" id="exps"></div>
+      </div>
       <div class="panel" id="labConclusion" hidden>
         <span class="label">Co się stało?</span>
         <ul class="clean">
@@ -395,8 +445,13 @@ ul.clean { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
           <button class="opt" data-ok="1" data-fb="">W kosmosie</button>
           <p id="labQfb" class="status"></p>
         </div>
-        <div class="actions"><button class="btn" id="labNext" disabled>Dalej: Pojęcia</button></div>
+        <div class="actions"><button class="btn" id="labNext" disabled>Dalej: Pojęcia</button><button class="btn ghost" id="labBack">Wróć do skrzyni</button></div>
       </div>
+     </div>
+     <div class="col side">
+      <div class="say" id="say-lab"></div>
+      <h3>Twoje eksperymenty</h3>
+      <div class="exps" id="exps"></div>
      </div>
     </section>
 
@@ -708,8 +763,8 @@ else gsap.to(WD, { dark: 0, duration: 1.8, ease: 'power2.inOut' });
 // ---------- słowniczek ----------
 const GLOS = [
   { id: 'sila', term: 'Siła',
-    formal: 'Siła opisuje działanie jednego ciała na drugie. Ma wartość, kierunek i zwrot. Jednostką siły jest niuton (1 N).',
-    simple: 'Siła to pchnięcie albo pociągnięcie. Rysujemy ją jako strzałkę. Im dłuższa strzałka, tym mocniej pchamy. Grot strzałki pokazuje, w którą stronę.',
+    formal: 'Siła opisuje działanie jednego ciała na drugie. Siła jest wielkością wektorową: ma wartość, kierunek, zwrot i punkt przyłożenia. Jednostką siły jest niuton (1 N).',
+    simple: 'Siła to pchnięcie albo pociągnięcie. Rysujemy ją jako strzałkę (wektor). Strzałka zaczyna się tam, gdzie pchamy. Im dłuższa strzałka, tym mocniej pchamy. Grot strzałki pokazuje, w którą stronę.',
     example: 'Pchasz wózek w sklepie, czyli działasz na niego siłą.' },
   { id: 'wypadkowa', term: 'Siła wypadkowa',
     formal: 'Siła wypadkowa to jedna siła, która daje taki sam skutek jak kilka sił działających razem.',
@@ -749,10 +804,10 @@ const TAG = {
 const TQ = {
   sila: [
     { text: 'Co trzeba podać, żeby dokładnie opisać siłę?', opts: [
-      { t: 'Wartość, kierunek i zwrot', ok: true },
-      { t: 'Tylko wartość (ile niutonów)', fb: 'Sama wartość nie wystarczy. Trzeba też wiedzieć, w którą stronę działa siła.' },
-      { t: 'Masę i prędkość', fb: 'To cechy ciała, a nie siły. Siłę opisujemy przez wartość, kierunek i zwrot.' },
-      { t: 'Tylko kierunek', fb: 'Kierunek to za mało. Trzeba też wiedzieć, jak mocno (wartość) i w którą stronę (zwrot).' } ] },
+      { t: 'Wartość, kierunek, zwrot i punkt przyłożenia', ok: true },
+      { t: 'Tylko wartość (ile niutonów)', fb: 'Sama wartość nie wystarczy. Siła to wektor: trzeba też wiedzieć, w którą stronę działa i gdzie jest przyłożona.' },
+      { t: 'Masę i prędkość', fb: 'To cechy ciała, a nie siły. Siłę opisujemy przez wartość, kierunek, zwrot i punkt przyłożenia.' },
+      { t: 'Tylko kierunek', fb: 'Kierunek to za mało. Trzeba też wiedzieć, jak mocno (wartość), w którą stronę (zwrot) i gdzie siła działa (punkt przyłożenia).' } ] },
     { text: 'W jakich jednostkach mierzymy siłę?', opts: [
       { t: 'W niutonach (N)', ok: true },
       { t: 'W kilogramach (kg)', fb: 'W kilogramach mierzymy masę. Siłę mierzymy w niutonach.' },
@@ -1135,7 +1190,7 @@ function labChecklist() {
       `<span>Po puszczeniu: 0 N − tarcie ${T} N = <em>${T ? '−' + T : '0'} N</em></span>${res}</div>`;
   }).join('');
   if (lab.done.hangar && lab.done.ice && lab.done.space && $('#labConclusion').hidden) {
-    $('#labConclusion').hidden = false;
+    $('#labConclusion').hidden = false; $('#labShowConc').hidden = false; labConclude(true);
     setXP(10);
     say($('#say-lab'), 'Masz trzy wyniki. Porównaj siłę wypadkową po puszczeniu. Gdzie było 0 N?');
   }
@@ -1210,6 +1265,10 @@ document.querySelectorAll('#labQ .opt').forEach(b => b.addEventListener('click',
   $('#labQfb').style.color = b.dataset.ok === '1' ? 'var(--good)' : 'var(--wrong)';
 }));
 $('#labNext').addEventListener('click', () => cardsStart());
+// po trzech eksperymentach wniosek zastępuje stanowisko (cały ekran bez przewijania); można wrócić do skrzyni
+function labConclude(on) { $('#scr-lab').classList.toggle('concluded', on); window.scrollTo({ top: 0, behavior: 'auto' }); }
+$('#labBack').addEventListener('click', () => labConclude(false));
+$('#labShowConc').addEventListener('click', () => labConclude(true));
 
 // ---------- KARTY POJĘĆ ----------
 // każde pojęcie: karta → pytanie; po błędzie wyjaśnienie i drugie pytanie w innej formie
@@ -1339,18 +1398,75 @@ function person(ctx, x, footY, ang, color, scale = 1) {
 }
 function trail(ctx, xs, y, color) { ctx.fillStyle = color; xs.forEach(x => { ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill(); }); ctx.globalAlpha = 1; }
 
+// sonda: korpus, antena talerzowa z przodu, panele, dysza z tyłu; flame 0..1 = płomień silnika
+function drawProbe(ctx, x, y, s, flame, t) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.lineJoin = 'round';
+  if (flame > 0) {
+    const L = (34 + 10 * Math.sin(t * 40) + 6 * Math.sin(t * 23)) * flame;
+    ctx.fillStyle = col('amber'); ctx.globalAlpha = .9;
+    ctx.beginPath(); ctx.moveTo(-42, -9); ctx.lineTo(-42 - L, 0); ctx.lineTo(-42, 9); ctx.fill();
+    ctx.fillStyle = '#ffe2a8'; ctx.beginPath(); ctx.moveTo(-42, -5); ctx.lineTo(-42 - L * .55, 0); ctx.lineTo(-42, 5); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  ctx.strokeStyle = col('muted'); ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(0, -30); ctx.moveTo(0, 20); ctx.lineTo(0, 30); ctx.stroke();
+  [[-64, -30], [30, 34]].forEach(([py, hh]) => {
+    const top = py < 0 ? py : 30;
+    ctx.fillStyle = 'rgba(143,132,255,.85)'; ctx.fillRect(-16, top, 32, 34);
+    ctx.strokeStyle = col('ink'); ctx.lineWidth = 1; ctx.globalAlpha = .5;
+    for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(-16, top + k * 8.5); ctx.lineTo(16, top + k * 8.5); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(0, top); ctx.lineTo(0, top + 34); ctx.stroke(); ctx.globalAlpha = 1;
+  });
+  ctx.fillStyle = col('line'); ctx.beginPath(); ctx.moveTo(-30, -8); ctx.lineTo(-42, -12); ctx.lineTo(-42, 12); ctx.lineTo(-30, 8); ctx.fill();
+  ctx.fillStyle = '#d9d2e6'; ctx.strokeStyle = col('ink'); ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(-30, -20, 60, 40, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = col('amber'); ctx.fillRect(-20, -4, 22, 8);
+  ctx.fillStyle = '#f4f0fa'; ctx.beginPath(); ctx.ellipse(36, 0, 9, 30, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(38, 0); ctx.lineTo(60, 0); ctx.stroke();
+  ctx.fillStyle = col('ink'); ctx.beginPath(); ctx.arc(61, 0, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+function probeHud(ctx, fuel, on, v) {
+  txt(ctx, 'Paliwo', 16, 20, col('muted'), 12, 'left', 700);
+  ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(66, 14, 90, 12);
+  ctx.fillStyle = fuel > .25 ? col('ok') : col('bad'); ctx.fillRect(66, 14, 90 * fuel, 12);
+  txt(ctx, `${Math.round(fuel * 100)}%`, 164, 20, col('ink'), 12, 'left', 700);
+  txt(ctx, on ? 'Silniki: WŁĄCZONE' : 'Silniki: WYŁĄCZONE', 16, 42, on ? col('amber') : col('muted'), 12, 'left', 700);
+  txt(ctx, `v = ${fmt(v)} km/s`, 16, 64, col('ink'), 14, 'left', 700);
+}
+// przed odpowiedzią: wstęp, który niczego nie zdradza (silniki pracują, paliwo się kończy, obraz staje na „?”)
+const INTROS = {
+  probe(ctx, w, h, t) {
+    const C = 7, on = 3.4, tc = t % C, burn = Math.min(tc, on);
+    const shift = 70 * burn + 20 * burn * burn / on;
+    starfield(ctx, w, h, shift);
+    const s = Math.min(1.7, h / 210), x = w * 0.36, y = h * 0.5 + Math.sin(t * 1.3) * 3 * (tc < on ? 1 : 0);
+    const fire = tc < on ? 1 : Math.max(0, 1 - (tc - on) / 0.25);
+    drawProbe(ctx, x, y, s, fire, t);
+    if (tc > on && tc < on + 1.2) { // dymek po zgaszeniu silnika
+      const a = (tc - on) / 1.2; ctx.fillStyle = col('muted');
+      for (let k = 0; k < 3; k++) { ctx.globalAlpha = .45 * (1 - a); ctx.beginPath(); ctx.arc(x - 46 * s - a * 30 * (k + 1), y + (k - 1) * 8 * a, (5 + 14 * a) * s * (1 - k * .2), 0, Math.PI * 2); ctx.fill(); }
+      ctx.globalAlpha = 1;
+    }
+    probeHud(ctx, 1 - burn / on, tc < on, 12 + 3 * burn / on);
+    if (tc >= on + .4) {
+      const p = 1 + .08 * Math.sin(t * 5);
+      txt(ctx, '?', x + 130 * s, y, col('amber'), Math.round(64 * s * p), 'center', 900);
+      txt(ctx, 'Paliwo się skończyło. Co będzie dalej?', w / 2, h - 20, col('ink'), 14, 'center', 700);
+    }
+  },
+};
+
 const SCENES = {
   probe(ctx, w, h, t) {
+    const T = 4.6, tt = t % T, x0 = w * 0.14, x1 = w * 0.84, x = x0 + (x1 - x0) * tt / T, y = h * 0.5;
     starfield(ctx, w, h);
-    const T = 4.2, tt = t % T, x0 = w * 0.12, x1 = w * 0.86, x = x0 + (x1 - x0) * tt / T, y = h * 0.52;
-    const marks = []; for (let k = 0; k * 0.6 <= tt; k++) marks.push(x0 + (x1 - x0) * k * 0.6 / T);
-    trail(ctx, marks, y + 30, col('cyan'));
-    ctx.fillStyle = col('muted'); ctx.fillRect(x - 18, y - 9, 36, 18);
-    ctx.strokeStyle = col('ink'); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x - 26, y, 13, -1.2, 1.2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x + 18, y); ctx.lineTo(x + 34, y - 10); ctx.stroke();
-    txt(ctx, 'silniki: WYŁĄCZONE', 14, 20, col('muted'), 12);
-    txt(ctx, 'v = 15 km/s', x, y - 30, col('ink'), 13, 'center', 700);
-    if (t > 0) txt(ctx, 'kropki w równych odstępach = cały czas tak samo szybko', w / 2, h - 18, col('cyan'), 12, 'center');
+    const s = Math.min(1.7, h / 210);
+    const marks = []; for (let k = 0; k * 0.5 <= tt; k++) marks.push(x0 + (x1 - x0) * k * 0.5 / T);
+    trail(ctx, marks, y + 76 * s, col('cyan'));
+    drawProbe(ctx, x, y, s, 0, t);
+    probeHud(ctx, 0, false, 15);
+    if (t > 0) txt(ctx, 'Nic nie hamuje: kropki w równych odstępach = cały czas tak samo szybko', w / 2, h - 18, col('cyan'), 13, 'center', 700);
   },
   puck(ctx, w, h, t) {
     ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, h);
@@ -1618,11 +1734,12 @@ function nextQuestion() {
   };
   if (q.preds) { mk('1. Co się stanie?', q.preds, 'pred'); mk('2. Dlaczego?', q.reasons, 'reason'); }
   else mk('', q.opts, 'opt');
-  // scena: statyczna przed odpowiedzią, żeby nie zdradzić wyniku
+  // scena przed odpowiedzią: statyczna albo wstęp z INTROS. Nie może zdradzić wyniku
   if (q.scene) {
     $('#qSceneWrap').hidden = false;
-    requestAnimationFrame(() => { const { ctx, w, h } = fit($('#qCanvas'), 0.36, 200, 300); SCENES[q.scene](ctx, w, h, 0); });
-  } else $('#qSceneWrap').hidden = true;
+    if (INTROS[q.scene]) runLoop(t => { const { ctx, w, h } = fit($('#qCanvas'), 0.36, 200, 300); INTROS[q.scene](ctx, w, h, t); });
+    else { stopLoop(); requestAnimationFrame(() => { const { ctx, w, h } = fit($('#qCanvas'), 0.36, 200, 300); SCENES[q.scene](ctx, w, h, 0); }); }
+  } else { stopLoop(); $('#qSceneWrap').hidden = true; }
   // czas na przeczytanie
   let left = st.cfg.minRead;
   const btn = $('#qCheck'); btn.disabled = true; btn.textContent = `Przeczytaj uważnie… ${left}`;
@@ -1733,7 +1850,7 @@ function dockStep(dt) {
   dock.v += a * dt; dock.x += dock.v * dt;
   const dist = DK.goal - dock.x;
   if (dock.x >= DK.goal) {
-    if (Math.abs(dock.v) <= DK.maxV) return dockWin();
+    if (Math.round(Math.abs(dock.v) * 100) / 100 <= DK.maxV) return dockWin(); // jak na wyświetlaczu (2 miejsca)
     return dockFail(`Statek uderzył w stację z prędkością ${fmt(dock.v, 2)} m/s. Bez silnika statek wcale nie zwalnia, bo w kosmosie nic go nie hamuje. Przed stacją włącz silnik wsteczny.`);
   }
   if (dist <= 1.5 && Math.abs(dock.v) <= 0.2 && !dock.thr) { dock.still += dt; if (dock.still > 0.8) return dockWin(); } else dock.still = 0;
@@ -1816,7 +1933,7 @@ function dockDraw() {
   }
   if (Math.abs(dock.v) > 0.02) {
     const L = Math.max(-120, Math.min(120, dock.v * 18));
-    arrow(ctx, nx - 23, y + 32, nx - 23 + L, y + 32, col('cyan'), `v = ${fmt(dock.v, 1)} m/s`, { x: nx - 23 + L / 2, y: y + 48 });
+    arrow(ctx, nx - 23, y + 32, nx - 23 + L, y + 32, col('cyan'), `v = ${fmt(dock.v, 2)} m/s`, { x: nx - 23 + L / 2, y: y + 48 });
   }
   // paliwo
   ctx.strokeStyle = col('muted'); ctx.lineWidth = 1; ctx.strokeRect(14, 14, 120, 10);
@@ -1886,7 +2003,7 @@ function resetAll() {
   renderGlossary();
   $('#xp').textContent = '0'; refreshStars();
   Object.assign(lab, { x: 0, v: 0, push: false, wasPush: false, rel: null, done: { hangar: false, ice: false, space: false }, res: {}, qOk: false });
-  lab.surf = ''; labSetSurf('hangar'); labChecklist(); $('#labConclusion').hidden = true; $('#labNext').disabled = true; $('#labQfb').textContent = '';
+  lab.surf = ''; labSetSurf('hangar'); labChecklist(); $('#labConclusion').hidden = true; $('#labShowConc').hidden = true; $('#scr-lab').classList.remove('concluded'); $('#labNext').disabled = true; $('#labQfb').textContent = '';
   document.querySelectorAll('#labQ .opt').forEach(o => o.classList.remove('good', 'bad'));
   dock.hint = 0; $('#dockHint').hidden = true;
 }
