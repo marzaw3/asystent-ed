@@ -94,7 +94,7 @@ main > section { margin-top: 1vh; }
   #scr-start .map, #best { order: 2; }
   /* selektory z „canvas#…” / „div.…”, bo reguły bazowe stoją niżej w arkuszu */
   canvas#labCanvas { height: clamp(220px, 62vw, 340px); }
-  canvas#dockCanvas, #scr-quiz canvas#qCanvas { height: clamp(200px, 58vw, 320px); }
+  canvas#flyCanvas, #scr-quiz canvas#qCanvas { height: clamp(200px, 58vw, 320px); }
   #scr-cards div.card, #scr-quiz > div.col:not(.side) { min-height: 0; }
 }
 /* ekrany bez sceny (start, podsumowanie) wypełniają wysokość okna i stoją na środku */
@@ -122,8 +122,8 @@ a { color: var(--accent); }
 canvas.scene { display: block; width: 100%; border-radius: 20px; background: transparent; touch-action: none;
   box-shadow: inset 0 0 0 2px var(--rim); }
 /* data-fit="css": wysokość sceny ustala CSS, fit() tylko ją odczytuje */
-#labCanvas { height: clamp(280px, calc(100dvh - 440px), 620px); }
-#dockCanvas { height: clamp(280px, calc(100dvh - 300px), 640px); }
+#labCanvas { height: clamp(280px, calc(100dvh - 470px), 620px); }
+#flyCanvas { height: clamp(280px, calc(100dvh - 300px), 640px); }
 
 
 /* przyciski */
@@ -167,6 +167,7 @@ ul.clean { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
 .glos-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; }
 .glos-head p { flex: 1 1 260px; }
 .defs { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, max(340px, 23%)), 1fr)); align-items: start; }
+.defs-sub { grid-column: 1 / -1; margin-top: 8px; }
 .def { background: var(--veil-2); border-radius: 16px; overflow: hidden; }
 .def summary { list-style: none; cursor: pointer; padding: 12px 18px; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
 .def summary::-webkit-details-marker { display: none; }
@@ -221,6 +222,7 @@ ul.clean { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
 .node.locked { opacity: .55; }
 a.node { color: inherit; text-decoration: none; }
 a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
+.node.done b::before { content: "✓ "; color: var(--good); }
 
 /* quiz: treść zadania bywa długa, więc lżejszy i mniejszy nagłówek niż na innych ekranach */
 #qText { font-size: clamp(22px, 2.4vw, 34px); font-weight: 700; line-height: 1.3; letter-spacing: -.015em; max-width: 30em; }
@@ -261,6 +263,23 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
 .say .bubble { background: var(--veil-2); border-radius: 18px; padding: 10px 16px; display: grid; gap: 2px; min-width: 0; }
 .say .bubble b { font-family: var(--f-display); font-size: 15px; color: var(--accent); }
 .say .bubble p { text-shadow: none; font-weight: 700; }
+
+
+/* tabela przyspieszeń w laboratorium: wiersze = masa, kolumny = siła */
+.atab { display: grid; grid-template-columns: auto 1fr 1fr; gap: 8px; }
+.atab > div { border-radius: 16px; padding: 10px 14px; display: grid; gap: 2px; align-content: center; text-shadow: none; }
+.atab .h { font-weight: 800; font-size: 15px; color: var(--ash); text-shadow: var(--shadow); }
+.atab .cell { background: var(--veil); box-shadow: inset 0 0 0 2px rgba(255,255,255,.15); min-height: 84px; }
+.atab .cell b { font-family: var(--f-display); font-size: clamp(20px, 2.2vw, 30px); font-variant-numeric: tabular-nums; }
+.atab .cell span { font-size: 14px; color: var(--ash); font-weight: 700; }
+.atab .cell.cur { box-shadow: inset 0 0 0 2px var(--white); }
+.atab .cell.done { box-shadow: inset 0 0 0 3px var(--accent); }
+/* misja: pole na wynik obliczeń */
+.num-row { display: flex; align-items: center; gap: 10px; font-family: var(--f-display); font-size: clamp(22px, 2.4vw, 32px); text-shadow: var(--shadow); }
+.num-row input { font: inherit; width: 6.5em; padding: 8px 14px; border-radius: 14px; border: 0; color: var(--white); text-align: right;
+  background: var(--veil-2); box-shadow: inset 0 0 0 2px rgba(255,255,255,.35); }
+.num-row input:disabled { opacity: .7; }
+.steps-sol { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-weight: 700; }
 
 /* raport */
 #endTitle { font-size: clamp(34px, 4.6vw, 72px); }
@@ -319,8 +338,8 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
   .exp { padding: 8px 14px; font-size: 15px; }
   .panel { padding: 14px 18px; gap: 8px; }
   .ro b { font-size: clamp(18px, 2.4vw, 26px); }
-  #labCanvas { height: clamp(140px, calc(100dvh - 462px), 620px); }
-  #dockCanvas { height: clamp(170px, calc(100dvh - 250px), 640px); }
+  #labCanvas { height: clamp(140px, calc(100dvh - 500px), 620px); }
+  #flyCanvas { height: clamp(170px, calc(100dvh - 250px), 640px); }
   #scr-quiz #qCanvas { height: clamp(150px, calc(100dvh - 380px), 520px); }
   #scr-cards .card, #scr-quiz > .col:not(.side) { min-height: 0; max-height: calc(100dvh - 90px); padding: clamp(16px, 2.2vw, 36px); gap: 14px; }
   #scr-cards .def-row p { font-size: clamp(16px, 1.2vw, 20px); }
@@ -344,7 +363,7 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
 
 <div class="app">
   <header class="hud">
-    <span class="hud-title">Moduł 1: Bezwładność</span>
+    <span class="hud-title">Moduł 2: Przyspieszenie</span>
     <div class="hero-tag" id="hudHero" hidden></div>
     <ol class="steps" id="steps">
       <li data-s="lab">Laboratorium</li>
@@ -368,19 +387,20 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
       <button class="btn ghost" id="glosClose">Zamknij</button>
     </div>
     <div class="defs" id="glosList"></div>
-    <p class="src">Spotkania z fizyką 7, temat 24, s. 162</p>
+    <p class="src">Spotkania z fizyką 7, temat 25, s. 169</p>
   </section>
 
   <main>
     <!-- START -->
     <section id="scr-start" class="split fill">
      <div class="col">
-      <h1>Orion ma awarię!</h1>
-      <p class="lead">Statek musi wrócić na Ziemię. Zepsuł się komputer, który steruje silnikami.</p>
-      <p>Żeby go naprawić, musisz zrozumieć, jak poruszają się ciała. Każdy moduł statku to jeden temat z działu „Dynamika”.</p>
+      <h1>Silniki do kalibracji!</h1>
+      <p class="lead">Moduł 1 działa. Orion wie już, że w kosmosie nic go nie hamuje. Teraz trzeba ustawić siłę silników.</p>
+      <p>Komputer nie wie, jak mocno pchać. Za słabo: statek się nie rozpędzi. Za mocno: przeciążenie. Żeby to policzyć, poznasz II zasadę dynamiki.</p>
+      <p class="soft" id="m1note"></p>
       <div class="map" aria-label="Mapa modułów">
-        <div class="node active"><span class="n">Temat 24, s. 162</span><b>I zasada dynamiki, bezwładność</b></div>
-        <a class="node" href="dynamika-poziom2.html"><span class="n">Temat 25, s. 169</span><b>II zasada dynamiki</b></a>
+        <a class="node done" href="dynamika-poziom1.html"><span class="n">Temat 24, s. 162</span><b>I zasada dynamiki, bezwładność</b><span class="n" id="m1stars"></span></a>
+        <div class="node active"><span class="n">Temat 25, s. 169</span><b>II zasada dynamiki</b></div>
         <div class="node locked"><span class="n">Temat 26, s. 174</span><b>Swobodne spadanie ciał</b></div>
         <div class="node locked"><span class="n">Temat 27, s. 179</span><b>III zasada, odrzut</b></div>
         <div class="node locked"><span class="n">Temat 28, s. 183</span><b>Opory ruchu</b></div>
@@ -395,7 +415,7 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
         <input id="heroName" maxlength="14" autocomplete="off" placeholder="Wpisz imię">
       </label>
       <div class="say" id="say-start" hidden></div>
-      <div class="actions"><button class="btn" id="startBtn">Rozpocznij naprawę</button></div>
+      <div class="actions"><button class="btn" id="startBtn">Rozpocznij kalibrację</button></div>
      </div>
     </section>
 
@@ -403,30 +423,32 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
     <section id="scr-lab" class="split" hidden>
      <div class="col stick">
       <div class="title-row">
-        <h2><span class="label">Laboratorium</span> Co zrobi skrzynia, gdy przestaniesz ją pchać?</h2>
+        <h2><span class="label">Laboratorium: hamownia silników</span> Od czego zależy, jak szybko rozpędzają się sanie?</h2>
       </div>
       <div class="lab-rig">
       <div class="title-row">
-        <div class="seg" role="group" aria-label="Miejsce eksperymentu">
-          <button id="surf-hangar" data-surf="hangar" aria-pressed="true">Hangar (szorstka podłoga)</button>
-          <button id="surf-ice" data-surf="ice" aria-pressed="false">Lodowisko</button>
-          <button id="surf-space" data-surf="space" aria-pressed="false">Kosmos</button>
+        <div class="seg" role="group" aria-label="Siła silnika">
+          <button data-f="100" aria-pressed="true">Silnik 100 N</button>
+          <button data-f="200" aria-pressed="false">Silnik 200 N</button>
         </div>
-        <p class="soft">Wybierz miejsce. Przytrzymaj <b>Pchaj</b> (albo spację), a potem puść. Patrz, co robi skrzynia. Zrób to w trzech miejscach.</p>
+        <div class="seg" role="group" aria-label="Ładunek">
+          <button data-m="50" aria-pressed="true">1 skrzynia (razem 50 kg)</button>
+          <button data-m="100" aria-pressed="false">2 skrzynie (razem 100 kg)</button>
+        </div>
       </div>
-      <canvas class="scene" id="labCanvas" data-fit="css" aria-label="Symulacja skrzyni"></canvas>
+      <p class="soft">Tu nie ma tarcia. Wybierz silnik i ładunek, naciśnij <b>Odpal</b> (albo spację). Silnik pracuje 2 sekundy. Sprawdź wszystkie cztery ustawienia.</p>
+      <canvas class="scene" id="labCanvas" data-fit="css" aria-label="Symulacja sań rakietowych"></canvas>
       <p class="status" id="labStatus"></p>
       <div class="bar">
         <div class="readouts">
+          <div class="ro"><span>Czas t</span><b id="ro-t">0,0 s</b></div>
           <div class="ro"><span>Prędkość v</span><b id="ro-v">0,0 m/s</b></div>
-          <div class="ro"><span>Droga s</span><b id="ro-s">0,0 m</b></div>
-          <div class="ro"><span>Pchanie F</span><b id="ro-f">0 N</b></div>
-          <div class="ro"><span>Tarcie T</span><b id="ro-t">0 N</b></div>
-          <div class="ro"><span>Siła wypadkowa</span><b id="ro-w" class="hi">0 N</b></div>
+          <div class="ro"><span>Siła F</span><b id="ro-f">0 N</b></div>
+          <div class="ro"><span>Masa m</span><b id="ro-m">50 kg</b></div>
+          <div class="ro"><span>Przyspieszenie a</span><b id="ro-a" class="hi">?</b></div>
         </div>
         <div class="actions">
-          <button class="btn hold" id="pushBtn">Pchaj</button>
-          <button class="btn ghost" id="labReset">Ustaw skrzynię od nowa</button>
+          <button class="btn hold" id="fireBtn">Odpal</button>
           <button class="btn" id="labShowConc" hidden>Wniosek</button>
         </div>
       </div>
@@ -434,26 +456,27 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
       <div class="panel" id="labConclusion" hidden>
         <span class="label">Co się stało?</span>
         <ul class="clean">
-          <li><b>Hangar:</b> skrzynia szybko stanęła. Hamowało ją duże tarcie.</li>
-          <li><b>Lodowisko:</b> tarcie jest małe. Skrzynia zwalniała bardzo powoli.</li>
-          <li><b>Kosmos:</b> nie ma tarcia ani powietrza. Nic skrzyni nie hamowało, więc jechała dalej cały czas tak samo szybko.</li>
+          <li><b>2 razy większa siła</b> (100 N → 200 N, ta sama masa): prędkość rosła 2 razy szybciej.</li>
+          <li><b>2 razy większa masa</b> (50 kg → 100 kg, ta sama siła): prędkość rosła 2 razy wolniej.</li>
+          <li>Gdy silnik się wyłączył, sanie jechały dalej cały czas tak samo szybko. To I zasada z modułu 1.</li>
         </ul>
-        <p><b>Wniosek:</b> żeby coś jechało, nie trzeba tego cały czas pchać. Siła jest potrzebna tylko wtedy, gdy chcesz prędkość <b>zmienić</b>: rozpędzić, zahamować albo skręcić.</p>
+        <p><b>Wniosek:</b> przyspieszenie zależy od siły i od masy. Liczymy je tak: <b>a = F : m</b>. Na przykład 200 N : 50 kg = 4 m/s². To jest II zasada dynamiki.</p>
         <div class="group" id="labQ">
           <h3>Pytanie kontrolne</h3>
-          <p>Gdzie skrzynia po puszczeniu jechała cały czas tak samo szybko?</p>
-          <button class="opt" data-ok="0" data-fb="W hangarze skrzynia szybko stanęła. Czyli zwalniała.">W hangarze</button>
-          <button class="opt" data-ok="0" data-fb="Prawie! Na lodzie skrzynia też zwalniała, tylko bardzo powoli. Spójrz na prędkość.">Na lodowisku</button>
-          <button class="opt" data-ok="1" data-fb="">W kosmosie</button>
+          <p>Silnik 200 N rozpędza sanie z jedną skrzynią (50 kg). Prędkość rośnie o 4 m/s co sekundę. Dokładasz drugą skrzynię (razem 100 kg). O ile teraz rośnie prędkość co sekundę?</p>
+          <button class="opt" data-ok="0" data-fb="Więcej masy to nie więcej przyspieszenia. Cięższe sanie rozpędzają się wolniej.">o 8 m/s</button>
+          <button class="opt" data-ok="0" data-fb="Masa ma znaczenie! Spójrz do tabeli: 200 N i 100 kg.">o 4 m/s</button>
+          <button class="opt" data-ok="1" data-fb="">o 2 m/s</button>
           <p id="labQfb" class="status"></p>
         </div>
-        <div class="actions"><button class="btn" id="labNext" disabled>Dalej: Pojęcia</button><button class="btn ghost" id="labBack">Wróć do skrzyni</button></div>
+        <div class="actions"><button class="btn" id="labNext" disabled>Dalej: Pojęcia</button><button class="btn ghost" id="labBack">Wróć do sań</button></div>
       </div>
      </div>
      <div class="col side">
       <div class="say" id="say-lab"></div>
-      <h3>Twoje eksperymenty</h3>
-      <div class="exps" id="exps"></div>
+      <h3>Tabela: o ile rośnie prędkość co sekundę?</h3>
+      <div class="atab" id="atab"></div>
+      <p class="src">Liczba w okienku to przyspieszenie a. Jednostka m/s² czytamy: „metr na sekundę do kwadratu”.</p>
      </div>
     </section>
 
@@ -527,29 +550,25 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
      </div>
     </section>
 
-    <!-- DOKOWANIE -->
-    <section id="scr-dock" class="split" hidden>
+    <!-- MISJA: bramki startowe (obliczenia z II zasady) -->
+    <section id="scr-fly" class="split" hidden>
      <div class="col stick">
-      <h2><span class="label">Etap ★★★: Stosuję</span> Zadokuj Oriona przy stacji</h2>
-      <canvas class="scene" id="dockCanvas" data-fit="css" data-design="330" aria-label="Symulacja dokowania"></canvas>
-      <p class="status" id="dockStatus"></p>
-      <div class="actions">
-        <button class="btn hold" id="thrBack">◀ Silnik wsteczny</button>
-        <button class="btn hold" id="thrFwd">Silnik ▶</button>
-        <button class="btn ghost" id="dockHintBtn">Podpowiedź</button>
-      </div>
+      <h2><span class="label">Etap ★★★: Stosuję</span> Przeleć przez bramki startowe</h2>
+      <canvas class="scene" id="flyCanvas" data-fit="css" data-design="330" aria-label="Symulacja przelotu przez bramkę"></canvas>
+      <p class="status" id="flyStatus"></p>
      </div>
      <div class="col side">
-      <div class="say" id="say-dock"></div>
-      <p class="panel-text">Silnik działa tylko wtedy, gdy trzymasz przycisk. Doleć do portu i zatrzymaj się przy nim. Przy porcie prędkość może wynosić najwyżej <b>0,6 m/s</b>. Paliwa jest mało: starczy na kilka sekund.</p>
-      <div class="readouts grid2">
-        <div class="ro"><span>Do portu</span><b id="d-dist">60,0 m</b></div>
-        <div class="ro"><span>Prędkość</span><b id="d-v" class="hi">0,00 m/s</b></div>
-        <div class="ro"><span>Paliwo</span><b id="d-fuel">100%</b></div>
-        <div class="ro"><span>Próba</span><b id="d-att">1</b></div>
+      <div class="say" id="say-fly"></div>
+      <div class="qhead"><span class="label" id="flyRound"></span><span id="flyAtt"></span></div>
+      <p class="panel-text" id="flyTask"></p>
+      <label class="num-row"><span id="flyVar"></span><input id="flyIn" inputmode="decimal" autocomplete="off" aria-describedby="flyTask"><span id="flyUnit"></span></label>
+      <div class="hint" id="flyHint" hidden></div>
+      <div class="fb" id="flyFb" hidden></div>
+      <div class="actions">
+        <button class="btn ghost" id="flyHintBtn">Podpowiedź</button>
+        <button class="btn" id="flyGo" disabled>Wpisz i leć</button>
+        <button class="btn" id="flyNext" hidden>Dalej</button>
       </div>
-      <div class="hint" id="dockHint" hidden></div>
-      <div class="fb" id="dockFb" hidden></div>
      </div>
     </section>
 
@@ -557,14 +576,15 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
     <section id="scr-end" class="split" hidden>
      <div class="col">
       <div class="end-head">
-        <h1 id="endTitle">Moduł naprawiony</h1>
+        <h1 id="endTitle">Silniki skalibrowane</h1>
         <div class="bigstars" id="endStars" aria-label="Gwiazdki"><i>★</i><i>★</i><i>★</i></div>
       </div>
       <p id="endXp" class="lead"></p>
       <div class="say" id="say-end"></div>
       <div class="report" id="report"></div>
       <div class="end-next">
-        <a class="node active" href="dynamika-poziom2.html"><span class="n">Następny moduł, s. 169</span><b>II zasada dynamiki</b><span class="src">Graj dalej →</span></a>
+        <div class="node active"><span class="n">Następny moduł, s. 174</span><b>Swobodne spadanie ciał</b><span class="src">wkrótce</span></div>
+        <a class="btn ghost" href="dynamika-poziom1.html">Moduł 1</a>
         <button class="btn ghost" id="againBtn">Zagraj od nowa</button>
       </div>
      </div>
@@ -764,6 +784,130 @@ else gsap.to(WD, { dark: 0, duration: 1.8, ease: 'power2.inOut' });
 
 // ---------- słowniczek ----------
 const GLOS = [
+  { id: 'przyspieszenie', term: 'Przyspieszenie',
+    formal: 'Przyspieszenie mówi, o ile zmienia się prędkość ciała w jednostce czasu: a = Δv : t. Jednostką przyspieszenia jest 1 m/s² (metr na sekundę do kwadratu).',
+    simple: 'Przyspieszenie mówi, o ile rośnie prędkość w każdej sekundzie. a = 3 m/s² znaczy: co sekundę prędkość rośnie o 3 m/s.',
+    example: 'Rower rusza. Po 1 s jedzie 2 m/s, po 2 s jedzie 4 m/s, po 3 s jedzie 6 m/s. Co sekundę o 2 m/s więcej, więc a = 2 m/s².' },
+  { id: 'przyspieszony', term: 'Ruch jednostajnie przyspieszony',
+    formal: 'Ruch jednostajnie przyspieszony prostoliniowy to ruch po linii prostej, w którym prędkość rośnie o tyle samo w jednakowych odstępach czasu. Przyspieszenie jest stałe.',
+    simple: 'Ciało jedzie prosto i co sekundę przyspiesza o tyle samo.',
+    example: 'Kulka toczy się w dół po gładkiej, równej rynnie. Co sekundę jedzie o tyle samo szybciej.' },
+  { id: 'niezrownowazona', term: 'Siła niezrównoważona',
+    formal: 'Siła jest niezrównoważona, gdy siła wypadkowa działająca na ciało nie jest równa zero.',
+    simple: 'Siły się nie znoszą. Coś „zostaje” i to coś zmienia prędkość ciała.',
+    example: 'Pchasz skrzynię siłą 120 N, a tarcie hamuje ją siłą 70 N. Zostaje 50 N. Ta siła rozpędza skrzynię.' },
+  { id: 'zasada2', term: 'II zasada dynamiki Newtona',
+    formal: 'Jeżeli na ciało działa stała siła niezrównoważona, to ciało porusza się ruchem jednostajnie przyspieszonym. Przyspieszenie jest wprost proporcjonalne do siły i odwrotnie proporcjonalne do masy ciała: a = F : m.',
+    simple: 'Gdy siły się nie znoszą, ciało przyspiesza. 2 razy większa siła: 2 razy większe przyspieszenie. 2 razy większa masa: 2 razy mniejsze przyspieszenie.',
+    example: 'Pchasz tak samo mocno pusty wózek i pełny. Pusty rozpędza się szybciej, bo ma mniejszą masę.' },
+  { id: 'wzor', term: 'Wzór: a = F : m',
+    formal: 'Przyspieszenie ciała to siła wypadkowa podzielona przez masę ciała: a = F : m. Z tego wzoru wynika też: F = m · a.',
+    simple: 'Siła podzielona przez masę daje przyspieszenie. Jeśli znasz masę i przyspieszenie, siłę dostaniesz z mnożenia: F = m · a.',
+    example: 'Siła 200 N, masa 50 kg. a = 200 N : 50 kg = 4 m/s².' },
+  { id: 'niuton', term: 'Niuton (1 N)',
+    formal: '1 N to wartość siły, która ciału o masie 1 kg nadaje przyspieszenie 1 m/s². Zapisujemy: 1 N = 1 kg · m/s².',
+    simple: 'Niuton to taka siła, która rozpędza 1 kg tak, że co sekundę jedzie on o 1 m/s szybciej.',
+    example: 'Ziemia przyciąga tabliczkę czekolady (100 g) siłą około 1 N.' },
+  { id: 'kierunek', term: 'Kierunek przyspieszenia',
+    formal: 'Przyspieszenie ma taki sam kierunek i zwrot jak siła wypadkowa działająca na ciało.',
+    simple: 'Ciało przyspiesza w tę stronę, w którą pcha siła wypadkowa. Gdy siła działa przeciwnie do ruchu, ciało zwalnia.',
+    example: 'Rowerzysta hamuje. Siła hamowania działa do tyłu, więc rower zwalnia.' },
+];
+// skąd pojęcie: przypomnienie z kinematyki lub modułu 1, nowe w temacie 25
+const TAG = {
+  przyspieszenie: 'Przypomnienie z kinematyki', przyspieszony: 'Przypomnienie z kinematyki', niezrownowazona: 'Przypomnienie z modułu 1',
+  zasada2: 'Nowe w temacie 25', wzor: 'Nowe w temacie 25', niuton: 'Nowe w temacie 25', kierunek: 'Nowe w temacie 25',
+};
+// dwa pytania na pojęcie: główne i drugie (po błędzie, w innej formie)
+const TQ = {
+  przyspieszenie: [
+    { text: 'Przyspieszenie samochodu wynosi 3 m/s². Co to znaczy?', opts: [
+      { t: 'Co sekundę jego prędkość rośnie o 3 m/s', ok: true },
+      { t: 'Jedzie z prędkością 3 m/s', fb: 'To byłaby prędkość. Przyspieszenie mówi, o ile prędkość rośnie w każdej sekundzie.' },
+      { t: 'Co sekundę przejeżdża 3 metry', fb: 'Tak opisujemy prędkość 3 m/s. Przyspieszenie mówi, jak zmienia się prędkość.' },
+      { t: 'Za 3 sekundy się zatrzyma', fb: 'Przyspieszenie 3 m/s² znaczy, że prędkość rośnie, a nie maleje do zera.' } ] },
+    { text: 'W jakich jednostkach mierzymy przyspieszenie?', opts: [
+      { t: 'm/s² (metr na sekundę do kwadratu)', ok: true },
+      { t: 'm/s (metr na sekundę)', fb: 'W m/s mierzymy prędkość. Przyspieszenie mierzymy w m/s².' },
+      { t: 'N (niuton)', fb: 'W niutonach mierzymy siłę. Przyspieszenie mierzymy w m/s².' },
+      { t: 'kg (kilogram)', fb: 'W kilogramach mierzymy masę. Przyspieszenie mierzymy w m/s².' } ] },
+  ],
+  przyspieszony: [
+    { text: 'Który ruch jest jednostajnie przyspieszony?', opts: [
+      { t: 'Kulka w rynnie: po 1 s ma 2 m/s, po 2 s 4 m/s, po 3 s 6 m/s', ok: true },
+      { t: 'Pociąg jedzie po prostym torze cały czas 80 km/h', fb: 'Prędkość się nie zmienia. To ruch jednostajny, nie przyspieszony.' },
+      { t: 'Rowerzysta hamuje przed światłami', fb: 'Rowerzysta zwalnia, a w ruchu przyspieszonym prędkość rośnie.' },
+      { t: 'Auto: po 1 s ma 2 m/s, po 2 s 3 m/s, po 3 s 7 m/s', fb: 'Prędkość rośnie, ale za każdym razem o inną wartość. W ruchu jednostajnie przyspieszonym rośnie co sekundę o tyle samo.' } ] },
+    { text: 'W ruchu jednostajnie przyspieszonym prędkość co sekundę…', opts: [
+      { t: '…rośnie o tyle samo.', ok: true },
+      { t: '…jest taka sama.', fb: 'Gdy prędkość się nie zmienia, to ruch jednostajny.' },
+      { t: '…maleje o tyle samo.', fb: 'Gdy prędkość maleje, ciało zwalnia. To ruch opóźniony.' },
+      { t: '…rośnie coraz bardziej.', fb: 'W ruchu jednostajnie przyspieszonym prędkość rośnie co sekundę o tyle samo, a nie coraz bardziej.' } ] },
+  ],
+  niezrownowazona: [
+    { text: 'Na skrzynię działają dwie siły: 80 N w prawo i 80 N w lewo. Czy to siła niezrównoważona?', opts: [
+      { t: 'Nie. Siły się znoszą, wypadkowa to 0 N.', ok: true },
+      { t: 'Tak, bo działają dwie siły.', fb: 'Liczy się to, co zostaje. 80 N w prawo i 80 N w lewo się znoszą.' },
+      { t: 'Tak, wypadkowa to 160 N.', fb: 'Siły w przeciwne strony odejmujemy, a nie dodajemy. 80 N − 80 N = 0 N.' },
+      { t: 'Nie wiadomo, bo nie znamy masy skrzyni.', fb: 'Masa nie jest potrzebna. Wystarczy porównać siły: 80 N − 80 N = 0 N.' } ] },
+    { text: 'Kiedy ciało zmienia swoją prędkość?', opts: [
+      { t: 'Gdy działa na nie siła niezrównoważona', ok: true },
+      { t: 'Zawsze, gdy działa na nie jakaś siła', fb: 'Nie zawsze. Jeśli siły się znoszą, prędkość się nie zmienia. To I zasada.' },
+      { t: 'Gdy siły się równoważą', fb: 'Gdy siły się równoważą, prędkość się NIE zmienia. To I zasada z modułu 1.' },
+      { t: 'Tylko wtedy, gdy ciało stoi', fb: 'Prędkość może się zmieniać także wtedy, gdy ciało jedzie. Na przykład gdy hamuje.' } ] },
+  ],
+  zasada2: [
+    { text: 'Uzupełnij: „Jeżeli na ciało działa stała siła niezrównoważona, to ciało porusza się ruchem ___.”', opts: [
+      { t: 'jednostajnie przyspieszonym', ok: true },
+      { t: 'jednostajnym prostoliniowym', fb: 'Tak jest, gdy siły się znoszą. To I zasada. Tu siła się nie znosi, więc prędkość rośnie.' },
+      { t: 'coraz wolniejszym, aż stanie', fb: 'Siła, która pcha w stronę ruchu, rozpędza ciało, a nie hamuje.' },
+      { t: 'po okręgu', fb: 'Ruch po okręgu wymaga siły, która ciągle zmienia kierunek. Tu siła jest stała.' } ] },
+    { text: 'Na dwa wózki działa taka sama siła. Wózek A ma masę 10 kg, wózek B ma 20 kg. Który ma większe przyspieszenie?', opts: [
+      { t: 'Wózek A, bo ma mniejszą masę', ok: true },
+      { t: 'Wózek B, bo ma większą masę', fb: 'Odwrotnie. Większa masa to mniejsze przyspieszenie przy tej samej sile.' },
+      { t: 'Oba takie samo, bo siła jest taka sama', fb: 'Siła jest taka sama, ale masy są różne. a = F : m, więc przyspieszenie też jest różne.' },
+      { t: 'Żaden nie przyspiesza', fb: 'Siła się nie znosi, więc oba wózki przyspieszają. Pytanie, który bardziej.' } ] },
+  ],
+  wzor: [
+    { text: 'Jak obliczyć przyspieszenie, gdy znasz siłę F i masę m?', opts: [
+      { t: 'a = F : m', ok: true },
+      { t: 'a = F · m', fb: 'Gdyby mnożyć, cięższe ciało przyspieszałoby bardziej. A jest odwrotnie. Siłę dzielimy przez masę.' },
+      { t: 'a = m : F', fb: 'Dzielenie w złą stronę. Na górze jest siła: a = F : m.' },
+      { t: 'a = F + m', fb: 'Siły i masy nie dodajemy. Siłę dzielimy przez masę.' } ] },
+    { text: 'Siła 300 N działa na sanie o masie 100 kg. Jakie jest ich przyspieszenie?', opts: [
+      { t: '3 m/s²', ok: true },
+      { t: '30 000 m/s²', fb: 'To wynik mnożenia. Siłę dzielimy przez masę: 300 : 100 = 3.' },
+      { t: '0,33 m/s²', fb: 'Dzielenie w złą stronę. Na górze jest siła: 300 : 100 = 3.' },
+      { t: '300 m/s²', fb: 'Trzeba jeszcze podzielić przez masę: 300 : 100 = 3.' } ] },
+  ],
+  niuton: [
+    { text: '1 N to siła, która ciału o masie 1 kg nadaje przyspieszenie…', opts: [
+      { t: '1 m/s²', ok: true },
+      { t: '10 m/s²', fb: 'Niuton jest tak dobrany, że 1 kg dostaje przyspieszenie 1 m/s².' },
+      { t: 'prędkość 1 m/s', fb: 'Chodzi o przyspieszenie, nie prędkość. 1 N daje 1 kg przyspieszenie 1 m/s².' },
+      { t: 'masę 1 kg', fb: 'Siła nie nadaje masy. Siła zmienia prędkość, czyli nadaje przyspieszenie.' } ] },
+    { text: 'Który zapis jest poprawny?', opts: [
+      { t: '1 N = 1 kg · m/s²', ok: true },
+      { t: '1 N = 1 kg · m/s', fb: 'Brakuje „do kwadratu”. Ze wzoru F = m · a: kilogram razy m/s².' },
+      { t: '1 N = 1 m/s²', fb: 'Brakuje kilograma. Ze wzoru F = m · a: kilogram razy m/s².' },
+      { t: '1 N = 1 kg', fb: 'Niuton i kilogram to różne wielkości. Ze wzoru F = m · a: kilogram razy m/s².' } ] },
+  ],
+  kierunek: [
+    { text: 'Rowerzysta jedzie w prawo. Siła wypadkowa działa w lewo. Co się dzieje?', opts: [
+      { t: 'Rowerzysta zwalnia', ok: true },
+      { t: 'Rowerzysta przyspiesza w prawo', fb: 'Siła w lewo nie może rozpędzać w prawo. Działa przeciwnie do ruchu, więc hamuje.' },
+      { t: 'Rower od razu jedzie w lewo', fb: 'Najpierw zwalnia. Dopiero gdyby się zatrzymał, siła zaczęłaby go rozpędzać w lewo.' },
+      { t: 'Jedzie cały czas tak samo szybko', fb: 'Tak by było, gdyby siły się znosiły. Tu działa siła wypadkowa, więc prędkość się zmienia.' } ] },
+    { text: 'Przyspieszenie ma zawsze taki sam kierunek i zwrot jak…', opts: [
+      { t: '…siła wypadkowa.', ok: true },
+      { t: '…prędkość.', fb: 'Nie zawsze. Przy hamowaniu ciało jedzie do przodu, a siła i przyspieszenie są skierowane do tyłu.' },
+      { t: '…ciężar.', fb: 'Ciężar to tylko jedna z sił. Liczy się siła wypadkowa.' },
+      { t: '…tarcie.', fb: 'Tarcie to tylko jedna z sił. Liczy się siła wypadkowa.' } ] },
+  ],
+};
+const TERM_ST = { ok: 'znam od razu', retry: 'znam po powtórce', weak: 'do powtórki' };
+// ---------- pojęcia z modułu 1 (do powtórki: wracają tu te, które były „do powtórki”) ----------
+const GLOS_M1 = [
   { id: 'sila', term: 'Siła',
     formal: 'Siła opisuje działanie jednego ciała na drugie. Siła jest wielkością wektorową: ma wartość, kierunek, zwrot i punkt przyłożenia. Jednostką siły jest niuton (1 N).',
     simple: 'Siła to pchnięcie albo pociągnięcie. Rysujemy ją jako strzałkę (wektor). Strzałka zaczyna się tam, gdzie pchamy. Im dłuższa strzałka, tym mocniej pchamy. Grot strzałki pokazuje, w którą stronę.',
@@ -797,13 +941,7 @@ const GLOS = [
     simple: 'Im większa masa, tym ciało bardziej „uparte”: trudniej je rozpędzić i trudniej zatrzymać.',
     example: 'Pełny wózek z zakupami trudniej ruszyć i zatrzymać niż pusty.' },
 ];
-// skąd pojęcie: przypomnienie z wcześniejszych działów, nowe w temacie 24, zapowiedź tematu 28
-const TAG = {
-  sila: 'Przypomnienie z wcześniejszego działu', wypadkowa: 'Przypomnienie z wcześniejszego działu', rownowaga: 'Przypomnienie z wcześniejszego działu',
-  jednostajny: 'Przypomnienie z kinematyki', tarcie: 'Zapowiedź tematu 28', zasada1: 'Nowe w temacie 24', bezwladnosc: 'Nowe w temacie 24', masa: 'Nowe w temacie 24',
-};
-// dwa pytania na pojęcie: główne i drugie (po błędzie, w innej formie)
-const TQ = {
+const TQ_M1 = {
   sila: [
     { text: 'Co trzeba podać, żeby dokładnie opisać siłę?', opts: [
       { t: 'Wartość, kierunek, zwrot i punkt przyłożenia', ok: true },
@@ -901,7 +1039,6 @@ const TQ = {
       { t: 'zmienna', fb: 'Chodzi o to, czy masa jest duża, czy mała. Im większa, tym trudniej zmienić prędkość.' } ] },
   ],
 };
-const TERM_ST = { ok: 'znam od razu', retry: 'znam po powtórce', weak: 'do powtórki' };
 
 function defCard(g, open, status) {
   const d = document.createElement('details'); d.className = 'def'; if (open) d.open = true;
@@ -918,6 +1055,9 @@ function defCard(g, open, status) {
 function renderGlossary() {
   const box = $('#glosList'); box.innerHTML = '';
   GLOS.forEach(g => box.append(defCard(g, false, S.terms[g.id])));
+  const h = document.createElement('h3'); h.className = 'defs-sub'; h.textContent = 'Z modułu 1'; box.append(h);
+  const m1 = m1Terms();
+  GLOS_M1.forEach(g => box.append(defCard(g, false, S.terms['m1_' + g.id] || (m1[g.id] && m1[g.id].status))));
 }
 function toggleGlos(open) {
   $('#glossary').hidden = !open; $('#glosBtn').setAttribute('aria-expanded', open);
@@ -1015,15 +1155,16 @@ $('#heroName').addEventListener('input', e => { hero.name = e.target.value.trim(
 heroRefresh();
 
 // ---------- stan gry ----------
-const S = { xp: 0, stars: { s1: false, s2: false, s3: false }, mis: {}, firstTry: 0, asked: 0, dockAttempts: 0, terms: {} };
+const S = { xp: 0, stars: { s1: false, s2: false, s3: false }, mis: {}, firstTry: 0, asked: 0, flyAttempts: 0, flyFirst: 0, terms: {} };
 
 const MIS = {
-  ruch_sila: { name: '„Żeby coś jechało, trzeba to cały czas pchać”', tip: 'Siła jest potrzebna tylko do zmiany prędkości. Rzeczy na Ziemi zwalniają, bo hamuje je tarcie i powietrze.' },
-  pcha: { name: '„Przy hamowaniu coś pcha nas do przodu”', tip: 'Nic nas nie pcha. To pojazd zwalnia, a nasze ciało chce jechać dalej (bezwładność).' },
-  kierunek: { name: '„Siła w stronę ruchu musi być większa”', tip: 'Gdy coś jedzie cały czas tak samo szybko, siły się znoszą. Nieważne, w którą stronę jedzie.' },
-  masa: { name: 'Od czego zależy bezwładność', tip: 'Bezwładność zależy od masy. Ma ją każde ciało, także takie, które stoi.' },
-  zasada: { name: 'Niepełna I zasada dynamiki', tip: 'Gdy siły się znoszą, ciało stoi ALBO jedzie prosto i tak samo szybko.' },
-  niesie: { name: '„Ciało zabiera siłę ze sobą”', tip: 'Siła działa tylko wtedy, gdy coś pcha albo ciągnie. Potem ciało ma prędkość, ale nie ma siły.' },
+  stala_v: { name: '„Stała siła daje stałą prędkość”', tip: 'Stała siła, która się nie znosi, daje stałe PRZYSPIESZENIE. Prędkość cały czas rośnie, co sekundę o tyle samo.' },
+  masa: { name: '„Masa nie ma znaczenia”', tip: 'Ta sama siła mniejszej masie daje większe przyspieszenie. a = F : m.' },
+  proporcja: { name: 'Ile razy więcej?', tip: '2 razy większa siła: 2 razy większe przyspieszenie. 2 razy większa masa: 2 razy mniejsze przyspieszenie.' },
+  mnoz: { name: 'Mnożenie zamiast dzielenia', tip: 'Przyspieszenie: siłę DZIELIMY przez masę, a = F : m. Siłę liczymy z mnożenia: F = m · a.' },
+  odwr: { name: 'Dzielenie w złą stronę', tip: 'a = F : m. Siła jest „na górze”, masa „na dole”.' },
+  v_a: { name: 'Prędkość zamiast przyspieszenia', tip: 'We wzorze F = m · a jest przyspieszenie, a nie prędkość. Najpierw policz a = v : t.' },
+  kierunek: { name: '„Siła od razu zmienia kierunek ruchu”', tip: 'Siła przeciwna do ruchu najpierw hamuje ciało. Przyspieszenie ma zwrot siły, a nie prędkości.' },
 };
 const addMis = id => { if (id) S.mis[id] = (S.mis[id] || 0) + 1; };
 
@@ -1113,182 +1254,185 @@ function setStep(key) {
   });
 }
 function show(id) {
-  ['start', 'lab', 'cards', 'cardsum', 'quiz', 'dock', 'end'].forEach(s => { $('#scr-' + s).hidden = s !== id; });
+  ['start', 'lab', 'cards', 'cardsum', 'quiz', 'fly', 'end'].forEach(s => { $('#scr-' + s).hidden = s !== id; });
   toggleGlos(false);
   window.scrollTo({ top: 0, behavior: 'auto' });
   if (!RM) gsap.from(`#scr-${id} > *`, { y: 24, opacity: 0, duration: .5, stagger: .05, ease: 'power3.out', clearProps: 'opacity,transform' });
 }
 // który świat gdzie: start hangar, pojęcia lód (spokojne czytanie), ★ hangar, ★★ lód, dokowanie i ★★★ kosmos, raport kosmos
-const SURF_ENV = { hangar: 0, ice: 1, space: 2 };
 
 // ---------- LABORATORIUM ----------
-const LAB = { m: 20, F: 120, g: 9.81, mu: { hangar: 0.35, ice: 0.02, space: 0 } };
-const SURF_NAME = { hangar: 'Hangar', ice: 'Lodowisko', space: 'Kosmos' };
-const lab = { surf: 'hangar', x: 0, v: 0, push: false, wasPush: false, rel: null, done: { hangar: false, ice: false, space: false }, res: {}, qOk: false, crate: null };
+// sanie rakietowe na torze magnetycznym (bez tarcia). Silnik pracuje 2 s, potem sanie jadą same.
+// ruch liczony wprost ze wzorów (x = a·t²/2, v = a·t), więc odczyty po 2 s są dokładne
+const LAB = { burn: 2, coast: 3.5, F: [100, 200], m: [50, 100] };
+const lab = { F: 100, m: 50, t: 0, state: 'idle', res: {}, qOk: false, sled: null };
+const labA = () => lab.F / lab.m;
+const labKey = () => lab.F + '/' + lab.m;
+function labPos(t) {
+  const a = labA(), b = LAB.burn;
+  return t <= b ? { x: a * t * t / 2, v: a * t } : { x: a * b * b / 2 + a * b * (t - b), v: a * b };
+}
 
 function labStart() {
-  show('lab'); setStep('lab'); setWorld(SURF_ENV[lab.surf]);
-  say($('#say-lab'), 'Zanim naprawimy silniki, sprawdźmy, jak jeżdżą rzeczy. Pchnij skrzynię w trzech miejscach i patrz, co się dzieje.');
-  labChecklist();
+  show('lab'); setStep('lab'); setWorld(0);
+  say($('#say-lab'), 'Zanim ustawimy silniki Oriona, sprawdźmy na hamowni, jak rozpędzają się sanie. Wypróbuj wszystkie cztery ustawienia.');
+  labReset(); labTable();
   runLoop((t, dt) => { labStep(dt); labDraw(); });
 }
-function labSetSurf(s) {
-  const changed = s !== lab.surf;
-  lab.surf = s; lab.x = 0; lab.v = 0; lab.rel = null;
-  document.querySelectorAll('[data-surf]').forEach(b => b.setAttribute('aria-pressed', b.dataset.surf === s));
-  if (changed) setWorld(SURF_ENV[s]);
+function labReset() { lab.t = 0; lab.state = 'idle'; }
+function labSet(kind, val) {
+  if (lab.state === 'burn') return;
+  lab[kind] = val;
+  const attr = kind === 'F' ? 'f' : 'm';
+  document.querySelectorAll(`[data-${attr}]`).forEach(b => b.setAttribute('aria-pressed', +b.dataset[attr] === val));
+  labReset(); labTable();
 }
-const labT = () => LAB.mu[lab.surf] * LAB.m * LAB.g;
+function labFire() {
+  if (lab.state === 'burn') return;
+  labReset(); lab.state = 'burn';
+  if (lab.sled) shock(lab.sled[0], lab.sled[1], .5, .8);
+}
 function labStep(dt) {
-  const T = labT();
-  const F = lab.push ? LAB.F : 0;
-  if (lab.v > 0.0001) { lab.v = Math.max(0, lab.v + (F - T) / LAB.m * dt); }
-  else if (F > T) { lab.v += (F - T) / LAB.m * dt; }
-  else lab.v = 0;
-  lab.x += lab.v * dt;
-  // jeden eksperyment = pchnij → puść → skrzynia stanie albo minie 3,5 s; ponowne pchnięcie przerywa pomiar
-  if (lab.wasPush && !lab.push && lab.v > 0.3) lab.rel = { surf: lab.surf, t: 0, x: lab.x, v: lab.v };
-  if (lab.push) lab.rel = null;
-  lab.wasPush = lab.push;
-  if (lab.rel) { lab.rel.t += dt; if (lab.v < 0.01 || lab.rel.t >= 3.5) labRecord(T); }
-  const moving = lab.v > 0.0001;
-  const Tact = moving ? T : (F > 0 ? Math.min(F, T) : 0);
-  const net = F - Tact;
-  $('#ro-v').textContent = fmt(lab.v) + ' m/s';
-  $('#ro-s').textContent = fmt(lab.x) + ' m';
-  $('#ro-f').textContent = Math.round(F) + ' N';
-  $('#ro-t').textContent = Math.round(Tact) + ' N';
-  $('#ro-w').textContent = (net > 0.5 ? '+' : net < -0.5 ? '−' : '') + Math.round(Math.abs(net)) + ' N';
-  let st;
-  if (lab.push) st = T > 0 ? 'Pchasz mocniej, niż hamuje tarcie. Skrzynia przyspiesza.' : 'Pchasz, a nic nie hamuje. Skrzynia przyspiesza.';
-  else if (moving) st = T > 0 ? 'Nie pchasz. Tarcie hamuje skrzynię. Skrzynia zwalnia.' : 'Nie pchasz i nic nie hamuje. Skrzynia jedzie cały czas tak samo szybko!';
-  else st = lab.x > 0 ? 'Skrzynia stanęła. Wynik zapisał się w tabeli „Twoje eksperymenty”.' : 'Skrzynia stoi. Nic jej nie pcha. Kreski na podłodze są co 1 metr.';
-  $('#labStatus').textContent = st;
-  WD.heat += ((lab.push ? 1 : 0) - WD.heat) * Math.min(1, dt * (lab.push ? 5 : 2));
-  // za skrzynią sypią się iskry / kryształki / pył, zależnie od świata
-  if (lab.push && lab.crate && !RM) {
-    const [x, y] = lab.crate, o = { count: 3, dir: Math.PI, spread: .9, speed: 240, life: .7, size: 6 };
-    if (lab.surf === 'hangar') emit(x, y, { ...o, type: 'spark', color: ['#ff5a1f', '#ffb347'], g: 400 });
-    else if (lab.surf === 'ice') emit(x, y, { ...o, type: 'crystal', color: ['#a8e9ff', '#ffffff'], g: 200 });
-    else emit(x, y - 20, { ...o, type: 'dust', color: ['#8f84ff', '#ffffff'], spread: .4 });
-  }
+  if (lab.state === 'burn' || lab.state === 'coast') lab.t = Math.min(LAB.burn + LAB.coast, lab.t + dt);
+  if (lab.state === 'burn' && lab.t >= LAB.burn) { lab.state = 'coast'; labRecord(); }
+  if (lab.state === 'coast' && lab.t >= LAB.burn + LAB.coast) lab.state = 'done';
+  const { v } = labPos(lab.t), a = labA(), firing = lab.state === 'burn';
+  const measured = lab.res[labKey()] && lab.state !== 'burn' && lab.state !== 'idle';
+  $('#ro-t').textContent = fmt(lab.t) + ' s';
+  $('#ro-v').textContent = fmt(v) + ' m/s';
+  $('#ro-f').textContent = (firing ? lab.F : 0) + ' N';
+  $('#ro-m').textContent = lab.m + ' kg';
+  $('#ro-a').textContent = firing ? '…' : measured ? fmt(a) + ' m/s²' : '?';
+  let s;
+  if (firing) s = `Silnik pcha siłą ${lab.F} N. Nic nie hamuje. Prędkość rośnie.`;
+  else if (lab.state === 'idle') s = 'Sanie stoją. Naciśnij „Odpal”.';
+  else s = `Po 2 s prędkość to ${fmt(labA() * LAB.burn)} m/s. Czyli co sekundę rosła o ${fmt(a)} m/s. Silnik zgasł: sanie jadą dalej cały czas tak samo szybko.`;
+  $('#labStatus').textContent = s;
+  WD.heat += ((firing ? 1 : 0) - WD.heat) * Math.min(1, dt * (firing ? 5 : 2));
+  if (firing && lab.sled && !RM) emit(lab.sled[0] - 10, lab.sled[1] - 30, { count: 3 + lab.F / 50, dir: Math.PI, spread: .5, speed: 260, life: .6, size: 6, type: 'spark', color: ['#ff5a1f', '#ffb347', '#fff2c8'], g: 60 });
 }
-function labRecord(T) {
-  const r = lab.rel;
-  lab.res[r.surf] = { T: Math.round(T), v0: r.v, dist: lab.x - r.x, t: r.t, vEnd: lab.v, stopped: lab.v < 0.01 };
-  lab.done[r.surf] = true; lab.rel = null;
-  if (lab.crate) burst(lab.crate[0] + 30, lab.crate[1] - 20, false);
-  labChecklist();
+function labRecord() {
+  const first = !lab.res[labKey()];
+  lab.res[labKey()] = { a: labA(), v: labA() * LAB.burn };
+  if (first && lab.sled) burst(lab.sled[0], lab.sled[1] - 40, false);
+  labTable();
 }
-// tabela „Twoje eksperymenty”: wynik zostaje po każdym „pchnij i puść”
-function labChecklist() {
-  $('#exps').innerHTML = ['hangar', 'ice', 'space'].map(s => {
-    const T = Math.round(LAB.mu[s] * LAB.m * LAB.g), d = lab.res[s];
-    let res = '<span class="res soft">Jeszcze nie sprawdzone. Pchnij i puść.</span>';
-    if (d) res = `<span class="res">Puszczona przy ${fmt(d.v0)} m/s. ` + (d.stopped ? `Stanęła po ${fmt(d.dist)} m.`
-      : T ? `Po ${fmt(d.t)} s nadal jedzie ${fmt(d.vEnd)} m/s i powoli zwalnia.` : `Po ${fmt(d.t)} s jedzie tak samo: ${fmt(d.vEnd)} m/s. Nic jej nie hamuje.`) + '</span>';
-    return `<div class="exp${d ? ' done' : ''}" data-surf="${s}"><b>${SURF_NAME[s]}</b>` +
-      `<span>Pchanie: ${LAB.F} N − tarcie ${T} N = <em>+${LAB.F - T} N</em></span>` +
-      `<span>Po puszczeniu: 0 N − tarcie ${T} N = <em>${T ? '−' + T : '0'} N</em></span>${res}</div>`;
-  }).join('');
-  if (lab.done.hangar && lab.done.ice && lab.done.space && $('#labConclusion').hidden) {
-    $('#labConclusion').hidden = false; $('#labShowConc').hidden = false; labConclude(true);
+// tabela 2×2: wiersze = masa, kolumny = siła; widać, co się dzieje przy 2 razy większej sile albo masie
+function labTable() {
+  const cell = (F, m) => {
+    const r = lab.res[F + '/' + m], cur = lab.F === F && lab.m === m;
+    return `<div class="cell${r ? ' done' : ''}${cur ? ' cur' : ''}">` +
+      (r ? `<b>${fmt(r.a)} m/s²</b><span>po 2 s: ${fmt(r.v)} m/s</span>` : '<b>?</b><span>nie sprawdzone</span>') + '</div>';
+  };
+  $('#atab').innerHTML = '<div class="h"></div>' + LAB.F.map(F => `<div class="h">Silnik ${F} N</div>`).join('') +
+    LAB.m.map(m => `<div class="h">${m} kg</div>` + LAB.F.map(F => cell(F, m)).join('')).join('');
+  if (Object.keys(lab.res).length === 4 && $('#labConclusion').hidden) {
+    $('#labConclusion').hidden = false; $('#labShowConc').hidden = false;
     setXP(10);
-    say($('#say-lab'), 'Masz trzy wyniki. Porównaj siłę wypadkową po puszczeniu. Gdzie było 0 N?');
+    say($('#say-lab'), 'Tabela gotowa! Porównaj liczby w wierszu i w kolumnie. Co się dzieje, gdy siła rośnie 2 razy? A gdy masa?');
+    setTimeout(() => { if (!$('#scr-lab').hidden) labConclude(true); }, 2500);
   }
 }
-// kamera jedzie za skrzynią: skrzynia zatrzymuje się w 38% szerokości, podłoga z kreskami przesuwa się pod nią
+// kamera jedzie za saniami; ślad kropek co 0,5 s: odstępy rosną, gdy silnik pcha, potem są równe
 function labDraw() {
   const c = $('#labCanvas');
   const { ctx, w, h } = fit(c, 0.4, 220, 340);
-  // 1 m na ekranie: duża skrzynia (ok. 1,1 m ≈ 110–130 px na desktopie), mniejsza na telefonie
-  const ppm = Math.max(44, Math.min(112, w / 8, h / 3.4));
-  const camX = Math.max(0, lab.x - (w * 0.38) / ppm) - 0.6;
-  const space = lab.surf === 'space';
-  const groundY = Math.min(h * 0.74, h - 110);
+  const ppm = Math.max(14, Math.min(48, w / 18, h / 7));
+  const { x } = labPos(lab.t);
+  const camX = Math.max(0, x - (w * 0.5) / ppm) - 4.5; // z lewej miejsce na płomień i strzałkę siły
+  const railY = Math.min(h * 0.7, h - 90);
   ctx.fillStyle = 'rgba(20,10,30,.35)'; ctx.fillRect(0, 0, w, h);
-  // podłoga: hangar ciemna płyta, lód jasna tafla, kosmos tylko przerywana linia toru
-  if (lab.surf === 'hangar') { ctx.fillStyle = 'rgba(61,45,82,.85)'; ctx.fillRect(0, groundY, w, h - groundY); }
-  if (lab.surf === 'ice') { ctx.fillStyle = 'rgba(168,233,255,.3)'; ctx.fillRect(0, groundY, w, h - groundY); }
-  ctx.fillStyle = col('ink');
-  if (space) { ctx.globalAlpha = .5; for (let x = -((camX * ppm) % 24); x < w; x += 24) ctx.fillRect(x, groundY - 2, 12, 3); ctx.globalAlpha = 1; }
-  else ctx.fillRect(0, groundY - 3, w, 6);
+  // tor magnetyczny: dwie szyny i magnesy co metr
+  ctx.fillStyle = col('ink'); ctx.globalAlpha = .8; ctx.fillRect(0, railY, w, 4); ctx.fillRect(0, railY + 12, w, 2); ctx.globalAlpha = 1;
   for (let m = Math.max(0, Math.floor(camX)); m < camX + w / ppm + 1; m++) {
-    const x = (m - camX) * ppm;
-    const every = ppm >= 70 ? 1 : 5;
-    ctx.fillStyle = col('ink'); ctx.globalAlpha = .7; ctx.fillRect(x, groundY + 4, 2, m % 5 === 0 ? 18 : 10); ctx.globalAlpha = 1;
-    if (m % every === 0) txt(ctx, m + ' m', x + 5, groundY + 30, col('ink'), 13, 'left', 700);
+    const px = (m - camX) * ppm;
+    ctx.fillStyle = m % 2 ? col('violet') || '#8f84ff' : col('cyan'); ctx.globalAlpha = .55; ctx.fillRect(px, railY + 5, ppm * .6, 6); ctx.globalAlpha = 1;
+    if (m % 5 === 0) { ctx.fillStyle = col('ink'); ctx.fillRect(px, railY + 18, 2, 12); txt(ctx, m + ' m', px + 5, railY + 36, col('ink'), 12, 'left', 700); }
   }
-  // znacznik startu
-  const sx = (0 - camX) * ppm;
-  if (sx > -10) { ctx.fillStyle = col('accent'); ctx.fillRect(sx - 2, groundY - 96, 4, 96); txt(ctx, 'start', sx + 8, groundY - 88, col('accent'), 12, 'left', 800); }
-  // skrzynia: gruby biały glif na śliwkowym tle
-  const size = ppm * 1.1;
-  const cx = (lab.x - camX) * ppm, top = groundY - 3 - size;
-  ctx.save(); ctx.translate(cx + size / 2, top + size / 2); ctx.rotate(lab.push ? 0.035 : 0);
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.lineWidth = 5; ctx.strokeStyle = col('ink'); ctx.fillStyle = col('space');
-  const k = size / 2 - 3;
-  ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(-k, -k, 2 * k, 2 * k, 8); else ctx.rect(-k, -k, 2 * k, 2 * k); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(-k + 10, -k + 10); ctx.lineTo(k - 10, k - 10); ctx.moveTo(k - 10, -k + 10); ctx.lineTo(-k + 10, k - 10); ctx.stroke();
-  ctx.restore();
-  const r = c.getBoundingClientRect(); lab.crate = [r.left + cx, r.top + groundY - 6];
-  const sc = 0.7 * ppm / 56; // strzałki sił rosną razem ze skrzynią
-  if (lab.push) arrow(ctx, cx - 8 - LAB.F * sc, top + size / 2, cx - 8, top + size / 2, col('amber'), 'F = 120 N');
-  const T = labT();
-  if (lab.v > 0.0001 && T > 0) {
-    const L = Math.max(10, T * sc);
-    // tarcie działa na styku z podłogą: strzałka tuż pod podłogą, w lewo
-    arrow(ctx, cx + size / 2, groundY + 52, cx + size / 2 - L, groundY + 52, col('cyan'), `T = ${Math.round(T)} N`, { x: cx + size / 2 - L / 2, y: groundY + 70 });
+  const sx0 = (0 - camX) * ppm;
+  if (sx0 > -10) { ctx.fillStyle = col('accent'); ctx.fillRect(sx0 - 2, railY - 60, 4, 60); txt(ctx, 'start', sx0 - 6, railY - 14, col('accent'), 12, 'right', 800); }
+  // ślad: pozycja sań co 0,5 s
+  const marks = []; for (let k = 0; k * 0.5 <= lab.t + 1e-9; k++) marks.push((labPos(k * 0.5).x - camX) * ppm);
+  ctx.fillStyle = col('cyan');
+  marks.forEach((px, i) => { ctx.globalAlpha = i * 0.5 <= LAB.burn ? .9 : .5; ctx.beginPath(); ctx.arc(px, railY + 58, 5, 0, Math.PI * 2); ctx.fill(); });
+  ctx.globalAlpha = 1;
+  if (marks.length > 1) txt(ctx, 'kropka co 0,5 s', 14, railY + 78, col('cyan'), 12, 'left', 700);
+  // sanie: płoza, nadwozie, dysza z tyłu, 1 albo 2 skrzynie na górze
+  const sw = 3.2 * ppm, sh = 1.1 * ppm, cx = (x - camX) * ppm, top = railY - 6 - sh;
+  ctx.lineJoin = 'round'; ctx.lineWidth = 4; ctx.strokeStyle = col('ink');
+  ctx.fillStyle = col('line'); ctx.fillRect(cx - sw / 2, railY - 8, sw, 6);
+  ctx.fillStyle = '#d9d2e6'; ctx.beginPath(); ctx.roundRect(cx - sw / 2, top, sw, sh, 8); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = col('line'); ctx.beginPath(); ctx.moveTo(cx - sw / 2, top + sh * .25); ctx.lineTo(cx - sw / 2 - ppm * .5, top + sh * .15); ctx.lineTo(cx - sw / 2 - ppm * .5, top + sh * .85); ctx.lineTo(cx - sw / 2, top + sh * .75); ctx.fill();
+  const box = ppm * 1.15;
+  for (let i = 0; i < lab.m / 50; i++) {
+    const bx = cx - box / 2 + (lab.m === 100 ? (i ? box * .6 : -box * .6) : 0), by = top - box;
+    ctx.fillStyle = col('crate'); ctx.strokeStyle = col('ink'); ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.roundRect(bx, by, box, box, 6); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx + 8, by + 8); ctx.lineTo(bx + box - 8, by + box - 8); ctx.moveTo(bx + box - 8, by + 8); ctx.lineTo(bx + 8, by + box - 8); ctx.stroke();
   }
-  if (lab.v > 0.05) {
-    const L = Math.min(160, lab.v * 22);
-    arrow(ctx, cx + size / 2, top - 22, cx + size / 2 + L, top - 22, col('ink'), `v = ${fmt(lab.v)} m/s`, { x: cx + size / 2 + L / 2, y: top - 38 });
+  const firing = lab.state === 'burn';
+  if (firing) {
+    const L = (ppm * (.9 + lab.F / 160)) * (1 + .15 * Math.sin(lab.t * 40));
+    const nx = cx - sw / 2 - ppm * .5;
+    ctx.fillStyle = col('amber'); ctx.beginPath(); ctx.moveTo(nx, top + sh * .2); ctx.lineTo(nx - L, top + sh * .5); ctx.lineTo(nx, top + sh * .8); ctx.fill();
+    ctx.fillStyle = '#ffe2a8'; ctx.beginPath(); ctx.moveTo(nx, top + sh * .35); ctx.lineTo(nx - L * .55, top + sh * .5); ctx.lineTo(nx, top + sh * .65); ctx.fill();
   }
-  txt(ctx, 'skrzynia 20 kg', w - 14, 20, col('muted'), 13, 'right', 700);
-  if (space) txt(ctx, 'brak tarcia i powietrza', 14, 20, col('muted'), 13, 'left', 700);
+  const r = c.getBoundingClientRect(); lab.sled = [r.left + cx, r.top + top + sh / 2];
+  const sc = ppm / 40; // strzałki rosną razem z saniami
+  if (firing) arrow(ctx, cx - sw / 2 - ppm * 2.2, top - box - 26, cx - sw / 2 - ppm * 2.2 + lab.F * sc, top - box - 26, col('amber'), `F = ${lab.F} N`);
+  const { v } = labPos(lab.t);
+  if (v > 0.05) arrow(ctx, cx + sw / 2 + 8, top + sh / 2, cx + sw / 2 + 8 + Math.min(200, v * ppm * .9), top + sh / 2, col('ink'), `v = ${fmt(v)} m/s`, { x: cx + sw / 2 + 8 + Math.min(200, v * ppm * .9) / 2, y: top + sh / 2 - 18 });
+  txt(ctx, `sanie z ładunkiem: ${lab.m} kg`, w - 14, 20, col('muted'), 13, 'right', 700);
+  txt(ctx, 'tor magnetyczny: brak tarcia', 14, 20, col('muted'), 13, 'left', 700);
 }
-function holdButton(btn, on, off) {
-  btn.addEventListener('pointerdown', e => { e.preventDefault(); btn.setPointerCapture?.(e.pointerId); btn.classList.add('active'); on(); });
-  const up = () => { btn.classList.remove('active'); off(); };
-  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => btn.addEventListener(ev, up));
-  btn.addEventListener('contextmenu', e => e.preventDefault());
-}
-holdButton($('#pushBtn'), () => lab.push = true, () => lab.push = false);
-document.querySelectorAll('[data-surf]').forEach(b => b.addEventListener('click', () => labSetSurf(b.dataset.surf)));
-$('#labReset').addEventListener('click', () => labSetSurf(lab.surf));
+$('#fireBtn').addEventListener('click', labFire);
+document.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => labSet('F', +b.dataset.f)));
+document.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => labSet('m', +b.dataset.m)));
 document.querySelectorAll('#labQ .opt').forEach(b => b.addEventListener('click', () => {
   if (lab.qOk) return;
   document.querySelectorAll('#labQ .opt').forEach(o => o.classList.remove('good', 'bad'));
   if (b.dataset.ok === '1') {
     b.classList.add('good'); lab.qOk = true; cheer(b);
-    $('#labQfb').textContent = 'Tak! W kosmosie nic skrzyni nie hamowało, więc jechała cały czas tak samo szybko.';
+    $('#labQfb').textContent = 'Tak! Masa 2 razy większa, więc przyspieszenie 2 razy mniejsze: 200 N : 100 kg = 2 m/s².';
     $('#labNext').disabled = false;
   } else { b.classList.add('bad'); oops(b); $('#labQfb').textContent = b.dataset.fb; }
   $('#labQfb').style.color = b.dataset.ok === '1' ? 'var(--good)' : 'var(--wrong)';
 }));
 $('#labNext').addEventListener('click', () => cardsStart());
-// po trzech eksperymentach wniosek zastępuje stanowisko (cały ekran bez przewijania); można wrócić do skrzyni
+// po czterech pomiarach wniosek zastępuje stanowisko (cały ekran bez przewijania); można wrócić do sań
 function labConclude(on) { $('#scr-lab').classList.toggle('concluded', on); window.scrollTo({ top: 0, behavior: 'auto' }); }
 $('#labBack').addEventListener('click', () => labConclude(false));
 $('#labShowConc').addEventListener('click', () => labConclude(true));
 
 // ---------- KARTY POJĘĆ ----------
 // każde pojęcie: karta → pytanie; po błędzie wyjaśnienie i drugie pytanie w innej formie
-const cards = { i: 0, phase: 0, sel: null, ready: false, answered: false, timer: null };
+const cards = { list: [], i: 0, phase: 0, sel: null, ready: false, answered: false, timer: null };
 function cardsStart() {
   stopLoop(); show('cards'); setStep('cards'); setWorld(1);
-  say($('#say-cards'), 'Teraz pojęcia. Przeczytaj kartę. Potem odpowiedz na pytanie.');
-  cards.i = 0; cardShow(0);
+  cards.list = cardList(); cards.i = 0;
+  const nPrev = cards.list.filter(g => g.prev).length;
+  say($('#say-cards'), nPrev ? `Najpierw ${nPrev === 1 ? 'jedno pojęcie' : 'kilka pojęć'} z modułu 1 do powtórki. Potem nowe pojęcia. Przeczytaj kartę i odpowiedz na pytanie.` : 'Teraz pojęcia. Przeczytaj kartę. Potem odpowiedz na pytanie.');
+  cardShow(0);
 }
+// pojęcia z modułu 1 zapisane jako „do powtórki” wracają na początek etapu (temat 24, klucz „m1_…”); najwyżej 4 naraz, reszta poczeka
+function m1Terms() { try { return JSON.parse(localStorage.getItem('orion-pojecia') || '{}'); } catch { return {}; } }
+function cardList() {
+  const all = m1Terms();
+  const prev = GLOS_M1.filter(g => all[g.id] && all[g.id].temat === 24 && all[g.id].status === 'weak')
+    .slice(0, 4).map(g => ({ ...g, id: 'm1_' + g.id, src: g.id, prev: true }));
+  return [...prev, ...GLOS];
+}
+const cardQ = (g, phase) => (g.prev ? TQ_M1[g.src] : TQ[g.id])[phase];
 function cardDots() {
   const box = $('#cDots'); box.innerHTML = '';
-  GLOS.forEach((g, i) => { const d = document.createElement('i'); d.className = S.terms[g.id] || (i === cards.i ? 'cur' : ''); box.append(d); });
+  cards.list.forEach((g, i) => { const d = document.createElement('i'); d.className = S.terms[g.id] || (i === cards.i ? 'cur' : ''); box.append(d); });
 }
 function cardShow(phase) {
-  const g = GLOS[cards.i], q = TQ[g.id][phase];
+  const g = cards.list[cards.i], q = cardQ(g, phase);
   Object.assign(cards, { phase, sel: null, ready: false, answered: false });
-  $('#cCount').textContent = `Pojęcie ${cards.i + 1} z ${GLOS.length}`;
-  const tag = $('#cTag'); tag.textContent = TAG[g.id]; tag.className = 'chip' + (TAG[g.id].startsWith('Nowe') ? ' new' : '');
+  $('#cCount').textContent = `Pojęcie ${cards.i + 1} z ${cards.list.length}`;
+  const tg = g.prev ? 'Powtórka z modułu 1' : TAG[g.id];
+  const tag = $('#cTag'); tag.textContent = tg; tag.className = 'chip' + (tg.startsWith('Nowe') ? ' new' : '');
   $('#cTerm').textContent = g.term; $('#cFormal').textContent = g.formal; $('#cSimple').textContent = g.simple; $('#cExample').textContent = g.example;
   $('#cRetry').hidden = phase === 0;
   $('#cQ').textContent = q.text;
@@ -1316,7 +1460,7 @@ function cardShow(phase) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 $('#cCheck').addEventListener('click', () => {
-  const g = GLOS[cards.i], q = TQ[g.id][cards.phase], o = q.opts[cards.sel];
+  const g = cards.list[cards.i], q = cardQ(g, cards.phase), o = q.opts[cards.sel];
   cards.answered = true;
   $('#cOpts').querySelectorAll('.opt').forEach(b => {
     b.disabled = true; const oi = +b.dataset.i;
@@ -1343,7 +1487,7 @@ $('#cCheck').addEventListener('click', () => {
   cardDots();
   $('#cCheck').hidden = true;
   const nb = $('#cNext'); nb.hidden = false;
-  const label = retry ? 'Inne pytanie' : (cards.i < GLOS.length - 1 ? 'Następne pojęcie' : 'Podsumowanie');
+  const label = retry ? 'Inne pytanie' : (cards.i < cards.list.length - 1 ? 'Następne pojęcie' : 'Podsumowanie');
   if (o.ok) { nb.disabled = false; nb.textContent = label; }
   else {
     let left = 4; nb.disabled = true; nb.textContent = `Przeczytaj wyjaśnienie… ${left}`;
@@ -1351,14 +1495,14 @@ $('#cCheck').addEventListener('click', () => {
   }
   nb.onclick = () => {
     if (retry) return cardShow(1);
-    if (cards.i < GLOS.length - 1) { cards.i++; return cardShow(0); }
+    if (cards.i < cards.list.length - 1) { cards.i++; return cardShow(0); }
     cardsSummary();
   };
   fb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 });
-function termList(ul) {
+function termList(ul, list = GLOS) {
   ul.innerHTML = '';
-  GLOS.forEach(g => {
+  list.forEach(g => {
     const st = S.terms[g.id];
     const li = document.createElement('li'); const b = document.createElement('b'); b.textContent = g.term;
     const s = document.createElement('span'); s.className = st ? 'st-' + st : ''; s.textContent = st ? TERM_ST[st] : 'nie sprawdzono';
@@ -1366,7 +1510,7 @@ function termList(ul) {
   });
 }
 function termCounts() {
-  const v = Object.values(S.terms);
+  const v = GLOS.map(g => S.terms[g.id]);
   return { ok: v.filter(x => x === 'ok').length, retry: v.filter(x => x === 'retry').length, weak: GLOS.filter(g => S.terms[g.id] === 'weak').map(g => g.term) };
 }
 function cardsSummary() {
@@ -1374,7 +1518,7 @@ function cardsSummary() {
   const c = termCounts();
   if (!c.weak.length) { const [x, y] = center($('#csTitle')); burst(x, y, true); }
   $('#csTitle').textContent = c.weak.length ? `Znasz ${c.ok + c.retry} z ${GLOS.length} pojęć. ${c.weak.length === 1 ? 'Jedno wróci' : 'Kilka wróci'} do powtórki.` : `Znasz wszystkie ${GLOS.length} pojęć!`;
-  termList($('#csList'));
+  termList($('#csList'), cards.list);
   renderGlossary(); saveTerms();
 }
 $('#csNext').addEventListener('click', () => startStage('s1'));
@@ -1383,7 +1527,10 @@ function saveTerms() {
   try {
     const all = JSON.parse(localStorage.getItem('orion-pojecia') || '{}');
     const day = new Date().toISOString().slice(0, 10);
-    for (const id in S.terms) all[id] = { status: S.terms[id], date: day, temat: 24 };
+    for (const id in S.terms) {
+      if (id.startsWith('m1_')) all[id.slice(3)] = { status: S.terms[id], date: day, temat: 24 };
+      else all[id] = { status: S.terms[id], date: day, temat: 25 };
+    }
     localStorage.setItem('orion-pojecia', JSON.stringify(all));
   } catch {}
 }
@@ -1400,290 +1547,251 @@ function person(ctx, x, footY, ang, color, scale = 1) {
 }
 function trail(ctx, xs, y, color) { ctx.fillStyle = color; xs.forEach(x => { ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill(); }); ctx.globalAlpha = 1; }
 
-// sonda: korpus, antena talerzowa z przodu, panele, dysza z tyłu; flame 0..1 = płomień silnika
-function drawProbe(ctx, x, y, s, flame, t) {
+// rakieta skierowana w prawo. flame 0..1 = płomień silnika z tyłu, retro 0..1 = silniki hamujące z przodu (pchają w lewo)
+function drawRocket(ctx, x, y, s, flame, retro, t) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.lineJoin = 'round';
   if (flame > 0) {
     const L = (34 + 10 * Math.sin(t * 40) + 6 * Math.sin(t * 23)) * flame;
-    ctx.fillStyle = col('amber'); ctx.globalAlpha = .9;
-    ctx.beginPath(); ctx.moveTo(-42, -9); ctx.lineTo(-42 - L, 0); ctx.lineTo(-42, 9); ctx.fill();
-    ctx.fillStyle = '#ffe2a8'; ctx.beginPath(); ctx.moveTo(-42, -5); ctx.lineTo(-42 - L * .55, 0); ctx.lineTo(-42, 5); ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.fillStyle = col('amber'); ctx.beginPath(); ctx.moveTo(-40, -9); ctx.lineTo(-40 - L, 0); ctx.lineTo(-40, 9); ctx.fill();
+    ctx.fillStyle = '#ffe2a8'; ctx.beginPath(); ctx.moveTo(-40, -5); ctx.lineTo(-40 - L * .55, 0); ctx.lineTo(-40, 5); ctx.fill();
   }
-  ctx.strokeStyle = col('muted'); ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(0, -30); ctx.moveTo(0, 20); ctx.lineTo(0, 30); ctx.stroke();
-  [[-64, -30], [30, 34]].forEach(([py, hh]) => {
-    const top = py < 0 ? py : 30;
-    ctx.fillStyle = 'rgba(143,132,255,.85)'; ctx.fillRect(-16, top, 32, 34);
-    ctx.strokeStyle = col('ink'); ctx.lineWidth = 1; ctx.globalAlpha = .5;
-    for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(-16, top + k * 8.5); ctx.lineTo(16, top + k * 8.5); ctx.stroke(); }
-    ctx.beginPath(); ctx.moveTo(0, top); ctx.lineTo(0, top + 34); ctx.stroke(); ctx.globalAlpha = 1;
-  });
-  ctx.fillStyle = col('line'); ctx.beginPath(); ctx.moveTo(-30, -8); ctx.lineTo(-42, -12); ctx.lineTo(-42, 12); ctx.lineTo(-30, 8); ctx.fill();
-  ctx.fillStyle = '#d9d2e6'; ctx.strokeStyle = col('ink'); ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(-30, -20, 60, 40, 6); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = col('amber'); ctx.fillRect(-20, -4, 22, 8);
-  ctx.fillStyle = '#f4f0fa'; ctx.beginPath(); ctx.ellipse(36, 0, 9, 30, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(38, 0); ctx.lineTo(60, 0); ctx.stroke();
-  ctx.fillStyle = col('ink'); ctx.beginPath(); ctx.arc(61, 0, 3, 0, Math.PI * 2); ctx.fill();
+  if (retro > 0) {
+    const L = (18 + 6 * Math.sin(t * 37)) * retro;
+    ctx.fillStyle = col('amber');
+    [-19, 19].forEach(o => { ctx.beginPath(); ctx.moveTo(22, o - 4); ctx.lineTo(22 + L, o); ctx.lineTo(22, o + 4); ctx.fill(); });
+  }
+  ctx.strokeStyle = col('ink'); ctx.lineWidth = 2.5;
+  ctx.fillStyle = col('accent');
+  ctx.beginPath(); ctx.moveTo(-30, -14); ctx.lineTo(-44, -28); ctx.lineTo(-22, -14); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-30, 14); ctx.lineTo(-44, 28); ctx.lineTo(-22, 14); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#e8e2f2';
+  ctx.beginPath(); ctx.moveTo(-40, -14); ctx.lineTo(24, -14); ctx.quadraticCurveTo(48, -8, 54, 0); ctx.quadraticCurveTo(48, 8, 24, 14); ctx.lineTo(-40, 14); ctx.closePath(); ctx.fill(); ctx.stroke();
+  if (retro > 0 || flame === 0) { ctx.fillStyle = col('line'); ctx.fillRect(18, -22, 6, 8); ctx.fillRect(18, 14, 6, 8); }
+  ctx.fillStyle = '#15102a'; ctx.beginPath(); ctx.arc(16, 0, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = col('amber'); ctx.fillRect(-24, -4, 22, 8);
   ctx.restore();
 }
-function probeHud(ctx, fuel, on, v) {
-  txt(ctx, 'Paliwo', 16, 20, col('muted'), 12, 'left', 700);
-  ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(66, 14, 90, 12);
-  ctx.fillStyle = fuel > .25 ? col('ok') : col('bad'); ctx.fillRect(66, 14, 90 * fuel, 12);
-  txt(ctx, `${Math.round(fuel * 100)}%`, 164, 20, col('ink'), 12, 'left', 700);
-  txt(ctx, on ? 'Silniki: WŁĄCZONE' : 'Silniki: WYŁĄCZONE', 16, 42, on ? col('amber') : col('muted'), 12, 'left', 700);
-  txt(ctx, `v = ${fmt(v)} km/s`, 16, 64, col('ink'), 14, 'left', 700);
+// wózek / ciężarówka: pudło z kołami, podpis masy w środku
+function drawCart(ctx, x, y, wd, ht, label, color) {
+  ctx.lineJoin = 'round'; ctx.strokeStyle = col('ink'); ctx.lineWidth = 3;
+  ctx.fillStyle = color; ctx.beginPath(); ctx.roundRect(x, y - ht, wd, ht - 10, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = col('muted');
+  [x + wd * .22, x + wd * .78].forEach(cx => { ctx.beginPath(); ctx.arc(cx, y - 6, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); });
+  txt(ctx, label, x + wd / 2, y - ht / 2 - 4, '#15102a', 14, 'center', 800);
 }
-// przed odpowiedzią: wstęp, który niczego nie zdradza (silniki pracują, paliwo się kończy, obraz staje na „?”)
+
+// przed odpowiedzią: wstęp, który niczego nie zdradza (silnik pracuje, prędkość „?”)
 const INTROS = {
-  probe(ctx, w, h, t) {
-    const C = 7, on = 3.4, tc = t % C, burn = Math.min(tc, on);
-    const shift = 70 * burn + 20 * burn * burn / on;
-    starfield(ctx, w, h, shift);
-    const s = Math.min(1.7, h / 210), x = w * 0.36, y = h * 0.5 + Math.sin(t * 1.3) * 3 * (tc < on ? 1 : 0);
-    const fire = tc < on ? 1 : Math.max(0, 1 - (tc - on) / 0.25);
-    drawProbe(ctx, x, y, s, fire, t);
-    if (tc > on && tc < on + 1.2) { // dymek po zgaszeniu silnika
-      const a = (tc - on) / 1.2; ctx.fillStyle = col('muted');
-      for (let k = 0; k < 3; k++) { ctx.globalAlpha = .45 * (1 - a); ctx.beginPath(); ctx.arc(x - 46 * s - a * 30 * (k + 1), y + (k - 1) * 8 * a, (5 + 14 * a) * s * (1 - k * .2), 0, Math.PI * 2); ctx.fill(); }
-      ctx.globalAlpha = 1;
-    }
-    probeHud(ctx, 1 - burn / on, tc < on, 12 + 3 * burn / on);
-    if (tc >= on + .4) {
-      const p = 1 + .08 * Math.sin(t * 5);
-      txt(ctx, '?', x + 130 * s, y, col('amber'), Math.round(64 * s * p), 'center', 900);
-      txt(ctx, 'Paliwo się skończyło. Co będzie dalej?', w / 2, h - 20, col('ink'), 14, 'center', 700);
-    }
-  },
+  rocket(ctx, w, h, t) { introPush(ctx, w, h, t, false); },
+  tow(ctx, w, h, t) { introPush(ctx, w, h, t, true); },
 };
+function introPush(ctx, w, h, t, cargo) {
+  starfield(ctx, w, h);
+  const s = Math.min(1.6, h / 210), x = w * 0.42, y = h * 0.5 + Math.sin(t * 1.3) * 3;
+  if (cargo) drawContainer(ctx, x + 60 * s, y, s);
+  drawRocket(ctx, x, y, s, 1, 0, t);
+  arrow(ctx, x - 20 * s, y - 52 * s, x + 70 * s, y - 52 * s, col('amber'), 'siła silnika: cały czas taka sama', { x: x + 25 * s, y: y - 70 * s });
+  const p = 1 + .08 * Math.sin(t * 5);
+  txt(ctx, 'v = ?', x + (cargo ? 200 : 140) * s, y, col('amber'), Math.round(30 * s * p), 'center', 900);
+  txt(ctx, 'Nic nie hamuje. Jak będzie zmieniać się prędkość?', w / 2, h - 20, col('ink'), 14, 'center', 700);
+}
+function drawContainer(ctx, x, y, s) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.fillStyle = col('crate'); ctx.strokeStyle = col('ink'); ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.roundRect(0, -26, 90, 52, 6); ctx.fill(); ctx.stroke();
+  for (let k = 1; k < 5; k++) { ctx.beginPath(); ctx.moveTo(k * 18, -22); ctx.lineTo(k * 18, 22); ctx.stroke(); }
+  ctx.restore();
+}
 
 const SCENES = {
-  probe(ctx, w, h, t) {
-    const T = 4.6, tt = t % T, x0 = w * 0.14, x1 = w * 0.84, x = x0 + (x1 - x0) * tt / T, y = h * 0.5;
+  // dwa tory: górny lżejszy, dolny cięższy; ta sama siła przez 2 s, potem jadą same
+  carts(ctx, w, h, t, o = { m: [10, 30], lab: ['pusty: 10 kg', 'z ładunkiem: 30 kg'] }) {
+    ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, h);
+    const T = 5, tt = t > 0 ? t % (T + .6) : 0, run = Math.max(0, Math.min(T, tt - .3));
+    const x0 = 30, cw = Math.min(110, w * .18), lanes = [h * .42, h * .84];
+    const a1 = (w * .9 - cw - x0) / 6, as = [a1, a1 * o.m[0] / o.m[1]];
+    const pos = a => run <= 2 ? a * run * run / 2 : a * 2 + 2 * a * (run - 2);
+    lanes.forEach((y, i) => {
+      ctx.fillStyle = col('ice'); ctx.globalAlpha = .25; ctx.fillRect(0, y, w, 8); ctx.globalAlpha = 1;
+      const x = x0 + pos(as[i]);
+      const marks = []; for (let k = 0; k * .5 <= run + 1e-9; k++) { const r = k * .5; marks.push(x0 + cw / 2 + (r <= 2 ? as[i] * r * r / 2 : as[i] * 2 + 2 * as[i] * (r - 2))); }
+      trail(ctx, marks, y + 18, col('cyan'));
+      if (run < 2 || t === 0) arrow(ctx, x - 64, y - 24, x - 6, y - 24, col('amber'), 'F', { x: x - 35, y: y - 40 });
+      drawCart(ctx, x, y, cw, 54, o.lab[i], i ? col('crate') : '#d9d2e6');
+    });
+    if (t === 0) txt(ctx, 'ta sama siła F przez 2 s', 14, 18, col('muted'), 12, 'left', 700);
+    else txt(ctx, run < 2 ? 'ta sama siła pcha oba' : 'siła już nie działa: oba jadą stałą prędkością', 14, 18, col('cyan'), 13, 'left', 700);
+  },
+  trucks(ctx, w, h, t) { SCENES.carts(ctx, w, h, t, { m: [5, 10], lab: ['pusta: 5 t', 'z ładunkiem: 10 t'] }); },
+  // rakieta (albo holownik z kontenerem) pod stałą siłą: kropki co 0,4 s coraz dalej od siebie
+  rocket(ctx, w, h, t, cargo = false) {
     starfield(ctx, w, h);
-    const s = Math.min(1.7, h / 210);
-    const marks = []; for (let k = 0; k * 0.5 <= tt; k++) marks.push(x0 + (x1 - x0) * k * 0.5 / T);
-    trail(ctx, marks, y + 76 * s, col('cyan'));
-    drawProbe(ctx, x, y, s, 0, t);
-    probeHud(ctx, 0, false, 15);
-    if (t > 0) txt(ctx, 'Nic nie hamuje: kropki w równych odstępach = cały czas tak samo szybko', w / 2, h - 18, col('cyan'), 13, 'center', 700);
+    const s = Math.min(1.4, h / 230), T = 3.6, tt = t % (T + .5), run = Math.min(T, tt);
+    const x0 = w * .1, span = w * .72 - (cargo ? 150 * s : 0), k = span / (T * T), y = h * .46;
+    const x = x0 + k * run * run;
+    const marks = []; for (let r = 0; r <= run + 1e-9; r += .4) marks.push(x0 + k * r * r);
+    trail(ctx, marks, y + 64 * s, col('cyan'));
+    if (cargo) drawContainer(ctx, x + 60 * s, y, s);
+    drawRocket(ctx, x, y, s, 1, 0, t);
+    const v = 2 * k * run;
+    if (v > 3) arrow(ctx, x + (cargo ? 160 : 64) * s, y, x + (cargo ? 160 : 64) * s + Math.min(160, v * .35), y, col('ink'), 'v rośnie', null);
+    txt(ctx, 'kropka co 0,4 s: coraz dalej od siebie = coraz szybciej', w / 2, h - 18, col('cyan'), 13, 'center', 700);
   },
-  puck(ctx, w, h, t) {
-    ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = col('ice'); ctx.fillRect(16, h * 0.25, w - 32, h * 0.55);
-    const y = h * 0.6, T = 4, x0 = w * 0.16, x1 = w * 0.86;
-    const tt = t % (T + 0.6);
-    const run = Math.max(0, Math.min(T, tt - 0.4));
-    const x = x0 + (x1 - x0) * run / T;
-    ctx.strokeStyle = col('crate'); ctx.lineWidth = 6; ctx.lineCap = 'round';
-    const sx = tt < 0.4 ? x0 - 40 + tt * 70 : x0 - 12;
-    ctx.beginPath(); ctx.moveTo(sx - 30, y - 70); ctx.lineTo(sx, y + 4); ctx.lineTo(sx + 16, y + 4); ctx.stroke();
-    const marks = []; for (let k = 0; k * 0.5 <= run; k++) marks.push(x0 + (x1 - x0) * k * 0.5 / T);
-    trail(ctx, marks, y + 22, col('space'));
-    ctx.fillStyle = col('space'); ctx.beginPath(); ctx.ellipse(x, y, 14, 6, 0, 0, Math.PI * 2); ctx.fill();
-    txt(ctx, 'idealnie gładki lód: brak tarcia', 22, h * 0.25 - 14, col('muted'), 12);
-  },
-  bus(ctx, w, h, t, mode) {
-    const T = 4.6, tt = t % T;
-    let v, d, a;
-    if (mode === 'brake') {
-      if (tt < 1) { v = 1; d = tt; a = 0; } else if (tt < 2.2) { const s = tt - 1; v = 1 - s / 1.2; d = 1 + s - s * s / 2.4; a = -1; } else { v = 0; d = 1.6; a = 0; }
-    } else {
-      if (tt < 1) { v = 0; d = 0; a = 0; } else if (tt < 2.2) { const s = tt - 1; v = s / 1.2; d = s * s / 2.4; a = 1; } else { v = 1; d = 0.6 + (tt - 2.2); a = 0; }
-    }
-    const k = (tt > 1 && tt < 2.6) ? Math.min(1, (tt - 1) / 0.25) * (tt > 2.2 ? Math.max(0, 1 - (tt - 2.2) / 0.4) : 1) : 0;
-    const tilt = (mode === 'brake' ? 0.38 : -0.38) * k;
-    ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, h);
-    const roadY = h * 0.82;
-    ctx.fillStyle = col('floor'); ctx.fillRect(0, roadY, w, h - roadY);
-    ctx.fillStyle = col('muted'); const off = (d * 260) % 80;
-    for (let x = -off; x < w; x += 80) ctx.fillRect(x, roadY + (h - roadY) / 2 - 2, 40, 4);
-    const bw = Math.min(w - 60, 520), bx = (w - bw) / 2, by = h * 0.2, bh = roadY - by - 14;
-    ctx.fillStyle = col('line'); ctx.fillRect(bx, by, bw, bh);
-    ctx.fillStyle = col('space'); ctx.fillRect(bx + 10, by + 10, bw - 20, bh - 28);
-    ctx.fillStyle = col('muted');
-    [bx + 60, bx + bw - 60].forEach(x => { ctx.beginPath(); ctx.arc(x, roadY - 6, 16, 0, Math.PI * 2); ctx.fill(); });
-    ctx.fillStyle = col('amber'); ctx.fillRect(bx + bw - 6, by + bh - 40, 6, 14);
-    person(ctx, bx + bw * 0.45, by + bh - 18, tilt, col('ink'), Math.min(1.2, bh / 110));
-    const label = mode === 'brake' ? (a < 0 ? 'autobus HAMUJE' : v > 0 ? 'autobus jedzie' : 'autobus stoi') : (a > 0 ? 'autobus RUSZA' : v > 0 ? 'autobus jedzie' : 'autobus stoi');
-    txt(ctx, label, bx + 16, by - 12, col('ink'), 13, 'left', 700);
-    if (v > 0.02) arrow(ctx, bx + bw - 120, by - 12, bx + bw - 120 + 70 * v, by - 12, col('ink'), '', null);
-    txt(ctx, 'kierunek jazdy →', bx + bw, by - 12, col('muted'), 11, 'right');
-  },
-  busBrake(ctx, w, h, t) { SCENES.bus(ctx, w, h, t, 'brake'); },
-  busStart(ctx, w, h, t) { SCENES.bus(ctx, w, h, t, 'start'); },
-  elevator(ctx, w, h, t) {
-    ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, h);
-    const cw = Math.min(200, w * 0.4), cx = w / 2 - cw / 2, cy = h * 0.12, ch = h * 0.76;
-    ctx.strokeStyle = col('line'); ctx.lineWidth = 2; const off = (t * 50) % 36;
-    for (let y = -36 + off; y < h; y += 36) { ctx.beginPath(); ctx.moveTo(cx - 30, y); ctx.lineTo(cx - 10, y); ctx.moveTo(cx + cw + 10, y); ctx.lineTo(cx + cw + 30, y); ctx.stroke(); }
-    ctx.fillStyle = col('space'); ctx.fillRect(cx, cy, cw, ch);
-    ctx.strokeStyle = col('muted'); ctx.strokeRect(cx, cy, cw, ch);
-    const floor = cy + ch - 6; person(ctx, w / 2, floor, 0, col('ink'), Math.min(1.1, ch / 120));
-    const L = Math.min(70, ch * 0.35), mid = floor - ch * 0.32;
-    arrow(ctx, w / 2 + 40, mid, w / 2 + 40, mid - L, col('cyan'), 'podłoga', { x: w / 2 + 40 + 44, y: mid - L / 2 });
-    arrow(ctx, w / 2 - 40, mid - L, w / 2 - 40, mid, col('amber'), 'ciężar', { x: w / 2 - 40 - 40, y: mid - L / 2 });
-    txt(ctx, 'w górę, cały czas 2 m/s', 14, 18, col('muted'), 12);
-  },
-  para(ctx, w, h, t) {
-    ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = col('line');
-    for (let i = 0; i < 6; i++) { const y = ((i * 70 - t * 45) % (h + 80) + h + 80) % (h + 80) - 40; const x = (i * 137) % w; ctx.beginPath(); ctx.ellipse(x, y, 46, 14, 0, 0, Math.PI * 2); ctx.fill(); }
-    const x = w / 2, y = h * 0.66, R = Math.min(80, h * 0.28);
-    ctx.fillStyle = col('crate'); ctx.beginPath(); ctx.arc(x, y - R * 1.4, R, Math.PI, 0); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = col('muted'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - R, y - R * 1.4); ctx.lineTo(x, y - 60); ctx.lineTo(x + R, y - R * 1.4); ctx.stroke();
-    person(ctx, x, y + 6, 0, col('ink'), 0.9);
-    const L = Math.min(64, h * 0.22);
-    arrow(ctx, x + 50, y - 20, x + 50, y - 20 - L, col('cyan'), 'opór', { x: x + 50 + 30, y: y - 20 - L / 2 });
-    arrow(ctx, x - 50, y - 20 - L, x - 50, y - 20, col('amber'), 'ciężar', { x: x - 50 - 36, y: y - 20 - L / 2 });
-    txt(ctx, 'w dół, cały czas 5 m/s', 14, 18, col('muted'), 12);
+  tow(ctx, w, h, t) { SCENES.rocket(ctx, w, h, t, true); },
+  // statek leci w prawo, silniki z przodu pchają w lewo: zwalnia, staje, wraca
+  counter(ctx, w, h, t) {
+    starfield(ctx, w, h);
+    const s = Math.min(1.4, h / 230), y = h * .5, x0 = w * .2, d = w * .48, Ts = 2.2, T = 2 * Ts;
+    const tt = t > 0 ? t % (T + .6) : 0, run = Math.min(T, tt);
+    const v0 = 2 * d / Ts, a = v0 / Ts, v = v0 - a * run, x = x0 + v0 * run - a * run * run / 2;
+    drawRocket(ctx, x, y, s, 0, 1, t);
+    arrow(ctx, x + 10 * s, y - 50 * s, x - 70 * s, y - 50 * s, col('amber'), 'siła silników', { x: x - 30 * s, y: y - 66 * s });
+    if (Math.abs(v) > 4) { const L = Math.max(-140, Math.min(140, v * .55)); arrow(ctx, x - 10 * s, y + 46 * s, x - 10 * s + L, y + 46 * s, col('cyan'), 'v', { x: x - 10 * s + L / 2, y: y + 62 * s }); }
+    if (t === 0) { txt(ctx, '?', x + 120 * s, y, col('amber'), Math.round(56 * s), 'center', 900); txt(ctx, 'statek leci w prawo', 14, 18, col('muted'), 12, 'left', 700); }
+    else txt(ctx, v > 4 ? 'zwalnia' : v > -4 ? 'stoi przez chwilę' : 'leci w lewo coraz szybciej', w / 2, h - 18, col('cyan'), 14, 'center', 800);
   },
 };
 
 // ---------- PYTANIA ----------
 const Q = {
-  p1: { concept: 'zasada', text: 'Dokończ I zasadę dynamiki: „Jeżeli na ciało nie działa żadna siła lub działające siły się równoważą, to ciało…”',
-    hint: 'Przypomnij sobie skrzynię w kosmosie. Najpierw stała, a potem jechała.',
+  p1: { concept: 'zasada2', text: 'Co mówi II zasada dynamiki?',
+    hint: 'Pierwsza zasada mówi o siłach, które się znoszą. Druga mówi o tych, które się NIE znoszą.',
     opts: [
-      { t: '…pozostaje w spoczynku lub porusza się ruchem jednostajnym prostoliniowym.', ok: true },
-      { t: '…zawsze pozostaje w spoczynku.', fb: 'To tylko połowa. Ciało, które już jedzie, samo się nie zatrzyma. Jedzie dalej tak samo szybko.', mis: 'zasada' },
-      { t: '…porusza się coraz wolniej, aż się zatrzyma.', fb: 'Zwalnianie to zmiana prędkości. A do zmiany prędkości potrzebna jest siła, na przykład tarcie.', mis: 'ruch_sila' },
-      { t: '…porusza się ruchem przyspieszonym.', fb: 'Przyspieszanie to też zmiana prędkości. Do tego potrzebna jest siła.', mis: 'zasada' },
+      { t: 'Stała siła niezrównoważona nadaje ciału stałe przyspieszenie: a = F : m.', ok: true },
+      { t: 'Gdy siły się równoważą, ciało stoi albo jedzie cały czas tak samo szybko.', fb: 'To I zasada dynamiki, z modułu 1. Druga mówi, co się dzieje, gdy siły się NIE znoszą.' },
+      { t: 'Gdy działa stała siła, ciało jedzie cały czas tak samo szybko.', fb: 'Stała siła zmienia prędkość. Ciało jedzie coraz szybciej.', mis: 'stala_v' },
+      { t: 'Każde ciało ma bezwładność.', fb: 'To prawda, ale to nie jest II zasada. Druga mówi, jak obliczyć przyspieszenie.' },
     ],
-    explain: 'Gdy siły się znoszą, prędkość się nie zmienia. Ciało, które stoi, dalej stoi. Ciało, które jedzie, jedzie dalej prosto i tak samo szybko.' },
-  p2: { concept: 'masa', text: 'Od czego zależy bezwładność ciała? Co jest jej miarą?',
-    hint: 'Dlaczego pełny wózek w sklepie trudniej ruszyć niż pusty?',
+    explain: 'Gdy siły się nie znoszą, ciało przyspiesza. Przyspieszenie liczymy ze wzoru a = F : m.' },
+  p2: { concept: 'wzor', text: 'Silnik pcha statek o masie 200 kg siłą 600 N. Nic nie hamuje. Jakie jest przyspieszenie statku?',
+    hint: 'Wzór jest w Słowniczku: a = F : m.',
     opts: [
-      { t: 'Masa', ok: true },
-      { t: 'Prędkość', fb: 'Nie. Liczy się to, jaką masę ma ciało, a nie jak szybko jedzie.', mis: 'masa' },
-      { t: 'Rozmiar (objętość)', fb: 'Duży balon łatwo popchnąć, a małą metalową kulę trudno. Liczy się masa, a nie rozmiar.', mis: 'masa' },
-      { t: 'Siła ciężkości', fb: 'W kosmosie rzeczy nic nie ważą, a i tak ciężki moduł stacji trudno rozpędzić. Liczy się masa.', mis: 'masa' },
+      { t: '3 m/s²', ok: true },
+      { t: '120 000 m/s²', fb: 'Siłę i masę pomnożono. A trzeba podzielić: 600 : 200 = 3.', mis: 'mnoz' },
+      { t: '0,33 m/s²', fb: 'Dzielenie w złą stronę. Siła jest na górze: 600 : 200 = 3.', mis: 'odwr' },
+      { t: '800 m/s²', fb: 'Siły i masy nie dodajemy. Siłę dzielimy przez masę: 600 : 200 = 3.', mis: 'mnoz' },
     ],
-    explain: 'Masa jest miarą bezwładności. Im większa masa, tym trudniej ciało rozpędzić albo zatrzymać.' },
-  p3: { concept: 'rownowaga', text: 'Ciało jedzie prosto i cały czas tak samo szybko (to ruch jednostajny prostoliniowy). Co wiesz o siłach, które na nie działają?',
-    hint: 'Prędkość się nie zmienia. Co by się stało, gdyby jedna siła była większa?',
+    explain: 'a = F : m = 600 N : 200 kg = 3 m/s². Co sekundę statek jedzie o 3 m/s szybciej.' },
+  p3: { concept: 'proporcja', text: 'Siła silnika rośnie 2 razy. Masa statku się nie zmienia. Co się dzieje z przyspieszeniem?',
+    hint: 'Przypomnij sobie tabelę z hamowni: 100 N i 200 N przy tej samej masie.',
     opts: [
-      { t: 'Nie działa żadna siła albo siły się równoważą (znoszą).', ok: true },
-      { t: 'Musi działać siła do przodu, większa niż hamowanie.', fb: 'Gdyby siła do przodu była większa, ciało by przyspieszało. A ono jedzie cały czas tak samo szybko.', mis: 'kierunek' },
-      { t: 'Działa na nie tylko siła ciężkości.', fb: 'Wtedy ciało spadałoby coraz szybciej. Coś musi tę siłę znosić.', mis: 'zasada' },
-      { t: 'Siły robią się coraz mniejsze.', fb: 'Siły nie muszą maleć. Wystarczy, że się znoszą.', mis: 'ruch_sila' },
+      { t: 'Rośnie 2 razy', ok: true },
+      { t: 'Maleje 2 razy', fb: 'Większa siła to większe przyspieszenie, a nie mniejsze.', mis: 'proporcja' },
+      { t: 'Nie zmienia się', fb: 'Przyspieszenie zależy od siły. Większa siła, większe przyspieszenie.', mis: 'proporcja' },
+      { t: 'Rośnie 4 razy', fb: 'Siła rośnie 2 razy, więc przyspieszenie też 2 razy. Na hamowni: 100 N dawało 2 m/s², a 200 N dawało 4 m/s².', mis: 'proporcja' },
     ],
-    explain: 'Prędkość się nie zmienia, więc siły się znoszą. To ta sama I zasada dynamiki.' },
-  p4: { concept: 'masa', text: 'Który wózek w sklepie trudniej rozpędzić i trudniej zatrzymać?',
-    hint: 'Od czego zależy bezwładność?',
+    explain: 'Przyspieszenie rośnie tyle razy, ile razy rośnie siła. Na hamowni: 100 N → 2 m/s², 200 N → 4 m/s².' },
+  p4: { concept: 'proporcja', text: 'Ta sama siła pcha raz pusty wózek, a raz wózek 3 razy cięższy. Jakie przyspieszenie ma cięższy wózek?',
+    hint: 'Im większa masa, tym trudniej zmienić prędkość.',
     opts: [
-      { t: 'Pełny zakupów, bo ma większą masę, więc większą bezwładność.', ok: true },
-      { t: 'Pusty, bo jest lżejszy i łatwiej się wymyka.', fb: 'Lżejszy wózek łatwiej rozpędzić i łatwiej zatrzymać. Mniejsza masa to mniejsza bezwładność.', mis: 'masa' },
-      { t: 'Oba tak samo, bo bezwładność nie zależy od masy.', fb: 'Zależy! Masa jest miarą bezwładności.', mis: 'masa' },
-      { t: 'Żaden, bo bezwładność mają tylko rzeczy, które jadą.', fb: 'Bezwładność ma każde ciało, także takie, które stoi. Dlatego trzeba siły, żeby je ruszyć.', mis: 'masa' },
+      { t: '3 razy mniejsze', ok: true },
+      { t: '3 razy większe', fb: 'Odwrotnie. Większa masa to mniejsze przyspieszenie.', mis: 'masa' },
+      { t: 'Takie samo', fb: 'Siła ta sama, ale masa 3 razy większa. Przyspieszenie jest więc 3 razy mniejsze.', mis: 'masa' },
+      { t: 'Zero, bo wózek jest za ciężki', fb: 'Siła, która się nie znosi, zawsze rozpędza ciało. Cięższe po prostu wolniej.', mis: 'masa' },
     ],
-    explain: 'Pełny wózek ma większą masę, więc większą bezwładność. Trudniej go ruszyć i trudniej zatrzymać.' },
-  p5: { concept: 'zasada', text: 'Dlaczego w samochodzie zapina się pasy bezpieczeństwa?',
-    hint: 'Co się dzieje z ciałem pasażera, gdy samochód nagle hamuje?',
+    explain: 'a = F : m. Masa 3 razy większa, więc przyspieszenie 3 razy mniejsze.' },
+  p5: { concept: 'niuton', text: 'Co oznacza 1 N (jeden niuton)?',
+    hint: 'Niuton to jednostka siły. Sprawdź kartę „Niuton” w Słowniczku.',
     opts: [
-      { t: 'Gdy auto nagle hamuje, nasze ciało jedzie dalej do przodu (bezwładność). Pas nas przytrzymuje.', ok: true },
-      { t: 'Pas chroni przed siłą, która przy hamowaniu pcha nas do przodu.', fb: 'Nic nas nie pcha! To auto zwalnia, a my dalej jedziemy tak samo szybko, dopóki pas nas nie zatrzyma.', mis: 'pcha' },
-      { t: 'Tylko po to, żeby nie zsuwać się z fotela na zakrętach.', fb: 'Na zakrętach też pomaga, ale najważniejsze jest hamowanie. Bez pasa ciało jedzie dalej do przodu.', mis: 'pcha' },
-      { t: 'Bo tak każą przepisy. Fizyka nie ma tu nic do rzeczy.', fb: 'Przepisy są właśnie z powodu fizyki, czyli z powodu bezwładności.', mis: 'zasada' },
+      { t: 'Siłę, która ciału o masie 1 kg nadaje przyspieszenie 1 m/s²', ok: true },
+      { t: 'Masę 1 kilograma', fb: 'Niuton to jednostka siły, nie masy.' },
+      { t: 'Prędkość 1 m/s', fb: 'Prędkość mierzymy w m/s. Niuton to jednostka siły.' },
+      { t: 'Siłę, która ciału o masie 1 kg nadaje prędkość 1 m/s', fb: 'Chodzi o przyspieszenie, a nie prędkość: co sekundę o 1 m/s szybciej.' },
     ],
-    explain: 'Bez pasa ciało jechałoby dalej, aż uderzy w kierownicę albo w szybę.' },
+    explain: '1 N = 1 kg · m/s². Taka siła rozpędza 1 kg tak, że co sekundę jedzie on o 1 m/s szybciej.' },
 
-  a1: { concept: 'A', scene: 'probe', text: 'Sonda kosmiczna leci daleko od planet i gwiazd z prędkością 15 km/s. Kończy się paliwo i silniki się wyłączają. Co dalej?',
-    hint: 'Czy w pustym kosmosie coś może sondę hamować? Przypomnij sobie skrzynię w laboratorium.',
+  a1: { concept: 'A', scene: 'carts', text: 'Dwa wózki stoją na idealnie gładkim lodzie. Górny jest pusty (10 kg). Dolny wiezie ładunek (razem 30 kg). Pchasz każdy z nich tą samą siłą przez 2 sekundy. Który potem jedzie szybciej?',
+    hint: 'Pamiętasz hamownię? Jak rozpędzały się sanie z dwiema skrzyniami?',
     preds: [
-      { t: 'Leci dalej prosto, cały czas 15 km/s.', ok: true },
-      { t: 'Powoli zwalnia, aż się zatrzyma.', fb: 'Na Ziemi rzeczy zwalniają przez tarcie i powietrze. W kosmosie tego nie ma, więc nic sondy nie hamuje.', mis: 'ruch_sila' },
-      { t: 'Od razu się zatrzymuje.', fb: 'Żeby się zatrzymać, coś musiałoby ją hamować. Wyłączenie silników to nie hamowanie.', mis: 'ruch_sila' },
-      { t: 'Zaczyna spadać w dół.', fb: 'Daleko od planet nie ma „dołu”. Nic sondy nie przyciąga.' },
+      { t: 'Górny (pusty), 3 razy szybciej.', ok: true },
+      { t: 'Dolny (z ładunkiem).', fb: 'Ładunek nie dodaje siły. Dodaje masy, a większą masę trudniej rozpędzić.', mis: 'masa' },
+      { t: 'Oba tak samo, bo siła jest taka sama.', fb: 'Siła jest taka sama, ale masy są różne. Mniejsza masa dostaje większe przyspieszenie.', mis: 'masa' },
     ],
     reasons: [
-      { t: 'Nic jej nie pcha i nic nie hamuje, więc prędkość się nie zmienia.', ok: true },
-      { t: 'Siła silników się skończyła, więc sonda musi stanąć.', fb: 'Do jechania nie trzeba siły. Siła jest potrzebna tylko do zmiany prędkości.', mis: 'ruch_sila' },
-      { t: 'Sonda ma rozpęd, który z czasem się zużywa.', fb: 'Rozpęd sam się nie zużywa. Ciało zwalnia tylko wtedy, gdy coś je hamuje.', mis: 'niesie' },
+      { t: 'Ta sama siła daje mniejszej masie większe przyspieszenie (a = F : m).', ok: true },
+      { t: 'Cięższy wózek ma w sobie więcej siły.', fb: 'Siłę daje ten, kto pcha. Ładunek to tylko większa masa.', mis: 'masa' },
+      { t: 'Prędkość zależy tylko od siły.', fb: 'Zależy też od masy. Na hamowni sanie z dwiema skrzyniami rozpędzały się wolniej.', mis: 'masa' },
     ],
-    explain: 'To właśnie I zasada dynamiki. Sondy Voyager wystartowały w 1977 roku i do dziś lecą przez kosmos, choć ich główne silniki nie pracują.' },
-  a2: { concept: 'A', scene: 'puck', text: 'Wyobraź sobie lodowisko z idealnie gładkim lodem. Nie ma tarcia ani powietrza. Uderzasz krążek kijem. Co robi krążek, gdy już odleci od kija?',
-    hint: 'Gdy kij już nie dotyka krążka, czy coś go jeszcze pcha albo hamuje?',
+    explain: '10 kg to 3 razy mniej niż 30 kg. Ta sama siła daje więc 3 razy większe przyspieszenie. Po 2 s pusty wózek jedzie 3 razy szybciej.' },
+  a2: { concept: 'A', scene: 'trucks', text: 'Dwie takie same ciężarówki stoją pod światłami. Górna jest pusta (5 ton). Dolna jest załadowana (10 ton). Silniki pchają z taką samą siłą. Która rozpędza się szybciej?',
+    hint: 'Która ma mniejszą masę?',
     preds: [
-      { t: 'Jedzie dalej prosto, cały czas tak samo szybko.', ok: true },
-      { t: 'Zwalnia i staje.', fb: 'Na prawdziwym lodzie tak, bo jest trochę tarcia. Ale ten lód jest idealny i nic nie hamuje.', mis: 'ruch_sila' },
-      { t: 'Jeszcze chwilę przyspiesza.', fb: 'Kij już krążka nie dotyka, więc go nie pcha. Bez pchania nie ma przyspieszania.', mis: 'niesie' },
-      { t: 'Skręca w bok.', fb: 'Żeby skręcić, coś musiałoby pchnąć krążek w bok.' },
+      { t: 'Pusta, 2 razy szybciej.', ok: true },
+      { t: 'Załadowana.', fb: 'Ładunek nie dodaje siły. Dodaje masy, a większą masę trudniej rozpędzić.', mis: 'masa' },
+      { t: 'Obie tak samo.', fb: 'Siła jest taka sama, ale masa nie. 5 ton to 2 razy mniej niż 10 ton.', mis: 'masa' },
     ],
     reasons: [
-      { t: 'Nic go nie pcha i nic nie hamuje, więc prędkość się nie zmienia.', ok: true },
-      { t: 'Kij dał krążkowi siłę, którą krążek zabrał ze sobą.', fb: 'Siła działa tylko wtedy, gdy kij dotyka krążka. Potem krążek ma prędkość, ale nie ma siły.', mis: 'niesie' },
-      { t: 'Krążek jest lekki, więc nie ma bezwładności.', fb: 'Każde ciało ma bezwładność. Lekkie ma małą, ale ma.', mis: 'masa' },
+      { t: 'Ta sama siła daje mniejszej masie większe przyspieszenie (a = F : m).', ok: true },
+      { t: 'Załadowana ciężarówka ma więcej siły.', fb: 'Siłę daje silnik, a silniki są takie same. Ładunek to tylko większa masa.', mis: 'masa' },
+      { t: 'Masa nie ma znaczenia, liczy się silnik.', fb: 'Masa ma znaczenie: a = F : m. Większa masa, mniejsze przyspieszenie.', mis: 'masa' },
     ],
-    explain: 'Na prawdziwym lodowisku krążek powoli zwalnia, bo jest małe tarcie. Bez tarcia jechałby bez końca.' },
-  b1: { concept: 'B', scene: 'busBrake', text: 'Stoisz w autobusie i nie trzymasz się. Kierowca nagle hamuje. Co się z Tobą dzieje?',
-    hint: 'Hamulce zatrzymują koła autobusu. Czy zatrzymują też Twoją głowę i tułów?',
+    explain: 'Masa 2 razy mniejsza, więc przyspieszenie 2 razy większe. Dlatego ciężarówki z ładunkiem wolno ruszają spod świateł.' },
+  b1: { concept: 'B', scene: 'rocket', text: 'Rakieta leci w pustym kosmosie. Silnik cały czas pcha z tą samą siłą. Nic nie hamuje. Jak porusza się rakieta?',
+    hint: 'Czy siła silnika się z czymś znosi? Co robi siła, która się nie znosi?',
     preds: [
-      { t: 'Lecę do przodu (w stronę kierowcy).', ok: true },
-      { t: 'Lecę do tyłu.', fb: 'Do tyłu lecisz, gdy autobus RUSZA. Przy hamowaniu jest odwrotnie.' },
-      { t: 'Nic, stoję prosto.', fb: 'Stopy zwalniają razem z podłogą, ale reszta ciała chce jechać dalej. Dlatego lecisz do przodu.', mis: 'zasada' },
+      { t: 'Coraz szybciej. Co sekundę jej prędkość rośnie o tyle samo.', ok: true },
+      { t: 'Cały czas tak samo szybko.', fb: 'Tak byłoby bez siły albo gdy siły się znoszą. Tu siła silnika się nie znosi, więc prędkość rośnie.', mis: 'stala_v' },
+      { t: 'Najpierw przyspiesza, a potem leci cały czas tak samo szybko.', fb: 'Dopóki silnik pcha, prędkość rośnie. Stała byłaby dopiero po wyłączeniu silnika.', mis: 'stala_v' },
     ],
     reasons: [
-      { t: 'Moje ciało chce dalej jechać tak samo szybko (bezwładność), a autobus pode mną zwalnia.', ok: true },
-      { t: 'Przy hamowaniu pojawia się siła, która pcha mnie do przodu.', fb: 'Nic Cię nie pcha! Hamulce zatrzymują autobus. Stopy stoją na podłodze, więc zwalniają razem z nim. A głowa i tułów jadą dalej.', mis: 'pcha' },
-      { t: 'Powietrze w autobusie pcha mnie do przodu.', fb: 'Powietrze jedzie razem z autobusem i nikogo nie pcha.', mis: 'pcha' },
+      { t: 'Działa stała siła niezrównoważona, więc przyspieszenie jest stałe.', ok: true },
+      { t: 'Stała siła daje stałą prędkość.', fb: 'Stała siła daje stałe przyspieszenie. Prędkość co sekundę rośnie o tyle samo.', mis: 'stala_v' },
+      { t: 'Rakieta przyzwyczaja się do siły.', fb: 'Ciała nie przyzwyczajają się do sił. Dopóki siła działa, prędkość się zmienia.', mis: 'stala_v' },
     ],
-    explain: 'Hamulce zatrzymują autobus, ale nie Twoje ciało. Twoje ciało chce jechać dalej, dlatego lecisz do przodu.' },
-  b2: { concept: 'B', scene: 'busStart', text: 'Autobus stoi na przystanku. Stoisz i nie trzymasz się. Autobus nagle rusza. Co się dzieje?',
-    hint: 'Twoje ciało stało. Co chce robić dalej?',
+    explain: 'To ruch jednostajnie przyspieszony. Kropki co 0,4 s są coraz dalej od siebie, bo rakieta jedzie coraz szybciej.' },
+  b2: { concept: 'B', scene: 'tow', text: 'Holownik w pustym kosmosie pcha przed sobą kontener. Silnik holownika cały czas pracuje z tą samą siłą. Nic nie hamuje. Jak poruszają się holownik i kontener?',
+    hint: 'Czy coś znosi siłę silnika?',
     preds: [
-      { t: 'Przechylam się do tyłu.', ok: true },
-      { t: 'Przechylam się do przodu.', fb: 'Do przodu lecisz, gdy autobus HAMUJE. Przy ruszaniu jest odwrotnie.' },
-      { t: 'Nic się nie dzieje.', fb: 'Stopy ruszają razem z podłogą, a tułów chce zostać w miejscu. Dlatego się przechylasz.', mis: 'zasada' },
+      { t: 'Coraz szybciej. Co sekundę prędkość rośnie o tyle samo.', ok: true },
+      { t: 'Cały czas tak samo szybko.', fb: 'Siła silnika się nie znosi, więc prędkość nie może być stała. Rośnie.', mis: 'stala_v' },
+      { t: 'Coraz wolniej, bo kontener jest ciężki.', fb: 'Ciężki kontener rozpędza się wolniej, ale nadal coraz szybciej. Nic go nie hamuje.', mis: 'masa' },
     ],
     reasons: [
-      { t: 'Moje ciało chce dalej stać w miejscu (bezwładność), a autobus rusza spod moich stóp.', ok: true },
-      { t: 'Autobus pcha mnie do tyłu.', fb: 'Autobus pcha Twoje stopy do PRZODU. Głowa i tułów zostają na chwilę w miejscu, dlatego przechylasz się do tyłu.', mis: 'pcha' },
-      { t: 'Wiatr z otwartych drzwi.', fb: 'Drzwi są zamknięte, a i tak się przechylasz. To bezwładność.', mis: 'pcha' },
+      { t: 'Działa stała siła niezrównoważona, więc przyspieszenie jest stałe.', ok: true },
+      { t: 'Stała siła daje stałą prędkość.', fb: 'Stała siła daje stałe przyspieszenie. Prędkość co sekundę rośnie o tyle samo.', mis: 'stala_v' },
+      { t: 'Kontener hamuje holownik.', fb: 'Kontener ma masę, więc całość rozpędza się wolniej. Ale nic jej nie hamuje.', mis: 'masa' },
     ],
-    explain: 'Ciało, które stoi, chce dalej stać. Stopy ruszają z autobusem, a tułów na chwilę zostaje z tyłu.' },
-  c1: { concept: 'C', scene: 'elevator', text: 'Jedziesz windą w górę, cały czas tak samo szybko (2 m/s). Działają na Ciebie dwie siły: ciężar ciągnie Cię w dół, a podłoga windy pcha Cię w górę. Która siła jest większa?',
-    hint: 'Winda jedzie cały czas tak samo szybko. Co mówi I zasada dynamiki?',
+    explain: 'Stała siła, która się nie znosi, daje ruch jednostajnie przyspieszony. Duża masa sprawia tylko, że przyspieszenie jest mniejsze.' },
+  c1: { concept: 'C', scene: 'counter', text: 'Statek leci w prawo. Pilot włącza silniki z przodu statku. Pchają one statek w lewo, cały czas z tą samą siłą. Co się dzieje ze statkiem najpierw?',
+    hint: 'Siła działa przeciwnie do ruchu. Tak samo jak przy hamowaniu.',
     preds: [
-      { t: 'Są tak samo duże, czyli się znoszą.', ok: true },
-      { t: 'Podłoga pcha mocniej, bo jedziemy w górę.', fb: 'Gdyby podłoga pchała mocniej, winda jechałaby coraz szybciej. A jedzie cały czas tak samo. To, w którą stronę coś jedzie, nie mówi, która siła jest większa!', mis: 'kierunek' },
-      { t: 'Ciężar jest większy.', fb: 'Wtedy winda by zwalniała. A jedzie cały czas tak samo szybko.', mis: 'kierunek' },
+      { t: 'Zwalnia.', ok: true },
+      { t: 'Od razu leci w lewo.', fb: 'Statek ma bezwładność. Siła w lewo najpierw go hamuje. W lewo poleci dopiero, gdy się zatrzyma.', mis: 'kierunek' },
+      { t: 'Leci dalej w prawo coraz szybciej.', fb: 'Siła działa w lewo, więc nie może rozpędzać statku w prawo.', mis: 'kierunek' },
     ],
     reasons: [
-      { t: 'Prędkość się nie zmienia, więc siły się znoszą.', ok: true },
-      { t: 'Żeby jechać w górę, siła w górę musi być większa.', fb: 'Większa siła zmienia prędkość. Żeby jechać cały czas tak samo szybko, siły muszą się znosić.', mis: 'kierunek' },
-      { t: 'W windzie ciężar przestaje działać.', fb: 'Ziemia przyciąga Cię zawsze, także w windzie.', mis: 'zasada' },
+      { t: 'Siła działa przeciwnie do ruchu. Przyspieszenie ma zwrot siły, więc prędkość maleje.', ok: true },
+      { t: 'Siła od razu zmienia kierunek ruchu.', fb: 'Siła zmienia prędkość stopniowo. Najpierw prędkość maleje do zera.', mis: 'kierunek' },
+      { t: 'Statek ma bezwładność, więc siła nic nie zmienia.', fb: 'Bezwładność nie blokuje siły. Sprawia tylko, że prędkość zmienia się stopniowo.' },
     ],
-    explain: 'Stała prędkość oznacza, że siły się znoszą. Są tak samo duże i działają w przeciwne strony.' },
-  c2: { concept: 'C', scene: 'para', text: 'Skoczek ze spadochronem opada cały czas tak samo szybko (5 m/s). Działają na niego dwie siły: ciężar ciągnie w dół, a opór powietrza hamuje w górę. Która siła jest większa?',
-    hint: 'Skoczek nie przyspiesza i nie zwalnia. Co to mówi o siłach?',
+    explain: 'Najpierw statek zwalnia i na chwilę staje. Jeśli silniki dalej pchają, zaczyna lecieć w lewo coraz szybciej.' },
+  c2: { concept: 'C', text: 'Rowerzysta jedzie prosto. Przestaje pedałować i mocno hamuje. Siła wypadkowa działa do tyłu. Jak zmienia się jego prędkość?',
+    hint: 'W którą stronę działa siła, a w którą jedzie rower?',
     preds: [
-      { t: 'Są tak samo duże, czyli się znoszą.', ok: true },
-      { t: 'Ciężar jest większy, bo skoczek spada.', fb: 'Gdyby ciężar był większy, skoczek spadałby coraz szybciej. A spada cały czas tak samo.', mis: 'kierunek' },
-      { t: 'Opór powietrza jest większy.', fb: 'Wtedy skoczek by zwalniał. A spada cały czas tak samo szybko.', mis: 'kierunek' },
+      { t: 'Maleje.', ok: true },
+      { t: 'Rośnie, bo rower jedzie do przodu.', fb: 'Siła działa do tyłu, więc nie rozpędza roweru do przodu. Hamuje go.', mis: 'kierunek' },
+      { t: 'Rower od razu jedzie do tyłu.', fb: 'Siła przeciwna do ruchu najpierw hamuje. Rower zwalnia i staje.', mis: 'kierunek' },
     ],
     reasons: [
-      { t: 'Prędkość się nie zmienia, więc siły się znoszą.', ok: true },
-      { t: 'Coś może spadać tylko wtedy, gdy ciężar jest większy od oporu.', fb: 'Większy ciężar oznacza spadanie coraz szybciej. Żeby spadać tak samo szybko, siły muszą się znosić.', mis: 'kierunek' },
-      { t: 'Spadochron sprawia, że na skoczka nie działa żadna siła.', fb: 'Działają dwie siły: ciężar w dół i opór powietrza w górę. Tylko się znoszą.', mis: 'zasada' },
+      { t: 'Siła wypadkowa działa przeciwnie do ruchu, więc rower zwalnia.', ok: true },
+      { t: 'Przyspieszenie ma zawsze zwrot prędkości.', fb: 'Przyspieszenie ma zwrot siły wypadkowej. Tu siła jest do tyłu, więc rower zwalnia.', mis: 'kierunek' },
+      { t: 'Hamulce zabierają rowerowi bezwładność.', fb: 'Bezwładności nie da się zabrać. Hamulce dają siłę, która zmniejsza prędkość.' },
     ],
-    explain: 'Prędkość jest stała, więc siły się znoszą. Do oporu powietrza wrócisz w temacie 28 „Opory ruchu” (s. 183).' },
+    explain: 'Przyspieszenie ma taki sam zwrot jak siła wypadkowa. Siła do tyłu, gdy rower jedzie do przodu, oznacza zwalnianie.' },
 
-  d1: { concept: 'D', text: 'Statek zadokował. Dlaczego trzeba było włączyć silnik w przeciwną stronę?',
-    hint: 'Co robił statek, gdy silniki były wyłączone?',
+  d1: { concept: 'D', text: 'Orion przeleciał przez wszystkie bramki. Z ładunkiem jest cięższy. Żeby mieć takie samo przyspieszenie jak bez ładunku, silnik musi pchać mocniej. Dlaczego?',
+    hint: 'Przypomnij sobie wzór F = m · a.',
     opts: [
-      { t: 'Bez silnika statek leciał cały czas tak samo szybko. Żeby go zatrzymać, potrzebna była siła w przeciwną stronę.', ok: true },
-      { t: 'Bo po wyłączeniu silnika statek sam przyspieszał.', fb: 'Bez siły prędkość się nie zmienia. Statek nie przyspieszał, tylko leciał cały czas tak samo.', mis: 'niesie' },
-      { t: 'Bo w kosmosie statek zwalnia za wolno.', fb: 'W kosmosie statek bez silnika w ogóle nie zwalnia. Nie ma tarcia ani powietrza.', mis: 'ruch_sila' },
-      { t: 'Żeby zużyć resztę paliwa przed dokowaniem.', fb: 'Paliwo było potrzebne do hamowania, czyli do zmiany prędkości. O to właśnie chodziło.' },
+      { t: 'Bo F = m · a. Większa masa przy tym samym przyspieszeniu potrzebuje większej siły.', ok: true },
+      { t: 'Bo ładunek hamuje statek jak tarcie.', fb: 'W kosmosie nie ma tarcia. Ładunek tylko zwiększa masę.' },
+      { t: 'Bo cięższy statek ma mniejszą bezwładność.', fb: 'Odwrotnie. Większa masa to większa bezwładność.', mis: 'masa' },
+      { t: 'Nie musiał. Przyspieszenie nie zależy od masy.', fb: 'Zależy: a = F : m. Żeby mieć to samo przyspieszenie, większa masa potrzebuje większej siły.', mis: 'masa' },
     ],
-    explain: 'Żeby zmienić prędkość, także żeby zahamować, potrzebna jest siła. To I zasada dynamiki.' },
+    explain: 'F = m · a. 2 razy większa masa przy tym samym przyspieszeniu wymaga 2 razy większej siły.' },
 };
 
 const STAGES = {
-  s1: { label: 'Etap ★: Pamiętam', ids: ['p3', 'p4', 'p5'], spare: ['p1', 'p2'], minRead: 3 },
+  s1: { label: 'Etap ★: Pamiętam', ids: ['p2', 'p3', 'p5'], spare: ['p1', 'p4'], minRead: 3 },
   s2: { label: 'Etap ★★: Rozumiem', ids: ['a1', 'b1', 'c1'], variants: { A: ['a2'], B: ['b2'], C: ['c2'] }, minRead: 5 },
   s3: { label: 'Etap ★★★: Stosuję', ids: ['d1'], minRead: 3 },
 };
@@ -1700,7 +1808,7 @@ function startStage(key) {
 const STAGE_SAY = {
   s1: 'Sprawdźmy, co pamiętasz. Czytaj spokojnie i uważnie.',
   s2: 'Teraz trudniej. Trzeba powiedzieć, co się stanie i dlaczego.',
-  s3: 'Statek stoi przy porcie. Zostało ostatnie pytanie!',
+  s3: 'Wszystkie bramki za nami. Zostało ostatnie pytanie!',
 };
 let cur = null;
 function nextQuestion() {
@@ -1794,7 +1902,7 @@ $('#qCheck').addEventListener('click', () => {
   fbs.forEach(s => { if (s) { const p = document.createElement('p'); p.textContent = s; fb.append(p); } });
   const ex = document.createElement('p'); ex.innerHTML = '<b>Wyjaśnienie:</b> '; ex.append(q.explain); fb.append(ex);
   if (gained) { const x = document.createElement('p'); x.className = 'xp-pop'; x.textContent = `+${gained} XP` + (cur.hintUsed && first ? ' (z podpowiedzią)' : ''); fb.append(x); }
-  const src = document.createElement('p'); src.className = 'src'; src.textContent = 'Spotkania z fizyką 7, temat 24, s. 162. Pojęcia są w Słowniczku.'; fb.append(src);
+  const src = document.createElement('p'); src.className = 'src'; src.textContent = 'Spotkania z fizyką 7, temat 25, s. 169. Pojęcia są w Słowniczku.'; fb.append(src);
 
   // po błędzie: nowe zadanie w innej sytuacji zamiast ponownego klikania tej samej odpowiedzi
   if (!ok) {
@@ -1820,174 +1928,204 @@ $('#qCheck').addEventListener('click', () => {
 });
 $('#qNext').addEventListener('click', () => { stopLoop(); $('#say-quiz').hidden = true; nextQuestion(); });
 
-// kolejność etapów: lab → s1 → s2 → dokowanie → s3 (pytanie) → raport
+// kolejność etapów: lab → s1 → s2 → bramki → s3 (pytanie) → raport
 function finishStage() {
   const k = st.key, n = st.cfg.ids.length;
   if (k === 's1') { S.stars.s1 = st.firstTry >= Math.ceil(n * 2 / 3); refreshStars(); startStage('s2'); }
-  else if (k === 's2') { S.stars.s2 = st.firstTry >= Math.ceil(n * 2 / 3); refreshStars(); dockStart(); }
-  else if (k === 's3') { S.stars.s3 = S.dockAttempts <= 3 && st.firstTry === 1; refreshStars(); endScreen(); }
+  else if (k === 's2') { S.stars.s2 = st.firstTry >= Math.ceil(n * 2 / 3); refreshStars(); flyStart(); }
+  else if (k === 's3') { S.stars.s3 = S.flyFirst >= 2 && S.flyAttempts <= 5 && st.firstTry === 1; refreshStars(); endScreen(); }
 }
 
-// ---------- DOKOWANIE ----------
-const DK = { goal: 60, acc: 2.5, burn: 18, speed: 1.4, maxV: 0.6 };
-const dock = { x: 0, v: 0, fuel: 100, thr: 0, state: 'fly', still: 0, hint: 0 };
-const thr = { back: false, fwd: false };
-function dockStart() {
-  show('dock'); setStep('s3'); setWorld(2);
-  say($('#say-dock'), 'Siadam za sterami. Pamiętaj: w kosmosie nic statku nie hamuje.');
-  S.dockAttempts = 1; dockReset();
-  runLoop((t, dt) => { dockStep(dt); dockDraw(); });
-}
-function dockReset() {
-  Object.assign(dock, { x: 0, v: 0, fuel: 100, thr: 0, state: 'fly', still: 0 });
-  $('#d-att').textContent = S.dockAttempts;
-  $('#dockFb').hidden = true;
-}
-function dockStep(dt) {
-  if (dock.state !== 'fly') return;
-  dt *= DK.speed;
-  dock.thr = (thr.fwd ? 1 : 0) - (thr.back ? 1 : 0);
-  let a = 0;
-  if (dock.thr && dock.fuel > 0) { a = DK.acc * dock.thr; dock.fuel = Math.max(0, dock.fuel - DK.burn * dt); }
-  dock.v += a * dt; dock.x += dock.v * dt;
-  const dist = DK.goal - dock.x;
-  if (dock.x >= DK.goal) {
-    if (Math.round(Math.abs(dock.v) * 100) / 100 <= DK.maxV) return dockWin(); // jak na wyświetlaczu (2 miejsca)
-    return dockFail(`Statek uderzył w stację z prędkością ${fmt(dock.v, 2)} m/s. Bez silnika statek wcale nie zwalnia, bo w kosmosie nic go nie hamuje. Przed stacją włącz silnik wsteczny.`);
-  }
-  if (dist <= 1.5 && Math.abs(dock.v) <= 0.2 && !dock.thr) { dock.still += dt; if (dock.still > 0.8) return dockWin(); } else dock.still = 0;
-  if (dock.x < -6) return dockFail('Statek odleciał do tyłu. Silnik wsteczny pracował za długo.');
-  if (dock.fuel <= 0 && dock.v < 0.15 && dist > 2) return dockFail('Skończyło się paliwo, a statek stoi daleko od stacji. Rozpędzaj się krócej. W kosmosie wystarczy krótkie pchnięcie, a statek sam poleci dalej.');
-  $('#d-dist').textContent = fmt(Math.max(0, dist)) + ' m';
-  $('#d-v').textContent = fmt(dock.v, 2) + ' m/s';
-  $('#d-fuel').textContent = Math.round(dock.fuel) + '%';
-  let s;
-  if (dock.thr && dock.fuel > 0) s = dock.thr > 0 ? 'Silnik pcha do przodu. Statek przyspiesza.' : (dock.v > 0 ? 'Silnik wsteczny pcha do tyłu. Statek zwalnia.' : 'Silnik wsteczny pcha do tyłu. Statek leci do tyłu coraz szybciej.');
-  else if (Math.abs(dock.v) > 0.01) s = 'Silniki wyłączone. Nic nie pcha i nic nie hamuje. Statek leci cały czas tak samo szybko.';
-  else s = 'Statek stoi. Nic go nie pcha.';
-  $('#dockStatus').textContent = s;
-  const firing = dock.thr && dock.fuel > 0;
-  WD.heat += ((firing ? 1 : 0) - WD.heat) * Math.min(1, dt * 4);
-  if (firing && dock.ship && !RM) emit(dock.ship[0] - (dock.thr > 0 ? 46 : 14), dock.ship[1], { count: 2, dir: dock.thr > 0 ? Math.PI : 0, spread: .5, speed: 200, life: .5, size: 5, type: 'dust', color: ['#ff7a3d', '#ffd2a0'] });
-}
-function dockWin() {
-  dock.state = 'won'; dock.x = Math.min(dock.x, DK.goal); dock.v = 0;
-  $('#d-v').textContent = '0,00 m/s'; $('#d-dist').textContent = fmt(Math.max(0, DK.goal - dock.x)) + ' m';
-  if (dock.ship) { shock(dock.ship[0], dock.ship[1], 1.4, 1.6); burst(dock.ship[0], dock.ship[1], true); spill(dock.ship[0], dock.ship[1]); }
-  setXP(S.dockAttempts <= 3 ? 15 : 8);
-  const fb = $('#dockFb'); fb.hidden = false; fb.className = 'fb good';
-  fb.innerHTML = `<div class="tag">Zadokowano!</div><p>Port złapał statek${S.dockAttempts > 1 ? ` w próbie nr ${S.dockAttempts}` : ' za pierwszym razem'}. Zostało ${Math.round(dock.fuel)}% paliwa.</p><p class="xp-pop">+${S.dockAttempts <= 3 ? 15 : 8} XP</p>`;
-  const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Ostatnie pytanie'; b.addEventListener('click', () => startStage('s3'));
-  const a = document.createElement('div'); a.className = 'actions'; a.append(b); fb.append(a);
-  $('#dockStatus').textContent = 'Statek stoi przy porcie.';
-}
-function dockFail(msg) {
-  dock.state = 'fail';
-  oops($('#dockCanvas'));
-  const fb = $('#dockFb'); fb.hidden = false; fb.className = 'fb bad';
-  fb.innerHTML = `<div class="tag">Nie udało się.</div>`;
-  const p = document.createElement('p'); p.textContent = msg; fb.append(p);
-  const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Spróbuj jeszcze raz';
-  b.addEventListener('click', () => { S.dockAttempts++; dockReset(); });
-  const a = document.createElement('div'); a.className = 'actions'; a.append(b); fb.append(a);
-}
-const DOCK_HINTS = [
-  'Gdy puścisz silnik, statek sam nie zwolni. W kosmosie nic go nie hamuje.',
-  'Plan: krótko silnik ▶ (około 1 sekundy). Potem lecisz bez silnika. Kilka metrów przed stacją tak samo krótko silnik wsteczny ◀.',
+// ---------- MISJA: BRAMKI STARTOWE ----------
+// komputer Oriona nie umie liczyć: dziecko liczy z II zasady i wpisuje wynik. Symulacja pokazuje skutek wpisanej liczby.
+// ship = przyspieszenie statku, gate = przyspieszenie, dla którego ustawiono bramkę (bramka stoi tam, gdzie statek ma być po czasie T)
+const FLY = [
+  { ask: 'F', unit: 'N', ans: 6000, T: 4,
+    task: 'Orion ma masę 2000 kg. Żeby trafić w bramkę, musi mieć przyspieszenie 3 m/s². Jaką siłą ma pchać silnik?',
+    hint: 'Znasz masę i przyspieszenie. Siłę liczymy z mnożenia: F = m · a.',
+    sol: ['Dane: m = 2000 kg, a = 3 m/s²', 'Szukane: F', 'Wzór: F = m · a', 'F = 2000 kg · 3 m/s² = 6000 N'],
+    sim: x => ({ ship: x / 2000, gate: 3 }),
+    traps: { 666.67: ['Masę podzielono przez przyspieszenie. Tu trzeba pomnożyć: F = m · a.', 'mnoz'], 2003: ['Masy i przyspieszenia nie dodajemy. F = m · a.', 'mnoz'] } },
+  { ask: 'a', unit: 'm/s²', ans: 2, T: 4,
+    task: 'Orion zabrał ładunek. Teraz ma masę 2500 kg. Silnik pcha siłą 5000 N. Komputer ustawi bramkę tam, gdzie według Ciebie będzie statek. Jakie jest przyspieszenie Oriona?',
+    hint: 'Znasz siłę i masę. a = F : m.',
+    sol: ['Dane: F = 5000 N, m = 2500 kg', 'Szukane: a', 'Wzór: a = F : m', 'a = 5000 N : 2500 kg = 2 m/s²'],
+    sim: x => ({ ship: 2, gate: x }),
+    traps: { 12500000: ['Siłę i masę pomnożono. Przyspieszenie to siła PODZIELONA przez masę.', 'mnoz'], 0.5: ['Dzielenie w złą stronę. a = F : m, czyli 5000 : 2500.', 'odwr'] } },
+  { ask: 'F', unit: 'N', ans: 6000, T: 5,
+    task: 'Ostatnia bramka. Orion z ładunkiem ma masę 3000 kg. Rusza z miejsca i po 5 s ma mieć prędkość 10 m/s. Jaką siłą ma pchać silnik?',
+    hint: 'Dwa kroki. Najpierw przyspieszenie: o ile ma rosnąć prędkość w każdej sekundzie? Potem F = m · a.',
+    sol: ['Dane: m = 3000 kg, v = 10 m/s, t = 5 s', 'Krok 1: a = v : t = 10 m/s : 5 s = 2 m/s²', 'Krok 2: F = m · a', 'F = 3000 kg · 2 m/s² = 6000 N'],
+    sim: x => ({ ship: x / 3000, gate: 2 }),
+    traps: { 30000: ['W miejsce przyspieszenia wstawiono prędkość. Najpierw policz a = v : t.', 'v_a'], 15000: ['W miejsce przyspieszenia wstawiono czas. Najpierw policz a = v : t.', 'v_a'], 2: ['To jest przyspieszenie. Dobrze! Teraz policz siłę: F = m · a.', null] } },
 ];
-$('#dockHintBtn').addEventListener('click', () => {
-  const h = $('#dockHint'); h.hidden = false;
-  h.textContent = DOCK_HINTS.slice(0, dock.hint + 1).join(' ');
-  dock.hint = Math.min(DOCK_HINTS.length - 1, dock.hint + 1);
+const fly = { r: 0, tries: 0, state: 'input', t: 0, ship: 0, gate: 0, hint: false, ok: false, pos: null };
+function flyStart() {
+  show('fly'); setStep('s3'); setWorld(2);
+  S.flyAttempts = 0; S.flyFirst = 0; fly.r = 0;
+  say($('#say-fly'), 'Komputer Oriona nie umie liczyć. Policz, wpisz wynik, a ja polecę przez bramkę.');
+  flyRound();
+}
+function flyRound() {
+  const R = FLY[fly.r];
+  Object.assign(fly, { tries: 0, state: 'input', t: 0, hint: false, ok: false });
+  fly.ship = fly.gate = R.sim(R.ans).gate;
+  $('#flyRound').textContent = `Bramka ${fly.r + 1} z ${FLY.length}`;
+  $('#flyAtt').textContent = '';
+  $('#flyTask').textContent = R.task;
+  $('#flyVar').textContent = R.ask + ' =';
+  $('#flyUnit').textContent = R.unit;
+  const inp = $('#flyIn'); inp.value = ''; inp.disabled = false;
+  $('#flyHint').hidden = true; $('#flyHint').textContent = R.hint; $('#flyHintBtn').hidden = false; $('#flyHintBtn').disabled = false;
+  $('#flyFb').hidden = true; $('#flyGo').hidden = false; $('#flyGo').disabled = true; $('#flyNext').hidden = true;
+  $('#flyStatus').textContent = 'Orion czeka na liczbę.';
+  runLoop((t, dt) => { flyStep(dt); flyDraw(t); });
+}
+// liczba z pola: przecinek albo kropka, spacje między tysiącami
+const parseNum = s => { const v = parseFloat(String(s).replace(/\s/g, '').replace(',', '.')); return Number.isFinite(v) ? v : null; };
+$('#flyIn').addEventListener('input', () => { $('#flyGo').disabled = parseNum($('#flyIn').value) === null || fly.state !== 'input'; });
+$('#flyIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !$('#flyGo').disabled) $('#flyGo').click(); });
+$('#flyHintBtn').addEventListener('click', () => { fly.hint = true; $('#flyHint').hidden = false; $('#flyHintBtn').disabled = true; });
+$('#flyGo').addEventListener('click', () => {
+  const R = FLY[fly.r], x = parseNum($('#flyIn').value);
+  if (x === null || fly.state !== 'input') return;
+  fly.tries++; S.flyAttempts++;
+  fly.val = x; fly.ok = Math.abs(x - R.ans) < 0.01;
+  const sm = R.sim(x); fly.ship = Math.max(0, sm.ship); fly.gate = Math.max(0, sm.gate);
+  fly.state = 'run'; fly.t = 0;
+  $('#flyIn').disabled = true; $('#flyGo').disabled = true; $('#flyHintBtn').hidden = true; $('#flyFb').hidden = true;
+  $('#flyAtt').textContent = `Próba ${fly.tries}`;
 });
-holdButton($('#thrFwd'), () => thr.fwd = true, () => thr.fwd = false);
-holdButton($('#thrBack'), () => thr.back = true, () => thr.back = false);
-
-function dockDraw() {
-  const { ctx, w, h, k } = fit($("#dockCanvas"), 0.38, 220, 330);
-  starfield(ctx, w, h);
-  const left = 40, right = w - 70, ppm = (right - left) / DK.goal;
-  const y = h * 0.5;
-  // stacja
-  const sx = right;
-  ctx.fillStyle = col('space'); ctx.strokeStyle = col('ink'); ctx.lineWidth = 4; ctx.lineJoin = 'round';
-  ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(sx + 8, y - 70, 58, 140, 10); else ctx.rect(sx + 8, y - 70, 58, 140); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = col('accent'); ctx.fillRect(sx, y - 16, 10, 32);
-  ctx.fillStyle = col('amber'); ctx.fillRect(sx, y - 20, 4, 6); ctx.fillRect(sx, y + 14, 4, 6);
-  txt(ctx, 'port', sx + 37, y - 84, col('ink'), 13, 'center', 800);
-  // linijka
+function flyStep(dt) {
+  if (fly.state !== 'run') return;
+  const R = FLY[fly.r];
+  fly.t = Math.min(R.T, fly.t + dt * 1.2);
+  const v = fly.ship * fly.t;
+  $('#flyStatus').textContent = `t = ${fmt(fly.t)} s, prędkość ${fmt(v)} m/s`;
+  WD.heat += (1 - WD.heat) * Math.min(1, dt * 4);
+  if (fly.pos && !RM) emit(fly.pos[0] - 40, fly.pos[1], { count: 2, dir: Math.PI, spread: .5, speed: 220, life: .5, size: 5, type: 'dust', color: ['#ff7a3d', '#ffd2a0'] });
+  if (fly.t >= R.T) flyEnd();
+}
+function flyEnd() {
+  const R = FLY[fly.r];
+  fly.state = 'end'; WD.heat = 0;
+  const fb = $('#flyFb'); fb.hidden = false; fb.innerHTML = '';
+  const tag = document.createElement('div'); tag.className = 'tag'; fb.append(tag);
+  const add = (s, cls) => { const p = document.createElement('p'); p.textContent = s; if (cls) p.className = cls; fb.append(p); return p; };
+  if (fly.ok) {
+    fb.className = 'fb good'; tag.textContent = 'Przez bramkę!';
+    if (fly.pos) { shock(fly.pos[0], fly.pos[1], 1.3, 1.5); burst(fly.pos[0], fly.pos[1], true); spill(fly.pos[0], fly.pos[1]); }
+    const gain = fly.tries === 1 ? (fly.hint ? 6 : 10) : fly.tries === 2 ? 6 : 3;
+    if (fly.tries === 1) S.flyFirst++;
+    setXP(gain);
+    add(R.sol[R.sol.length - 1] + '.');
+    add(`+${gain} XP`, 'xp-pop');
+    $('#flyStatus').textContent = 'Orion przeleciał przez bramkę.';
+    $('#flyNext').hidden = false; $('#flyNext').disabled = false;
+    $('#flyNext').textContent = fly.r < FLY.length - 1 ? 'Następna bramka' : 'Ostatnie pytanie';
+  } else {
+    fb.className = 'fb bad'; tag.textContent = 'Obok bramki.';
+    oops($('#flyCanvas'));
+    const big = fly.ship > fly.gate;
+    if (R.ask === 'a') add(big ? 'Bramka stanęła za blisko. Orion przyspiesza bardziej, niż wpisano.' : 'Bramka stanęła za daleko. Orion przyspiesza mniej, niż wpisano.');
+    else add(big ? 'Silnik pchał za mocno. Orion przyspieszał za bardzo i minął bramkę za wcześnie.' : 'Silnik pchał za słabo. Orion nie doleciał do bramki na czas.');
+    const trap = Object.keys(R.traps).find(k => Math.abs(fly.val - +k) <= Math.max(0.01, +k * 0.005));
+    if (trap) { add(R.traps[trap][0]); addMis(R.traps[trap][1]); }
+    else addMis(R.ask === 'a' ? 'odwr' : 'mnoz');
+    if (fly.tries >= 2) {
+      add('Rozwiązanie krok po kroku:');
+      const ol = document.createElement('ol'); ol.className = 'steps-sol';
+      R.sol.forEach(s => { const li = document.createElement('li'); li.textContent = s; ol.append(li); }); fb.append(ol);
+      add('Wpisz ten wynik i leć jeszcze raz.');
+    } else add('Policz jeszcze raz. Możesz zajrzeć do podpowiedzi.');
+    const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Popraw liczbę';
+    b.addEventListener('click', () => {
+      fly.state = 'input'; fly.t = 0; fb.hidden = true;
+      const inp = $('#flyIn'); inp.disabled = false; inp.focus(); inp.select();
+      $('#flyGo').disabled = parseNum(inp.value) === null; $('#flyHintBtn').hidden = false;
+      fly.ship = fly.gate = R.sim(R.ans).gate;
+      $('#flyStatus').textContent = 'Orion czeka na liczbę.';
+    });
+    const a = document.createElement('div'); a.className = 'actions'; a.append(b); fb.append(a);
+  }
+  fb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+$('#flyNext').addEventListener('click', () => {
+  if (fly.r < FLY.length - 1) { fly.r++; return flyRound(); }
+  stopLoop(); startStage('s3');
+});
+// widok: tor z linijką, bramka w miejscu x = gate·T²/2, statek w x = ship·t²/2 (poza ekranem przypięty do prawej krawędzi)
+function flyDraw(time) {
+  const R = FLY[fly.r];
+  const { ctx, w, h, k } = fit($('#flyCanvas'), 0.38, 220, 330);
+  const gx = R.sim(R.ans).gate * R.T * R.T / 2; // bramka „prawdziwa” wyznacza skalę
+  const span = gx * 1.45, left = 130, ppm = (w - left - 30) / span; // z lewej miejsce na rakietę stojącą na 0 m
+  const sx = fly.state === 'input' ? 0 : fly.ship * fly.t * fly.t / 2;
+  starfield(ctx, w, h, fly.state === 'run' ? sx * ppm * .4 : 0);
+  const y = h * .48;
   ctx.fillStyle = col('muted');
-  for (let m = 0; m <= DK.goal; m += 10) { const x = left + m * ppm; ctx.fillRect(x, h - 26, 1, 8); txt(ctx, m + ' m', x, h - 10, col('ink'), 11, 'center', 700); }
-  // statek (nos w punkcie x)
-  const nx = left + Math.min(dock.x, DK.goal) * ppm;
-  const rc = $('#dockCanvas').getBoundingClientRect(); dock.ship = [rc.left + nx * k, rc.top + y * k];
-  ctx.fillStyle = col('ink');
-  ctx.beginPath(); ctx.moveTo(nx, y); ctx.lineTo(nx - 18, y - 12); ctx.lineTo(nx - 46, y - 12); ctx.lineTo(nx - 46, y + 12); ctx.lineTo(nx - 18, y + 12); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = col('accent'); ctx.fillRect(nx - 32, y - 5, 10, 6);
-  const firing = dock.state === 'fly' && dock.fuel > 0 && dock.thr;
-  if (firing) {
-    ctx.fillStyle = col('amber');
-    const fl = 14 + Math.random() * 10;
-    if (dock.thr > 0) { ctx.beginPath(); ctx.moveTo(nx - 46, y - 7); ctx.lineTo(nx - 46 - fl, y); ctx.lineTo(nx - 46, y + 7); ctx.fill(); }
-    else { [-14, 14].forEach(o => { ctx.beginPath(); ctx.moveTo(nx - 14, y + o - 4); ctx.lineTo(nx - 14 + fl, y + o); ctx.lineTo(nx - 14, y + o + 4); ctx.fill(); }); }
-    const L = 60 * dock.thr;
-    arrow(ctx, nx - 23, y - 34, nx - 23 + L, y - 34, col('amber'), 'siła silnika', { x: nx - 23 + L / 2, y: y - 50 });
-  }
-  if (Math.abs(dock.v) > 0.02) {
-    const L = Math.max(-120, Math.min(120, dock.v * 18));
-    arrow(ctx, nx - 23, y + 32, nx - 23 + L, y + 32, col('cyan'), `v = ${fmt(dock.v, 2)} m/s`, { x: nx - 23 + L / 2, y: y + 48 });
-  }
-  // paliwo
-  ctx.strokeStyle = col('muted'); ctx.lineWidth = 1; ctx.strokeRect(14, 14, 120, 10);
-  ctx.fillStyle = dock.fuel > 25 ? col('ok') : col('bad'); ctx.fillRect(15, 15, 118 * dock.fuel / 100, 8);
-  txt(ctx, 'paliwo', 142, 19, col('ink'), 12, 'left', 700);
+  const step = span > 60 ? 10 : 5;
+  for (let m = 0; m <= span; m += step) { const x = left + m * ppm; ctx.fillRect(x, h - 26, 1, 8); txt(ctx, m + ' m', x, h - 10, col('ink'), 11, 'center', 700); }
+  // bramka: pierścień w miejscu, gdzie statek ma być po czasie T
+  const gpos = fly.gate * R.T * R.T / 2, gX = left + gpos * ppm;
+  if (gX < w + 40) {
+    const pulse = 1 + .05 * Math.sin(time * 4);
+    ctx.strokeStyle = col('accent'); ctx.lineWidth = 6; ctx.globalAlpha = .9;
+    ctx.beginPath(); ctx.ellipse(gX, y, 16 * pulse, 64 * pulse, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = .25; ctx.lineWidth = 16; ctx.stroke(); ctx.globalAlpha = 1;
+    txt(ctx, `bramka: t = ${R.T} s`, gX, y - 82, col('ink'), 13, 'center', 800);
+  } else txt(ctx, 'bramka dalej →', w - 14, y - 82, col('ink'), 13, 'right', 800);
+  const s = Math.min(1.2, h / 260);
+  const shipX = Math.min(w - 60 * s, left + sx * ppm);
+  drawRocket(ctx, shipX - 54 * s, y, s, fly.state === 'run' ? 1 : 0, 0, time);
+  const rc = $('#flyCanvas').getBoundingClientRect(); fly.pos = [rc.left + shipX * k, rc.top + y * k];
+  // licznik na płótnie
+  const v = fly.state === 'input' ? 0 : fly.ship * fly.t;
+  txt(ctx, `t = ${fmt(fly.state === 'input' ? 0 : fly.t)} s`, 16, 20, col('ink'), 14, 'left', 800);
+  txt(ctx, `v = ${fmt(v)} m/s`, 16, 42, col('ink'), 14, 'left', 800);
+  if (fly.state === 'end' && !fly.ok) txt(ctx, fly.ship > fly.gate ? 'za szybko!' : 'za wolno!', shipX - 30 * s, y + 64, col('bad'), 18, 'center', 900);
 }
 
 // ---------- klawiatura ----------
 document.addEventListener('keydown', e => {
-  if (!$('#scr-lab').hidden && e.code === 'Space') { e.preventDefault(); lab.push = true; $('#pushBtn').classList.add('active'); }
-  if (!$('#scr-dock').hidden) {
-    if (e.code === 'ArrowRight') { e.preventDefault(); thr.fwd = true; $('#thrFwd').classList.add('active'); }
-    if (e.code === 'ArrowLeft') { e.preventDefault(); thr.back = true; $('#thrBack').classList.add('active'); }
-  }
-});
-document.addEventListener('keyup', e => {
-  if (e.code === 'Space') { lab.push = false; $('#pushBtn').classList.remove('active'); }
-  if (e.code === 'ArrowRight') { thr.fwd = false; $('#thrFwd').classList.remove('active'); }
-  if (e.code === 'ArrowLeft') { thr.back = false; $('#thrBack').classList.remove('active'); }
+  if (!$('#scr-lab').hidden && e.code === 'Space' && !e.repeat && !$('#scr-lab').classList.contains('concluded')) { e.preventDefault(); labFire(); }
 });
 
 // ---------- RAPORT ----------
-function load() { try { return JSON.parse(localStorage.getItem('orion-m1') || 'null'); } catch { return null; } }
-function save(r) { try { localStorage.setItem('orion-m1', JSON.stringify(r)); } catch {} }
+function load() { try { return JSON.parse(localStorage.getItem('orion-m2') || 'null'); } catch { return null; } }
+function save(r) { try { localStorage.setItem('orion-m2', JSON.stringify(r)); } catch {} }
 function endScreen() {
   stopLoop(); show('end'); setStep('end'); setWorld(2);
   const n = starCount();
-  $('#endTitle').textContent = n === 3 ? 'Moduł naprawiony w 100%!' : n > 0 ? 'Moduł działa, ale trzeba go jeszcze dokręcić' : 'Moduł ruszył, ale trzeba do niego wrócić';
+  $('#endTitle').textContent = n === 3 ? 'Silniki skalibrowane w 100%!' : n > 0 ? 'Silniki działają, ale trzeba je jeszcze dostroić' : 'Silniki ruszyły, ale trzeba do nich wrócić';
   $('#endXp').textContent = `${S.xp} XP za ten moduł`;
-  say($('#say-end'), n === 3 ? 'Udało się! Orion leci dalej. Moduł 2 już czeka.' : n > 0 ? 'Dobra robota! Kilka rzeczy jeszcze poprawimy.' : 'Nie poddajemy się. Spróbujmy jeszcze raz, krok po kroku.');
+  say($('#say-end'), n === 3 ? 'Udało się! Silniki pchają tak, jak trzeba. Moduł 3 już czeka.' : n > 0 ? 'Dobra robota! Kilka rzeczy jeszcze poprawimy.' : 'Nie poddajemy się. Spróbujmy jeszcze raz, krok po kroku.');
   // raport bohatera: co zrobił(a) w tym module, bez form zależnych od płci
   const h = HEROES.find(x => x.id === hero.id) || HEROES[0];
   const tc = termCounts();
   const passed = [S.stars.s1, S.stars.s2, S.stars.s3];
   const stages = ['Pamiętam', 'Rozumiem', 'Stosuję'].map((l, i) => `${l} ${passed[i] ? 'zaliczone' : 'do poprawy'}`).join(', ');
-  const dockTxt = S.dockAttempts <= 1 ? 'udane za pierwszym razem' : `udane w próbie nr ${S.dockAttempts}`;
+  const flyTxt = `${S.flyFirst} z ${FLY.length} za pierwszym razem (wszystkich prób: ${S.flyAttempts})`;
+  const rev = Object.keys(S.terms).filter(id => id.startsWith('m1_'));
+  const revOk = rev.filter(id => S.terms[id] !== 'weak').length;
   $('#report').innerHTML = ava(h.id, 140) +
     `<h2>Raport: ${esc(hero.name || h.label)}</h2><p class="role">${h.label} na statku Orion</p>` +
     '<ul>' +
-    '<li>Laboratorium: trzy eksperymenty ze skrzynią w hangarze, na lodowisku i w kosmosie.</li>' +
+    '<li>Laboratorium: cztery pomiary na hamowni i tabela przyspieszeń.</li>' +
+    (rev.length ? `<li>Powtórka z modułu 1: ${revOk} z ${rev.length} pojęć już umiesz.</li>` : '') +
     `<li>Pojęcia: ${tc.ok} z ${GLOS.length} od razu, ${tc.retry} po powtórce.</li>` +
     `<li>Zadania: ${S.firstTry} z ${Object.values(STAGES).reduce((a, s) => a + s.ids.length, 0)} dobrze za pierwszym razem.</li>` +
-    `<li>Dokowanie: ${dockTxt}.</li>` +
+    `<li>Bramki startowe: ${flyTxt}.</li>` +
     `<li>Etapy: ${stages}.</li>` +
     '</ul>' +
-    `<p class="src">${n === 3 ? 'Wróć tu za 2 dni i zagraj jeszcze raz. Wtedy temat zostanie na dłużej.' : 'Zagraj jeszcze raz jutro. Pójdzie łatwiej.'} Materiał: Spotkania z fizyką 7, temat 24 „Pierwsza zasada dynamiki Newtona – bezwładność”, s. 162–168.</p>`;
+    `<p class="src">${n === 3 ? 'Wróć tu za 2 dni i zagraj jeszcze raz. Wtedy temat zostanie na dłużej.' : 'Zagraj jeszcze raz jutro. Pójdzie łatwiej.'} Materiał: Spotkania z fizyką 7, temat 25 „Druga zasada dynamiki Newtona”, s. 169–173.</p>`;
   termList($('#endTerms'));
   const ul = $('#endMis'); ul.innerHTML = '';
   const ids = Object.keys(S.mis).sort((a, b) => S.mis[b] - S.mis[a]);
   if (!ids.length) { const li = document.createElement('li'); li.textContent = 'Nic! Wszystko dobrze za pierwszym razem.'; ul.append(li); }
   ids.forEach(id => { const li = document.createElement('li'); li.innerHTML = '<b></b> '; li.querySelector('b').textContent = MIS[id].name + ':'; li.append(MIS[id].tip); ul.append(li); });
-  if (tc.weak.length) { const li = document.createElement('li'); li.innerHTML = '<b>Pojęcia:</b> '; li.append(tc.weak.join(', ') + '. Znajdziesz je w Słowniczku.'); ul.append(li); }
+  const weakAll = tc.weak.concat(GLOS_M1.filter(g => S.terms['m1_' + g.id] === 'weak').map(g => g.term));
+  if (weakAll.length) { const li = document.createElement('li'); li.innerHTML = '<b>Pojęcia:</b> '; li.append(weakAll.join(', ') + '. Znajdziesz je w Słowniczku.'); ul.append(li); }
   // fala uderzeniowa od środka, potem gwiazdki zapalają się po kolei
   shock(innerWidth / 2, innerHeight / 2, 1.4, 1.8); burst(innerWidth / 2, innerHeight / 2, true);
   [...$('#endStars').children].forEach((s, i) => {
@@ -2001,22 +2139,26 @@ function endScreen() {
   if (!best || n > best.stars || (n === best.stars && S.xp > best.xp)) save({ stars: n, xp: S.xp, date: new Date().toISOString().slice(0, 10) });
 }
 function resetAll() {
-  Object.assign(S, { xp: 0, stars: { s1: false, s2: false, s3: false }, mis: {}, firstTry: 0, asked: 0, dockAttempts: 0, terms: {} });
+  Object.assign(S, { xp: 0, stars: { s1: false, s2: false, s3: false }, mis: {}, firstTry: 0, asked: 0, flyAttempts: 0, flyFirst: 0, terms: {} });
   renderGlossary();
   $('#xp').textContent = '0'; refreshStars();
-  Object.assign(lab, { x: 0, v: 0, push: false, wasPush: false, rel: null, done: { hangar: false, ice: false, space: false }, res: {}, qOk: false });
-  lab.surf = ''; labSetSurf('hangar'); labChecklist(); $('#labConclusion').hidden = true; $('#labShowConc').hidden = true; $('#scr-lab').classList.remove('concluded'); $('#labNext').disabled = true; $('#labQfb').textContent = '';
+  Object.assign(lab, { res: {}, qOk: false }); labSet('F', 100); labSet('m', 50); $('#labConclusion').hidden = true; $('#labShowConc').hidden = true; $('#scr-lab').classList.remove('concluded'); $('#labNext').disabled = true; $('#labQfb').textContent = '';
   document.querySelectorAll('#labQ .opt').forEach(o => o.classList.remove('good', 'bad'));
-  dock.hint = 0; $('#dockHint').hidden = true;
 }
 $('#startBtn').addEventListener('click', labStart);
 $('#againBtn').addEventListener('click', () => { resetAll(); show('start'); setStep(''); setWorld(0); showBest(); });
+function showM1() {
+  let m1 = null; try { m1 = JSON.parse(localStorage.getItem('orion-m1') || 'null'); } catch {}
+  $('#m1stars').textContent = m1 ? '★'.repeat(m1.stars) + '☆'.repeat(3 - m1.stars) : 'jeszcze nie zagrany';
+  $('#m1note').textContent = m1 ? '' : 'Moduł 1 nie jest jeszcze zaliczony. Możesz zacząć tutaj, ale łatwiej będzie po module 1.';
+}
+showM1();
 function showBest() { const b = load(); $('#best').textContent = b ? `Najlepszy wynik: ${'★'.repeat(b.stars)}${'☆'.repeat(3 - b.stars)}, ${b.xp} XP (${b.date})` : ''; }
 showBest();
 renderGlossary();
 
 // podgląd z konsoli, gdy karta jest w tle i requestAnimationFrame stoi: orion.tick(0.5) posuwa grę o pół sekundy
-window.orion = { WD, lab, dock, S, tick(dt = 1 / 60) {
+window.orion = { WD, lab, fly, S, tick(dt = 1 / 60) {
   const g = gsap.globalTimeline; g.time(g.time() + dt);
   if (loopFn) { loopT += dt; loopFn(loopT, dt); }
   worldFrame(dt);
