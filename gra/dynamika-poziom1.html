@@ -48,9 +48,13 @@
 html, body { margin: 0; min-height: 100%; background: var(--plum); color: var(--white); }
 body { font-family: var(--f-body); font-size: 18px; line-height: 1.5; overflow-x: hidden; }
 
-/* warstwy: shader (0) → cząsteczki (1) → scrim (2) → UI (3) */
+/* warstwy: obrazy światów (0) → shader (1) → scrim (2) → UI (3) → cząsteczki (4) */
 #gl, #fx { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
-#gl { z-index: 0; }
+#gl { z-index: 1; }
+/* obrazy hangaru, lodowiska i kosmosu (img/); gdy są, shader rysuje na nich już tylko ruch i dodaje go jak światło */
+.art { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0; }
+.art i { position: absolute; inset: 0; background: center bottom / cover no-repeat; }
+.has-art #gl { mix-blend-mode: screen; }
 #fx { z-index: 4; pointer-events: none; }
 .scrim { position: fixed; inset: 0; z-index: 2; pointer-events: none;
   background: linear-gradient(90deg, rgba(20,10,30,.5) 0%, rgba(20,10,30,.36) 60%, rgba(20,10,30,.28) 100%); }
@@ -221,6 +225,9 @@ ul.clean { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
 .node.locked { opacity: .55; }
 a.node { color: inherit; text-decoration: none; }
 a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
+.node .ico { width: 64px; height: 64px; border-radius: 50%; margin-bottom: 6px; box-shadow: 0 0 0 2px var(--rim); }
+.node.active .ico { box-shadow: 0 0 0 2px var(--accent), 0 0 18px var(--accent); }
+.node.locked .ico { filter: grayscale(.85); }
 
 /* quiz: treść zadania bywa długa, więc lżejszy i mniejszy nagłówek niż na innych ekranach */
 #qText { font-size: clamp(22px, 2.4vw, 34px); font-weight: 700; line-height: 1.3; letter-spacing: -.015em; max-width: 30em; }
@@ -290,8 +297,9 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
 @media (min-width: 901px) {
   .split > .col.side { position: sticky; top: 12px; max-height: calc(100dvh - 100px); overflow-y: auto; overscroll-behavior: contain;
     scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.3) transparent; padding: 4px 6px 0 4px; margin: -4px -6px 0 -4px; }
-  .split > .col.side .actions { position: sticky; bottom: 0; z-index: 1; padding: 14px 0 10px;
-    background: linear-gradient(rgba(20,10,30,0), rgba(20,10,30,.92) 38%); }
+  .split > .col.side .actions { position: sticky; bottom: 0; z-index: 1; padding: 14px 0 10px; }
+  /* ciemny podkład pod przyciskami tylko wtedy, gdy kolumna naprawdę się przewija; inaczej odcinałby się od obrazu świata */
+  .split > .col.side.scrolls .actions { background: linear-gradient(rgba(20,10,30,0), rgba(20,10,30,.92) 38%); }
 }
 /* niskie okno (laptop): mniejsze odstępy, postacie i sceny, żeby wszystko weszło bez przewijania */
 @media (min-width: 901px) and (max-height: 860px) {
@@ -305,6 +313,7 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
   .lead { font-size: 18px; }
   .map { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
   .node { min-height: 0; padding: 10px 12px; }
+  .node .ico { width: 52px; height: 52px; margin-bottom: 2px; }
   .heroes { gap: 8px; }
   .hero-opt { padding: 10px 8px; gap: 4px; }
   .hero-opt svg { width: clamp(48px, 9dvh, 80px); height: clamp(48px, 9dvh, 80px); }
@@ -337,6 +346,7 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
 </style>
 </head>
 <body>
+<div class="art" id="art" aria-hidden="true"><i></i><i></i><i></i></div>
 <canvas id="gl" aria-hidden="true"></canvas>
 <canvas id="fx" aria-hidden="true"></canvas>
 <div class="scrim" aria-hidden="true"></div>
@@ -379,12 +389,12 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
       <p class="lead">Statek musi wrócić na Ziemię. Zepsuł się komputer, który steruje silnikami.</p>
       <p>Żeby go naprawić, musisz zrozumieć, jak poruszają się ciała. Każdy moduł statku to jeden temat z działu „Dynamika”.</p>
       <div class="map" aria-label="Mapa modułów">
-        <div class="node active"><span class="n">Temat 24, s. 162</span><b>I zasada dynamiki, bezwładność</b></div>
-        <a class="node" href="dynamika-poziom2.html"><span class="n">Temat 25, s. 169</span><b>II zasada dynamiki</b></a>
-        <div class="node locked"><span class="n">Temat 26, s. 174</span><b>Swobodne spadanie ciał</b></div>
-        <div class="node locked"><span class="n">Temat 27, s. 179</span><b>III zasada, odrzut</b></div>
-        <div class="node locked"><span class="n">Temat 28, s. 183</span><b>Opory ruchu</b></div>
-        <div class="node locked"><span class="n">S. 190</span><b>Boss: powtórzenie działu</b></div>
+        <div class="node active"><img class="ico" src="img/ikona-m1.jpg" alt=""><span class="n">Temat 24, s. 162</span><b>I zasada dynamiki, bezwładność</b></div>
+        <a class="node" href="dynamika-poziom2.html"><img class="ico" src="img/ikona-m2.jpg" alt=""><span class="n">Temat 25, s. 169</span><b>II zasada dynamiki</b></a>
+        <div class="node locked"><img class="ico" src="img/ikona-m3.jpg" alt=""><span class="n">Temat 26, s. 174</span><b>Swobodne spadanie ciał</b></div>
+        <div class="node locked"><img class="ico" src="img/ikona-m4.jpg" alt=""><span class="n">Temat 27, s. 179</span><b>III zasada, odrzut</b></div>
+        <div class="node locked"><img class="ico" src="img/ikona-m5.jpg" alt=""><span class="n">Temat 28, s. 183</span><b>Opory ruchu</b></div>
+        <div class="node locked"><img class="ico" src="img/ikona-m6.jpg" alt=""><span class="n">S. 190</span><b>Boss: powtórzenie działu</b></div>
       </div>
       <p class="src" id="best"></p>
      </div>
@@ -564,7 +574,7 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
       <div class="say" id="say-end"></div>
       <div class="report" id="report"></div>
       <div class="end-next">
-        <a class="node active" href="dynamika-poziom2.html"><span class="n">Następny moduł, s. 169</span><b>II zasada dynamiki</b><span class="src">Graj dalej →</span></a>
+        <a class="node active" href="dynamika-poziom2.html"><img class="ico" src="img/ikona-m2.jpg" alt=""><span class="n">Następny moduł, s. 169</span><b>II zasada dynamiki</b><span class="src">Graj dalej →</span></a>
         <button class="btn ghost" id="againBtn">Zagraj od nowa</button>
       </div>
      </div>
@@ -594,7 +604,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 
 // ========== ŚWIAT: shader tła + cząsteczki + efekty ==========
 // stan świata = uniformy shadera; env: 0 hangar, 1 lodowisko, 2 kosmos (wartości pośrednie = morph)
-const WD = { env: 0, heat: 0, tone: 0, dark: 1, shock: { x: .5, y: .5, r: 0, s: 0 } };
+const WD = { env: 0, heat: 0, tone: 0, dark: 1, img: 0, shock: { x: .5, y: .5, r: 0, s: 0 } };
 const ACCENT = ['#ff5a1f', '#a8e9ff', '#8f84ff'];
 const VS = `attribute vec2 a; void main(){ gl_Position = vec4(a, 0., 1.); }`;
 const FS = `
@@ -608,6 +618,7 @@ uniform vec4 u_shock;   // x,y środek (0..1), z promień, w siła
 uniform float u_heat;   // 0..1, rośnie przy pchaniu / pracy silnika
 uniform float u_tone;   // 0..1, czerwony ton po błędzie
 uniform float u_dark;   // 1 = czerń (start), 0 = pełne światło
+uniform float u_img;    // 1 = pod spodem leżą obrazy światów: bez własnego tła, sam ruch na czarnym (canvas w trybie screen)
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.-2.*f);
@@ -623,7 +634,10 @@ vec3 hangar(vec2 uv, float t){
   float glow = pow(1.-p.y, 2.2);
   float n = fbm(p*vec2(3., 2.) + vec2(0., -t*.25));
   vec3 c = mix(vec3(.08,.04,.12), vec3(1.,.35,.12), glow*(.45+.55*n)*(.8+u_heat));
+  // na obrazie: zamiast tła tylko falujący żar przy podłodze, iskry gęstsze nisko
+  c = mix(c, vec3(1.,.35,.12) * pow(glow, 1.6) * n * (.22 + .6*u_heat), u_img);
   float e = dots(vec2(p.x*40., p.y*40. - t*4.), .08) + dots(vec2(p.x*22.+5., p.y*22. - t*2.5), .07);
+  e *= mix(1., .3 + .7*smoothstep(1., .2, p.y), u_img);
   c += vec3(1.,.6,.25) * e * (.5+.5*sin(t*6. + p.x*50.)) * (1.+2.*u_heat);
   return c;
 }
@@ -632,18 +646,20 @@ vec3 ice(vec2 uv, float t){
   vec2 p = uv;
   float fog = fbm(p*2.5 + vec2(t*.05, t*.02));
   vec3 c = mix(vec3(.05,.08,.16), vec3(.66,.91,1.), fog*.75);
+  c = mix(c, vec3(.66,.91,1.) * fog*fog * .14, u_img);   // na obrazie: tylko płynąca mgiełka
   float st = smoothstep(.965, 1., sin((p.x*.6+p.y)*26. + t*.4 + fbm(p*5.)*2.5)*.5+.5);
   c += vec3(.6,.9,1.) * st * .16;
   float cry = dots(p*30., .05) * (.5+.5*sin(t*4. + hash(floor(p*30.))*40.));
-  c += vec3(1.) * cry * 1.2;
+  c += vec3(1.) * cry * mix(1.2, .7, u_img);
   return c;
 }
 // Kosmos: fioletowa mgławica w dryfie, dwie warstwy gwiazd
 vec3 space(vec2 uv, float t){
   vec2 p = uv + vec2(t*.01, 0.);
   float n1 = fbm(p*2. + vec2(t*.03)), n2 = fbm(p*3.5 - vec2(t*.02));
-  vec3 c = vec3(.06,.03,.12) + vec3(.36,.29,1.)*pow(n1, 2.2)*1.2 + vec3(.9,.3,.6)*pow(n2, 3.5)*.8;
-  c += vec3(1.) * (dots(p*60., .04)*.9 + dots(p*120.+3., .025)*.6);
+  vec3 neb = vec3(.36,.29,1.)*pow(n1, 2.2)*1.2 + vec3(.9,.3,.6)*pow(n2, 3.5)*.8;
+  vec3 c = vec3(.06,.03,.12)*(1.-u_img) + neb*mix(1., .22, u_img);   // na obrazie: mgławica ledwie dryfuje
+  c += vec3(1.) * (dots(p*60., .04)*.9 + dots(p*120.+3., .025)*.6) * mix(1., .7, u_img);
   return c;
 }
 void main(){
@@ -677,14 +693,31 @@ if (!gl) {
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
   const a = gl.getAttribLocation(prog, 'a'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
-  U = {}; ['u_time','u_res','u_env','u_shock','u_heat','u_tone','u_dark'].forEach(n => U[n] = gl.getUniformLocation(prog, n));
+  U = {}; ['u_time','u_res','u_env','u_shock','u_heat','u_tone','u_dark','u_img'].forEach(n => U[n] = gl.getUniformLocation(prog, n));
 }
 function drawGL(t) {
   if (!gl) return;
   gl.uniform1f(U.u_time, t); gl.uniform2f(U.u_res, glc.width, glc.height);
   gl.uniform1f(U.u_env, WD.env); gl.uniform4f(U.u_shock, WD.shock.x, WD.shock.y, WD.shock.r, WD.shock.s);
-  gl.uniform1f(U.u_heat, WD.heat); gl.uniform1f(U.u_tone, WD.tone); gl.uniform1f(U.u_dark, WD.dark);
+  gl.uniform1f(U.u_heat, WD.heat); gl.uniform1f(U.u_tone, WD.tone); gl.uniform1f(U.u_dark, WD.dark); gl.uniform1f(U.u_img, WD.img);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+// obrazy światów: warstwy w kolejności hangar, lodowisko, kosmos; wyższa przykrywa niższą tak jak mix() w shaderze.
+// Wczytane przez <img>, nie jako tekstury WebGL, więc działają też po otwarciu pliku dwuklikiem (file://).
+// Gdy któregoś brak, zostaje samo tło z shadera.
+const ART = $('#art'), ART_SRC = ['img/swiat-hangar.jpg', 'img/swiat-lod.jpg', 'img/swiat-kosmos.jpg'];
+Promise.all(ART_SRC.map(src => new Promise((ok, no) => { const im = new Image(); im.onload = ok; im.onerror = no; im.src = src; })))
+  .then(() => {
+    ART_SRC.forEach((src, i) => { ART.children[i].style.backgroundImage = `url("${src}")`; });
+    document.body.classList.add('has-art'); WD.img = 1; drawArt(); if (RM) drawGL(10);
+  })
+  .catch(() => console.warn('Brak obrazów światów w img/: tło z samego shadera.'));
+function drawArt() {
+  if (!WD.img) return;
+  const s = x => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
+  ART.children[1].style.opacity = s(WD.env); ART.children[2].style.opacity = s(WD.env - 1);
+  ART.style.opacity = 1 - WD.dark;
 }
 
 // cząsteczki: canvas 2D nad UI, składanie addytywne
@@ -756,8 +789,15 @@ function resize() {
   if (RM) drawGL(10);
 }
 addEventListener('resize', resize); resize();
+// prawa kolumna: znacznik .scrolls, gdy treść nie mieści się w oknie (sprawdzane raz na klatkę po zmianie treści)
+const sideCols = [...document.querySelectorAll('.split > .col.side')];
+let scrollCheck = 0;
+const markScroll = () => { if (scrollCheck) return; scrollCheck = requestAnimationFrame(() => { scrollCheck = 0;
+  sideCols.forEach(c => c.classList.toggle('scrolls', c.scrollHeight > c.clientHeight + 1)); }); };
+new MutationObserver(markScroll).observe($('main'), { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden'] });
+addEventListener('resize', markScroll); document.fonts.ready.then(markScroll); markScroll();
 let wT = 0, wLast = performance.now();
-function worldFrame(dt) { wT += dt; if (!RM) drawGL(wT); drawFX(dt); }
+function worldFrame(dt) { wT += dt; if (!RM) drawGL(wT); drawArt(); drawFX(dt); }
 requestAnimationFrame(function wloop(now) { const dt = Math.min(.05, (now - wLast) / 1000); wLast = now; worldFrame(dt); requestAnimationFrame(wloop); });
 if (RM) { WD.dark = 0; drawGL(10); }
 else gsap.to(WD, { dark: 0, duration: 1.8, ease: 'power2.inOut' });
