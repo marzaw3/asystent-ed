@@ -3,3 +3,7 @@ grafika/
 
 # skany podręcznika — tylko lokalnie (prawa autorskie, F-14)
 zdjecia/
+
+# sekrety bota Discord - tylko lokalnie
+.env
+.env.txt
