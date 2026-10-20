@@ -141,6 +141,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible, a:focus-visibl
 .btn.hold { min-width: 170px; font-size: 22px; padding: 18px 32px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .btn.hold.active { background: var(--white); transform: scale(.96); }
 .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.actions .resume-info { flex-basis: 100%; margin: 0; }
 .seg { display: flex; flex-wrap: wrap; gap: 8px; }
 .seg button { font-weight: 700; font-size: 17px; padding: 10px 18px; border-radius: 999px; border: 0;
   background: var(--veil); box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); }
@@ -435,7 +436,7 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
         <input id="heroName" maxlength="14" autocomplete="off" placeholder="Wpisz imię">
       </label>
       <div class="say" id="say-start" hidden></div>
-      <div class="actions"><button class="btn" id="startBtn">Rozpocznij kalibrację</button></div>
+      <div class="actions"><p class="src resume-info" id="resumeInfo" hidden></p><button class="btn" id="resumeBtn" hidden>Wznów grę</button><button class="btn" id="startBtn">Rozpocznij kalibrację</button></div>
      </div>
     </section>
 
@@ -623,6 +624,7 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
   </main>
 </div>
 
+<script src="konto.js"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);
@@ -631,6 +633,9 @@ const col = n => css.getPropertyValue('--' + n).trim();
 const fmt = (n, d = 1) => n.toFixed(d).replace('.', ',');
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const MOD = 2; // numer modułu (wyniki i zapis gry w koncie)
+// konto gracza (konto.js); bez niego gra działa jak gość, tylko bez wznawiania
+const Konto = window.Konto || { bohater() {}, pojecia() {}, wynik() {}, zapisz() {}, wczytaj: () => null };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // ========== ŚWIAT: shader tła + cząsteczki + efekty ==========
@@ -1215,7 +1220,7 @@ const hero = (() => {
   return { id: null, name: '' };
 })();
 const heroReady = () => !!(hero.id && hero.name);
-function saveHero() { try { localStorage.setItem('orion-bohater', JSON.stringify(hero)); } catch {} }
+function saveHero() { try { localStorage.setItem('orion-bohater', JSON.stringify(hero)); } catch {} Konto.bohater(hero); }
 function say(el, text) {
   el.hidden = !heroReady(); if (el.hidden) return;
   el.innerHTML = ava(hero.id, 60) + '<div class="bubble"><b></b><p></p></div>';
@@ -1226,7 +1231,7 @@ function heroRefresh() {
   const tag = $('#hudHero'); tag.hidden = !heroReady();
   if (heroReady()) { tag.innerHTML = ava(hero.id, 36) + '<span></span>'; tag.querySelector('span').textContent = hero.name; }
   say($('#say-start'), 'Cześć! Lecę z Tobą. Razem naprawimy Oriona.');
-  $('#startBtn').disabled = !heroReady();
+  $('#startBtn').disabled = !heroReady(); $('#resumeBtn').disabled = !heroReady();
 }
 HEROES.forEach(h => {
   const b = document.createElement('button'); b.className = 'hero-opt'; b.dataset.hero = h.id;
@@ -1362,6 +1367,7 @@ function labPos(t) {
 }
 
 function labStart() {
+  snap('lab');
   show('lab'); setStep('lab'); setWorld(0);
   say($('#say-lab'), 'Zanim ustawimy silniki Oriona, sprawdźmy na hamowni, jak rozpędzają się sanie. Wypróbuj wszystkie cztery ustawienia.');
   labReset(); labTable();
@@ -1495,9 +1501,9 @@ $('#labShowConc').addEventListener('click', () => labConclude(true));
 // ---------- KARTY POJĘĆ ----------
 // każde pojęcie: karta → pytanie; po błędzie wyjaśnienie i drugie pytanie w innej formie
 const cards = { list: [], i: 0, phase: 0, sel: null, ready: false, answered: false, timer: null };
-function cardsStart() {
+function cardsStart(start = 0) {
   stopLoop(); show('cards'); setStep('cards'); setWorld(1);
-  cards.list = cardList(); cards.i = 0;
+  cards.list = cardList(); cards.i = Math.min(start, cards.list.length - 1);
   const nPrev = cards.list.filter(g => g.prev).length;
   say($('#say-cards'), nPrev ? `Najpierw ${nPrev === 1 ? 'jedno pojęcie' : 'kilka pojęć'} z modułu 1 do powtórki. Potem nowe pojęcia. Przeczytaj kartę i odpowiedz na pytanie.` : 'Teraz pojęcia. Przeczytaj kartę. Potem odpowiedz na pytanie.');
   cardShow(0);
@@ -1516,6 +1522,7 @@ function cardDots() {
   cards.list.forEach((g, i) => { const d = document.createElement('i'); d.className = S.terms[g.id] || (i === cards.i ? 'cur' : ''); box.append(d); });
 }
 function cardShow(phase) {
+  if (phase === 0) snap('cards', { karta: cards.i });
   const g = cards.list[cards.i], q = cardQ(g, phase);
   Object.assign(cards, { phase, sel: null, ready: false, answered: false });
   $('#cCount').textContent = `Pojęcie ${cards.i + 1} z ${cards.list.length}`;
@@ -1623,6 +1630,7 @@ function saveTerms() {
     }
     localStorage.setItem('orion-pojecia', JSON.stringify(all));
   } catch {}
+  Konto.pojecia();
 }
 
 // ---------- SCENY do pytań ----------
@@ -1898,11 +1906,14 @@ const STAGES = {
 
 let st = null; // bieżący etap quizu
 function startStage(key) {
-  stopLoop();
   const cfg = STAGES[key];
-  st = { key, cfg, queue: cfg.ids.map(id => ({ id, original: true })), done: 0, firstTry: 0, spare: (cfg.spare || []).slice(), variants: JSON.parse(JSON.stringify(cfg.variants || {})), tries: {} };
-  show('quiz'); setStep(key); setWorld({ s1: 0, s2: 1, s3: 2 }[key]);
-  say($('#say-quiz'), STAGE_SAY[key]);
+  enterQuiz({ key, cfg, queue: cfg.ids.map(id => ({ id, original: true })), done: 0, firstTry: 0, spare: (cfg.spare || []).slice(), variants: JSON.parse(JSON.stringify(cfg.variants || {})), tries: {} });
+}
+// także wznowienie: etap z zapisu wraca do tego samego pytania
+function enterQuiz(s) {
+  stopLoop(); st = s;
+  show('quiz'); setStep(s.key); setWorld({ s1: 0, s2: 1, s3: 2 }[s.key]);
+  say($('#say-quiz'), STAGE_SAY[s.key]);
   nextQuestion();
 }
 const STAGE_SAY = {
@@ -1913,6 +1924,7 @@ const STAGE_SAY = {
 let cur = null;
 function nextQuestion() {
   if (!st.queue.length) return finishStage();
+  snap(st.key, { quiz: JSON.parse(JSON.stringify({ ...st, cfg: undefined })) });
   const item = st.queue.shift();
   const q = Q[item.id];
   if (cur) clearInterval(cur.timer);
@@ -2060,13 +2072,15 @@ const FLY = [
     traps: { 30000: ['W miejsce przyspieszenia wstawiono prędkość. Najpierw policz przyspieszenie: o ile wzrosła prędkość, podzielone przez czas.', 'v_a'], 15000: ['W miejsce przyspieszenia wstawiono czas. Najpierw policz przyspieszenie: o ile wzrosła prędkość, podzielone przez czas.', 'v_a'], 2: ['To jest przyspieszenie. Dobrze! Teraz policz siłę: F = m · a.', null] } },
 ];
 const fly = { r: 0, tries: 0, state: 'input', t: 0, ship: 0, gate: 0, hint: false, ok: false, pos: null };
-function flyStart() {
+function flyStart(r) {
   show('fly'); setStep('s3'); setWorld(2);
-  S.flyAttempts = 0; S.flyFirst = 0; fly.r = 0;
+  if (r === undefined) { S.flyAttempts = 0; S.flyFirst = 0; r = 0; }
+  fly.r = r;
   say($('#say-fly'), 'Komputer Oriona nie umie liczyć. Policz, wpisz wynik, a ja polecę przez bramkę.');
   flyRound();
 }
 function flyRound() {
+  snap('s3', { lot: fly.r });
   const R = FLY[fly.r];
   Object.assign(fly, { tries: 0, state: 'input', t: 0, hint: false, ok: false });
   fly.ship = fly.gate = R.sim(R.ans).gate;
@@ -2237,6 +2251,7 @@ function endScreen() {
   });
   const best = load();
   if (!best || n > best.stars || (n === best.stars && S.xp > best.xp)) save({ stars: n, xp: S.xp, date: new Date().toISOString().slice(0, 10) });
+  Konto.wynik(MOD, n, S.xp, JSON.parse(JSON.stringify(S)));
 }
 function resetAll() {
   Object.assign(S, { xp: 0, stars: { s1: false, s2: false, s3: false }, mis: {}, firstTry: 0, asked: 0, flyAttempts: 0, flyFirst: 0, terms: {} });
@@ -2246,7 +2261,7 @@ function resetAll() {
   document.querySelectorAll('#labQ .opt').forEach(o => o.classList.remove('good', 'bad'));
 }
 $('#startBtn').addEventListener('click', labStart);
-$('#againBtn').addEventListener('click', () => { resetAll(); show('start'); setStep(''); setWorld(0); showBest(); });
+$('#againBtn').addEventListener('click', () => { resetAll(); show('start'); setStep(''); setWorld(0); showBest(); showResume(); });
 function showM1() {
   let m1 = null; try { m1 = JSON.parse(localStorage.getItem('orion-m1') || 'null'); } catch {}
   $('#m1stars').textContent = m1 ? '★'.repeat(m1.stars) + '☆'.repeat(3 - m1.stars) : 'jeszcze nie zagrany';
@@ -2256,6 +2271,37 @@ showM1();
 function showBest() { const b = load(); $('#best').textContent = b ? `Najlepszy wynik: ${'★'.repeat(b.stars)}${'☆'.repeat(3 - b.stars)}, ${b.xp} XP (${b.date})` : ''; }
 showBest();
 renderGlossary();
+
+// ---------- wznawianie przerwanej gry ----------
+// migawka { etap, S, … } powstaje na początku laboratorium, każdej karty, pytania i kroku etapu ★★★ (snap)
+function snap(etap, extra) { Konto.zapisz(MOD, { etap, S: JSON.parse(JSON.stringify(S)), ...extra }); }
+const STEP_NAME = { lab: 'Laboratorium', cards: 'Pojęcia', s1: '★ Pamiętam', s2: '★★ Rozumiem', s3: '★★★ Stosuję' };
+function resumeText(z) {
+  let t = STEP_NAME[z.etap] || '';
+  if (z.etap === 'cards') t += `, pojęcie ${(z.karta || 0) + 1}`;
+  else if (z.quiz && STAGES[z.quiz.key]) { const n = STAGES[z.quiz.key].ids.length; t += z.quiz.key === 's3' ? ', ostatnie pytanie' : `, zadanie ${Math.min(z.quiz.done + 1, n)} z ${n}`; }
+  else if (z.lot != null) t += `, bramka ${z.lot + 1} z ${FLY.length}`;
+  return `Przerwana gra: ${t}. Masz ${(z.S && z.S.xp) || 0} XP.`;
+}
+function showResume() {
+  const z = Konto.wczytaj(MOD);
+  $('#resumeBtn').hidden = $('#resumeInfo').hidden = !z;
+  $('#startBtn').classList.toggle('ghost', !!z);
+  if (z) $('#resumeInfo').textContent = resumeText(z);
+}
+function resumeGame(z) {
+  resetAll();
+  try {
+    Object.assign(S, JSON.parse(JSON.stringify(z.S || {})));
+    $('#xp').textContent = S.xp; refreshStars(); renderGlossary();
+    if (z.etap === 'cards') return cardsStart(z.karta || 0);
+    if (z.quiz && STAGES[z.quiz.key]) return enterQuiz({ ...z.quiz, cfg: STAGES[z.quiz.key] });
+    if (z.lot != null) return flyStart(z.lot);
+  } catch (e) { console.warn('Nie udało się wznowić gry:', e); resetAll(); }
+  labStart();
+}
+$('#resumeBtn').addEventListener('click', () => { const z = Konto.wczytaj(MOD); if (z) resumeGame(z); });
+showResume();
 
 // podgląd z konsoli, gdy karta jest w tle i requestAnimationFrame stoi: orion.tick(0.5) posuwa grę o pół sekundy
 window.orion = { WD, lab, fly, S, tick(dt = 1 / 60) {

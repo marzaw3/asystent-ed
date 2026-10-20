@@ -1,5 +1,5 @@
 # Publikuje grę z folderu gra/ na GitHub Pages po każdym pushu na master.
-# Na stronę trafia tylko to, czego potrzebuje gracz: moduły (*.html) i obrazy (img/). Makiety i docs/ zostają w repo.
+# Na stronę trafia tylko to, czego potrzebuje gracz: moduły (*.html), skrypty (*.js) i obrazy (img/). Makiety i docs/ zostają w repo.
 name: GitHub Pages
 
 on:
@@ -28,7 +28,7 @@ jobs:
       - name: Złóż stronę z gry
         run: |
           mkdir _site
-          cp gra/*.html _site/
+          cp gra/*.html gra/*.js _site/
           cp -r gra/img _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
