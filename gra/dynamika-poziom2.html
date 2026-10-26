@@ -1358,7 +1358,7 @@ function show(id) {
 // sanie rakietowe na torze magnetycznym (bez tarcia). Silnik pracuje 2 s, potem sanie jadą same.
 // ruch liczony wprost ze wzorów (x = a·t²/2, v = a·t), więc odczyty po 2 s są dokładne
 const LAB = { burn: 2, coast: 3.5, F: [100, 200], m: [50, 100] };
-const lab = { F: 100, m: 50, t: 0, state: 'idle', res: {}, qOk: false, sled: null };
+const lab = { F: 100, m: 50, t: 0, state: 'idle', res: {}, qOk: false, sled: null, concludeWait: false };
 const labA = () => lab.F / lab.m;
 const labKey = () => lab.F + '/' + lab.m;
 function labPos(t) {
@@ -1389,7 +1389,10 @@ function labFire() {
 function labStep(dt) {
   if (lab.state === 'burn' || lab.state === 'coast') lab.t = Math.min(LAB.burn + LAB.coast, lab.t + dt);
   if (lab.state === 'burn' && lab.t >= LAB.burn) { lab.state = 'coast'; labRecord(); }
-  if (lab.state === 'coast' && lab.t >= LAB.burn + LAB.coast) lab.state = 'done';
+  if (lab.state === 'coast' && lab.t >= LAB.burn + LAB.coast) {
+    lab.state = 'done';
+    if (lab.concludeWait) { lab.concludeWait = false; setTimeout(() => { if (!$('#scr-lab').hidden && lab.state === 'done') labConclude(true); }, 1500); }
+  }
   const { v } = labPos(lab.t), a = labA(), firing = lab.state === 'burn';
   const measured = lab.res[labKey()] && lab.state !== 'burn' && lab.state !== 'idle';
   $('#ro-t').textContent = fmt(lab.t) + ' s';
@@ -1424,7 +1427,7 @@ function labTable() {
     $('#labConclusion').hidden = false; $('#labShowConc').hidden = false;
     setXP(10);
     say($('#say-lab'), 'Tabela gotowa! Porównaj liczby w wierszu i w kolumnie. Co się dzieje, gdy siła rośnie 2 razy? A gdy masa?');
-    setTimeout(() => { if (!$('#scr-lab').hidden) labConclude(true); }, 2500);
+    lab.concludeWait = true; // wniosek dopiero, gdy sanie dojadą do końca toru (labStep)
   }
 }
 // kamera jedzie za saniami; ślad kropek co 0,5 s: odstępy rosną, gdy silnik pcha, potem są równe
