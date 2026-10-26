@@ -184,16 +184,42 @@ ul.clean { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
 .def-row i { font-style: normal; font-weight: 800; font-size: 14px; color: var(--accent); }
 .def-row.formal p { border-left: 4px solid var(--accent); padding-left: 12px; }
 .def-row.simple p { font-size: 19px; font-weight: 700; }
-/* „jak czytać wzór”: wzór dużo, każda litera osobno, trójkąt F / m · a */
-.keys { display: grid; gap: 8px; background: var(--veil-2); border-radius: 14px; padding: 12px 16px; }
-.keys .kf { font-family: var(--f-display); font-size: 1.5em; font-weight: 800; color: var(--white); letter-spacing: .02em; }
-.keys .kr { color: var(--ash); font-style: italic; }
-.keys dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; align-items: baseline; }
-.keys dt { font-weight: 800; color: var(--accent); }
-.keys dd { margin: 0; }
-.keys .tri { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
-.keys .tri svg { width: 120px; height: auto; flex: none; }
-.keys .tri p { flex: 1 1 220px; margin: 0; }
+/* sztuczki: bohater w dymku pyta „pokazać Ci…?”, po kliknięciu okno z animacją krok po kroku */
+.tip-ask { display: flex; align-items: center; gap: 12px; justify-self: start; text-align: left; border: 0; padding: 4px 0; background: none; font-weight: 700; }
+.tip-ask svg { flex: none; filter: drop-shadow(0 4px 8px rgba(0,0,0,.45)); }
+.tip-ask .bubble { position: relative; display: grid; gap: 2px; padding: 10px 18px; border-radius: 18px; background: var(--white); color: var(--plum);
+  font-size: clamp(16px, 1.2vw, 19px); animation: tipPulse 2.4s ease-in-out infinite; }
+.tip-ask .bubble::before { content: ""; position: absolute; left: -8px; top: 50%; margin-top: -8px; border: 8px solid transparent; border-left: 0; border-right-color: var(--white); }
+.tip-ask .bubble b { font-family: var(--f-display); font-size: 13px; opacity: .65; }
+.tip-ask:hover .bubble { background: var(--accent); }
+.tip-ask:hover .bubble::before { border-right-color: var(--accent); }
+@keyframes tipPulse { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 35%, transparent); } }
+.tip-dlg { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 16px; background: rgba(10,5,18,.74); backdrop-filter: blur(6px); }
+.tip-box { width: min(760px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; display: grid; gap: 18px; padding: clamp(18px, 3vw, 34px);
+  border-radius: 26px; background: rgba(20,10,30,.94); box-shadow: inset 0 0 0 2px var(--accent), 0 20px 60px rgba(0,0,0,.6); }
+.tip-head { display: flex; align-items: center; gap: 12px; }
+.tip-head h2 { font-size: clamp(22px, 2.6vw, 32px); }
+#tipStage { display: grid; gap: 16px; min-height: 180px; align-content: start; }
+.tip-f { display: flex; flex-wrap: wrap; justify-content: center; font-family: var(--f-display); font-size: clamp(40px, 7vw, 76px); font-weight: 900; line-height: 1.1; }
+.tip-f span { display: inline-block; }
+.tip-f .sp { width: .35em; }
+.tip-f .hl, .tip-pic text.hl { color: var(--accent); fill: var(--accent); text-shadow: 0 0 22px var(--accent); }
+.tip-read { text-align: center; color: var(--ash); font-style: italic; max-width: none; text-shadow: none; }
+.tip-rows { margin: 0; display: grid; gap: 8px; }
+.tip-row { display: grid; grid-template-columns: minmax(70px, max-content) 1fr; gap: 4px 16px; align-items: baseline; padding: 10px 16px; border-radius: 14px; background: rgba(255,255,255,.05); opacity: .55; }
+.tip-row.on { opacity: 1; background: rgba(255,255,255,.1); box-shadow: inset 0 0 0 2px var(--accent); }
+.tip-row dt { font-family: var(--f-display); font-weight: 800; color: var(--accent); }
+.tip-row dd { margin: 0; font-weight: 700; font-size: clamp(17px, 1.3vw, 20px); }
+.tip-pic { display: flex; justify-content: center; }
+.tip-pic svg { width: min(100%, 440px); height: auto; overflow: visible; }
+.tip-trick { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px 28px; }
+.tip-trick svg { width: clamp(150px, 22vw, 200px); height: auto; color: var(--white); overflow: visible; }
+.tip-trick p { flex: 1 1 240px; max-width: 28ch; font-size: clamp(18px, 1.6vw, 22px); font-weight: 700; text-shadow: none; }
+.tip-trick p b { color: var(--accent); font-family: var(--f-display); white-space: nowrap; }
+.tip-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.tip-foot .dots { margin-right: auto; }
+body.tip-open { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .tip-ask .bubble { animation: none; } }
 
 /* etap „Pojęcia”: karta + pytanie sprawdzające */
 .card { background: var(--veil); border-radius: 22px; padding: 22px 24px; display: grid; gap: 14px; }
@@ -422,8 +448,8 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
       <div class="map" aria-label="Mapa modułów">
         <a class="node done" href="dynamika-poziom1.html"><img class="ico" src="img/ikona-m1.jpg" alt=""><span class="n">Temat 24, s. 162</span><b>I zasada dynamiki, bezwładność</b><span class="n" id="m1stars"></span></a>
         <div class="node active"><img class="ico" src="img/ikona-m2.jpg" alt=""><span class="n">Temat 25, s. 169</span><b>II zasada dynamiki</b></div>
-        <div class="node locked"><img class="ico" src="img/ikona-m3.jpg" alt=""><span class="n">Temat 26, s. 174</span><b>Swobodne spadanie ciał</b></div>
-        <div class="node locked"><img class="ico" src="img/ikona-m4.jpg" alt=""><span class="n">Temat 27, s. 179</span><b>III zasada, odrzut</b></div>
+        <a class="node" href="dynamika-poziom3.html"><img class="ico" src="img/ikona-m3.jpg" alt=""><span class="n">Temat 27, s. 179</span><b>III zasada, odrzut</b></a>
+        <div class="node locked"><img class="ico" src="img/ikona-m4.jpg" alt=""><span class="n">Temat 26, s. 174</span><b>Swobodne spadanie ciał</b></div>
         <div class="node locked"><img class="ico" src="img/ikona-m5.jpg" alt=""><span class="n">Temat 28, s. 183</span><b>Opory ruchu</b></div>
         <div class="node locked"><img class="ico" src="img/ikona-m6.jpg" alt=""><span class="n">S. 190</span><b>Boss: powtórzenie działu</b></div>
       </div>
@@ -478,7 +504,7 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
         <span class="label">Co się stało?</span>
         <ul class="clean">
           <li><b>2 razy większa siła</b> (100 N → 200 N, ta sama masa): prędkość rosła 2 razy szybciej.</li>
-          <li><b>2 razy większa masa</b> (50 kg → 100 kg, ta sama siła): prędkość rosła 2 razy wolniej.</li>
+          <li><b>2 razy większa masa</b> (50 kg → 100 kg, ta sama siła): prędkość rosła 2 razy wolniej, czyli o połowę wolniej.</li>
           <li>Gdy silnik się wyłączył, sanie jechały dalej cały czas tak samo szybko. To I zasada z modułu 1.</li>
         </ul>
         <p><b>Wniosek:</b> przyspieszenie zależy od siły i od masy. Żeby je policzyć, dzielimy siłę przez masę. Na przykład 200 N : 50 kg = 4 m/s². Krótko zapisujemy to tak: <b>a = F : m</b> (a to przyspieszenie, F to siła, m to masa). To jest II zasada dynamiki.</p>
@@ -513,7 +539,7 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
           <span class="chip" id="cTag"></span>
           <h2 id="cTerm"></h2>
           <div class="def-row formal"><i>Definicja (do zeszytu)</i><p id="cFormal"></p></div>
-          <div class="def-row" id="cKeysRow" hidden><i id="cKeysT"></i><div id="cKeys"></div></div>
+          <div class="def-row" id="cKeysRow" hidden><div id="cKeys"></div></div>
           <div class="def-row simple"><i>Po prostu</i><p id="cSimple"></p></div>
           <div class="def-row"><i>Przykład</i><p id="cExample"></p></div>
         </div>
@@ -605,7 +631,7 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
       <div class="say" id="say-end"></div>
       <div class="report" id="report"></div>
       <div class="end-next">
-        <div class="node active"><img class="ico" src="img/ikona-m3.jpg" alt=""><span class="n">Następny moduł, s. 174</span><b>Swobodne spadanie ciał</b><span class="src">wkrótce</span></div>
+        <a class="node active" href="dynamika-poziom3.html"><img class="ico" src="img/ikona-m3.jpg" alt=""><span class="n">Następny moduł, s. 179</span><b>III zasada, odrzut</b><span class="src">Graj dalej →</span></a>
         <a class="btn ghost" href="dynamika-poziom1.html">Moduł 1</a>
         <button class="btn ghost" id="againBtn">Zagraj od nowa</button>
       </div>
@@ -622,6 +648,15 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
      </div>
     </section>
   </main>
+</div>
+
+<!-- okno sztuczki (otwiera dymek bohatera na karcie pojęcia albo w Słowniczku) -->
+<div class="tip-dlg" id="tipDlg" role="dialog" aria-modal="true" aria-labelledby="tipTitle" hidden>
+  <div class="tip-box">
+    <div class="tip-head"><span id="tipAva"></span><h2 id="tipTitle"></h2></div>
+    <div id="tipStage"></div>
+    <div class="tip-foot"><div class="dots" id="tipDots" aria-hidden="true"></div><button class="btn ghost" id="tipAgain">Od początku</button><button class="btn" id="tipNext">Dalej</button></div>
+  </div>
 </div>
 
 <script src="konto.js"></script>
@@ -857,7 +892,7 @@ const GLOS = [
     example: 'Pchasz skrzynię siłą 120 N, a tarcie hamuje ją siłą 70 N. Zostaje 50 N. Ta siła rozpędza skrzynię.' },
   { id: 'zasada2', term: 'II zasada dynamiki Newtona',
     formal: 'Jeżeli na ciało działa stała siła niezrównoważona, to ciało porusza się ruchem jednostajnie przyspieszonym. Przyspieszenie jest wprost proporcjonalne do siły i odwrotnie proporcjonalne do masy ciała: a = F : m.',
-    simple: 'Gdy siły się nie znoszą, ciało przyspiesza. 2 razy większa siła: 2 razy większe przyspieszenie. 2 razy większa masa: 2 razy mniejsze przyspieszenie.',
+    simple: 'Gdy siły się nie znoszą, ciało przyspiesza. 2 razy większa siła: 2 razy większe przyspieszenie. 2 razy większa masa: przyspieszenie o połowę mniejsze.',
     keys: { title: 'Trudne słowa',
       items: [['stała siła', 'siła, która cały czas jest tak samo duża'],
         ['wprost proporcjonalne do siły', 'ile razy większa siła, tyle razy większe przyspieszenie'],
@@ -1109,25 +1144,99 @@ const TQ_M1 = {
   ],
 };
 
-// blok „jak czytać wzór”: wzór, jak go przeczytać na głos, co znaczy każda litera
-const TRI_SVG = '<svg viewBox="0 0 120 104" aria-hidden="true"><path d="M60 4 L116 100 L4 100 Z" fill="none" stroke="currentColor" stroke-width="3"/>' +
-  '<line x1="30" y1="56" x2="90" y2="56" stroke="currentColor" stroke-width="3"/><line x1="60" y1="56" x2="60" y2="100" stroke="currentColor" stroke-width="3"/>' +
-  '<g font-size="24" font-weight="800" text-anchor="middle" fill="currentColor"><text x="60" y="46">F</text><text x="40" y="88">m</text><text x="80" y="88">a</text></g></svg>';
-function keysBox(k) {
-  const box = document.createElement('div'); box.className = 'keys';
-  if (k.formula) { const f = document.createElement('div'); f.className = 'kf'; f.textContent = k.formula; box.append(f); }
-  if (k.read) { const r = document.createElement('div'); r.className = 'kr'; r.textContent = 'Czytamy: ' + k.read; box.append(r); }
-  const dl = document.createElement('dl');
-  k.items.forEach(([a, b]) => { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = a; dd.textContent = b; dl.append(dt, dd); });
-  box.append(dl);
-  if (k.tri) {
-    const t = document.createElement('div'); t.className = 'tri';
-    t.innerHTML = TRI_SVG + '<p><b>Sztuczka z trójkątem.</b> Zakryj palcem literę, której szukasz. Zostaje przepis. ' +
-      'Zakryjesz a: zostaje F nad m, czyli a = F : m (dzielisz). Zakryjesz F: zostaje m obok a, czyli F = m · a (mnożysz).</p>';
-    box.append(t);
-  }
-  return box;
+// ---------- sztuczki: bohater w dymku pyta, okno pokazuje wzór, rysunek albo trudne słowa krok po kroku (animacje GSAP) ----------
+// trójkąt F / m · a z palcem, który zakrywa szukaną literę
+const TRI_TIP = '<svg viewBox="0 0 120 150" aria-hidden="true"><path class="tl" d="M60 4 L116 100 L4 100 Z" fill="none" stroke="currentColor" stroke-width="3"/>' +
+  '<line class="tl" x1="30" y1="56" x2="90" y2="56" stroke="currentColor" stroke-width="3"/><line class="tl" x1="60" y1="56" x2="60" y2="100" stroke="currentColor" stroke-width="3"/>' +
+  '<g font-size="24" font-weight="800" text-anchor="middle" fill="currentColor"><text class="lF" x="60" y="46">F</text><text class="lm" x="38" y="88">m</text><text class="la" x="82" y="88">a</text></g>' +
+  '<g class="finger"><rect x="-10" y="0" width="20" height="58" rx="10" fill="#f2c9a1" stroke="#15102a" stroke-width="2"/><rect x="-6" y="3" width="12" height="11" rx="4" fill="#fbe3cf"/></g></svg>';
+const tipAsk = k => k.ask || (k.tri ? 'Zdradzić Ci sztuczkę, jak łatwo zapamiętać ten wzór?' : k.formula ? 'Pokazać Ci po kolei, jak czytać ten wzór?' :
+  k.pic ? 'Pokazać Ci na rysunku, jak to działa?' : 'Trudne słowa? Wytłumaczę je po kolei.');
+const tipEl = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+function tipButton(k) {
+  const b = tipEl('button', 'tip-ask'); b.type = 'button';
+  b.innerHTML = (heroReady() ? ava(hero.id, 56) : '') + '<span class="bubble"><b></b><span></span></span>';
+  b.querySelector('b').textContent = heroReady() ? hero.name : 'Podpowiedź';
+  b.querySelector('.bubble > span').textContent = tipAsk(k);
+  b.addEventListener('click', () => tipOpen(k));
+  const a = b.querySelector('svg'); // bohater macha, żeby było go widać
+  if (a && !RM) gsap.fromTo(a, { rotation: -10 }, { rotation: 10, duration: .45, repeat: 7, yoyo: true, ease: 'sine.inOut', transformOrigin: '50% 90%', delay: 1.2, clearProps: 'transform' });
+  return b;
 }
+// kroki: [wzór albo rysunek] → [sztuczka z trójkątem] → po jednym trudnym słowie / literze na krok
+function tipSteps(k, st) {
+  const top = tipEl('div'), rows = tipEl('dl', 'tip-rows'); st.append(top, rows);
+  const steps = []; let f = null;
+  if (k.formula || k.pic) steps.push(() => {
+    if (k.formula) {
+      f = tipEl('div', 'tip-f');
+      [...k.formula].forEach(ch => f.append(tipEl('span', ch === ' ' ? 'sp' : 'ch', ch)));
+      top.append(f);
+      if (!RM) gsap.from(f.querySelectorAll('.ch'), { y: -60, opacity: 0, rotation: () => gsap.utils.random(-50, 50), duration: .7, stagger: .09, ease: 'back.out(2.2)' });
+      if (k.read) { const r = tipEl('p', 'tip-read', 'Czytamy: ' + k.read); top.append(r); if (!RM) gsap.from(r, { opacity: 0, y: 12, duration: .5, delay: .9 }); }
+    } else {
+      const p = tipEl('div', 'tip-pic'); p.innerHTML = k.pic; top.append(p);
+      if (!RM) gsap.from(p.querySelectorAll('svg > *'), { opacity: 0, scale: .5, transformOrigin: '50% 50%', duration: .5, stagger: .18, ease: 'back.out(2)' });
+    }
+  });
+  if (k.tri) {
+    let fing, cap;
+    const caption = html => { cap.innerHTML = html; if (!RM) gsap.from(cap, { opacity: 0, x: 24, duration: .45 }); };
+    const cover = (sel, x, y, html) => {
+      top.querySelectorAll('.tip-trick text').forEach(t => gsap.to(t, { opacity: t.matches(sel) ? .1 : 1, duration: RM ? 0 : .3, delay: RM ? 0 : .45 }));
+      gsap.to(fing, { x, y, duration: RM ? 0 : .7, ease: 'power3.inOut' });
+      caption(html);
+    };
+    steps.push(() => {
+      const box = tipEl('div', 'tip-trick'); box.innerHTML = TRI_TIP; cap = tipEl('p'); box.append(cap); top.append(box);
+      fing = box.querySelector('.finger'); gsap.set(fing, { x: 60, y: 175 });
+      if (!RM) {
+        box.querySelectorAll('.tl').forEach((l, i) => { const n = l.getTotalLength(); gsap.fromTo(l, { strokeDasharray: n, strokeDashoffset: n }, { strokeDashoffset: 0, duration: .8, delay: i * .45, ease: 'power2.inOut' }); });
+        gsap.from(box.querySelectorAll('text'), { scale: 0, transformOrigin: '50% 50%', duration: .5, stagger: .25, delay: 1.3, ease: 'back.out(3)' });
+      }
+      caption('<b>Sztuczka z trójkątem.</b> Na górze F, na dole m i a. Narysuj go w zeszycie.');
+    });
+    steps.push(() => cover('.la', 82, 64, 'Szukasz <b>a</b>? Zakryj a palcem. Zostaje F nad m, czyli dzielisz: <b>a = F : m</b>'));
+    steps.push(() => cover('.lF', 60, 22, 'Szukasz <b>F</b>? Zakryj F. Zostają m i a obok siebie, czyli mnożysz: <b>F = m · a</b>'));
+    steps.push(() => cover('.lm', 38, 64, 'Szukasz <b>m</b>? Zakryj m. Zostaje F nad a, czyli dzielisz: <b>m = F : a</b>'));
+  }
+  k.items.forEach(([key, val]) => steps.push(() => {
+    const tr = top.querySelector('.tip-trick'); if (tr) tr.remove(); // po sztuczce zostaje sam wzór
+    rows.querySelectorAll('.on').forEach(r => r.classList.remove('on'));
+    const r = tipEl('div', 'tip-row on'); r.append(tipEl('dt', '', key), tipEl('dd', '', val)); rows.append(r);
+    if (!RM) gsap.from(r, { x: -40, opacity: 0, duration: .45, ease: 'power3.out' });
+    r.scrollIntoView({ block: 'nearest', behavior: RM ? 'auto' : 'smooth' });
+    // zapala się to, o czym mowa: litery we wzorze albo podpis na rysunku
+    top.querySelectorAll('.hl').forEach(s => s.classList.remove('hl'));
+    const i = f ? k.formula.indexOf(key) : -1;
+    const hit = f ? (i >= 0 ? [...f.children].slice(i, i + key.length) : []) : [...top.querySelectorAll('svg text')].filter(t => t.textContent === key);
+    hit.forEach(s => { s.classList.add('hl'); if (!RM) gsap.fromTo(s, { scale: 1 }, { scale: 1.5, yoyo: true, repeat: 1, duration: .25, transformOrigin: '50% 50%' }); });
+  }));
+  return steps;
+}
+const tip = { k: null, steps: [], i: -1 };
+function tipOpen(k) {
+  tip.k = k; tip.i = -1;
+  const st = $('#tipStage'); gsap.killTweensOf(st.querySelectorAll('*')); st.innerHTML = '';
+  $('#tipTitle').textContent = k.title;
+  $('#tipAva').innerHTML = heroReady() ? ava(hero.id, 56) : '';
+  tip.steps = tipSteps(k, st);
+  $('#tipDots').innerHTML = tip.steps.map(() => '<i></i>').join('');
+  $('#tipDlg').hidden = false; document.body.classList.add('tip-open');
+  if (!RM) gsap.fromTo('#tipDlg .tip-box', { y: 40, scale: .92, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: .45, ease: 'back.out(1.6)', clearProps: 'transform,opacity' });
+  tipNext(); $('#tipNext').focus();
+}
+function tipNext() {
+  if (tip.i >= tip.steps.length - 1) return tipClose();
+  tip.i++; tip.steps[tip.i]();
+  [...$('#tipDots').children].forEach((d, i) => { d.className = i < tip.i ? 'ok' : i === tip.i ? 'cur' : ''; });
+  $('#tipNext').textContent = tip.i === tip.steps.length - 1 ? 'Rozumiem!' : 'Dalej';
+}
+function tipClose() { $('#tipDlg').hidden = true; document.body.classList.remove('tip-open'); }
+$('#tipNext').addEventListener('click', tipNext);
+$('#tipAgain').addEventListener('click', () => tipOpen(tip.k));
+$('#tipDlg').addEventListener('click', e => { if (e.target === e.currentTarget) tipClose(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#tipDlg').hidden) tipClose(); });
 function defCard(g, open, status) {
   const d = document.createElement('details'); d.className = 'def'; if (open) d.open = true;
   d.innerHTML = '<summary><b></b><span>rozwiń</span></summary><div class="def-body">' +
@@ -1137,11 +1246,7 @@ function defCard(g, open, status) {
   d.querySelector('summary b').textContent = g.term;
   const ps = d.querySelectorAll('.def-body p');
   ps[0].textContent = g.formal; ps[1].textContent = g.simple; ps[2].textContent = g.example;
-  if (g.keys) {
-    const r = document.createElement('div'); r.className = 'def-row';
-    const t = document.createElement('i'); t.textContent = g.keys.title;
-    r.append(t, keysBox(g.keys)); ps[0].parentNode.after(r);
-  }
+  if (g.keys) { const r = document.createElement('div'); r.className = 'def-row'; r.append(tipButton(g.keys)); ps[0].parentNode.after(r); }
   if (status === 'weak') { const s = d.querySelector('summary span'); s.textContent = 'do powtórki'; s.className = 'st-weak'; }
   return d;
 }
@@ -1253,7 +1358,7 @@ const S = { xp: 0, stars: { s1: false, s2: false, s3: false }, mis: {}, firstTry
 const MIS = {
   stala_v: { name: '„Stała siła daje stałą prędkość”', tip: 'Stała siła, która się nie znosi, daje stałe PRZYSPIESZENIE. Prędkość cały czas rośnie, co sekundę o tyle samo.' },
   masa: { name: '„Masa nie ma znaczenia”', tip: 'Ta sama siła mniejszej masie daje większe przyspieszenie. a = F : m.' },
-  proporcja: { name: 'Ile razy więcej?', tip: '2 razy większa siła: 2 razy większe przyspieszenie. 2 razy większa masa: 2 razy mniejsze przyspieszenie.' },
+  proporcja: { name: 'Ile razy więcej?', tip: '2 razy większa siła: 2 razy większe przyspieszenie. 2 razy większa masa: przyspieszenie o połowę mniejsze.' },
   mnoz: { name: 'Mnożenie zamiast dzielenia', tip: 'Przyspieszenie: siłę DZIELIMY przez masę, a = F : m. Siłę liczymy z mnożenia: F = m · a.' },
   odwr: { name: 'Dzielenie w złą stronę', tip: 'a = F : m. Najpierw siła, potem dzielimy przez masę. W trójkącie F jest nad m.' },
   v_a: { name: 'Prędkość zamiast przyspieszenia', tip: 'We wzorze F = m · a jest przyspieszenie, a nie prędkość. Najpierw policz przyspieszenie: o ile wzrosła prędkość, podzielone przez czas.' },
@@ -1533,7 +1638,7 @@ function cardShow(phase) {
   const tag = $('#cTag'); tag.textContent = tg; tag.className = 'chip' + (tg.startsWith('Nowe') ? ' new' : '');
   $('#cTerm').textContent = g.term; $('#cFormal').textContent = g.formal; $('#cSimple').textContent = g.simple; $('#cExample').textContent = g.example;
   $('#cKeysRow').hidden = !g.keys; $('#cKeys').innerHTML = '';
-  if (g.keys) { $('#cKeysT').textContent = g.keys.title; $('#cKeys').append(keysBox(g.keys)); }
+  if (g.keys) $('#cKeys').append(tipButton(g.keys));
   $('#cRetry').hidden = phase === 0;
   $('#cQ').textContent = q.text;
   const box = $('#cOpts'); box.innerHTML = '';
@@ -1716,7 +1821,7 @@ function drawContainer(ctx, x, y, s) {
 
 const SCENES = {
   // dwa tory: górny lżejszy, dolny cięższy; ta sama siła przez 2 s, potem jadą same
-  carts(ctx, w, h, t, o = { m: [10, 30], lab: ['pusty: 10 kg', 'z ładunkiem: 30 kg'] }) {
+  carts(ctx, w, h, t, o = { m: [10, 20], lab: ['pusty: 10 kg', 'z ładunkiem: 20 kg'] }) {
     ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, h);
     const T = 5, tt = t > 0 ? t % (T + .6) : 0, run = Math.max(0, Math.min(T, tt - .3));
     const x0 = 30, cw = Math.min(110, Math.max(80, w * .18)), lanes = [h * .42, h * .84];
@@ -1811,19 +1916,19 @@ const Q = {
     ],
     explain: '1 N = 1 kg · m/s². Taka siła rozpędza 1 kg tak, że co sekundę jedzie on o 1 m/s szybciej.' },
 
-  a1: { concept: 'A', scene: 'carts', text: 'Dwa wózki stoją na idealnie gładkim lodzie. Górny jest pusty (10 kg). Dolny wiezie ładunek (razem 30 kg). Pchasz każdy z nich tą samą siłą przez 2 sekundy. Który potem jedzie szybciej?',
+  a1: { concept: 'A', scene: 'carts', text: 'Na gładkim lodzie stoją dwa wózki: pusty (10 kg) i z ładunkiem (20 kg). Pchasz każdy tak samo mocno. Który rozpędzi się szybciej?',
     hint: 'Pamiętasz hamownię? Jak rozpędzały się sanie z dwiema skrzyniami?',
     preds: [
-      { t: 'Górny (pusty), 3 razy szybciej.', ok: true },
-      { t: 'Dolny (z ładunkiem).', fb: 'Ładunek nie dodaje siły. Dodaje masy, a większą masę trudniej rozpędzić.', mis: 'masa' },
-      { t: 'Oba tak samo, bo siła jest taka sama.', fb: 'Siła jest taka sama, ale masy są różne. Mniejsza masa dostaje większe przyspieszenie.', mis: 'masa' },
+      { t: 'Pusty.', ok: true },
+      { t: 'Ten z ładunkiem.', fb: 'Ładunek nie dodaje siły. Dodaje masy, a większą masę trudniej rozpędzić.', mis: 'masa' },
+      { t: 'Oba tak samo.', fb: 'Siła jest taka sama, ale masy są różne. Lżejszy wózek rozpędza się szybciej.', mis: 'masa' },
     ],
     reasons: [
-      { t: 'Ta sama siła daje mniejszej masie większe przyspieszenie (a = F : m).', ok: true },
-      { t: 'Cięższy wózek ma w sobie więcej siły.', fb: 'Siłę daje ten, kto pcha. Ładunek to tylko większa masa.', mis: 'masa' },
-      { t: 'Prędkość zależy tylko od siły.', fb: 'Zależy też od masy. Na hamowni sanie z dwiema skrzyniami rozpędzały się wolniej.', mis: 'masa' },
+      { t: 'Ma mniejszą masę, więc łatwiej go rozpędzić.', ok: true },
+      { t: 'Ładunek dodaje wózkowi siły.', fb: 'Siłę daje ten, kto pcha. Ładunek to tylko większa masa.', mis: 'masa' },
+      { t: 'Liczy się tylko siła, a ta jest taka sama.', fb: 'Liczy się też masa. Na hamowni sanie z dwiema skrzyniami rozpędzały się wolniej.', mis: 'masa' },
     ],
-    explain: '10 kg to 3 razy mniej niż 30 kg. Ta sama siła daje więc 3 razy większe przyspieszenie. Po 2 s pusty wózek jedzie 3 razy szybciej.' },
+    explain: 'Siła jest taka sama, ale pusty wózek ma mniejszą masę. Mniejszą masę łatwiej rozpędzić. Pusty wózek ma 2 razy mniejszą masę (o połowę), więc rozpędza się 2 razy szybciej.' },
   a2: { concept: 'A', scene: 'trucks', text: 'Dwie takie same ciężarówki stoją pod światłami. Górna jest pusta (5 ton). Dolna jest załadowana (10 ton). Silniki pchają z taką samą siłą. Która rozpędza się szybciej?',
     hint: 'Która ma mniejszą masę?',
     preds: [
@@ -1837,29 +1942,29 @@ const Q = {
       { t: 'Masa nie ma znaczenia, liczy się silnik.', fb: 'Masa ma znaczenie: a = F : m. Większa masa, mniejsze przyspieszenie.', mis: 'masa' },
     ],
     explain: 'Masa 2 razy mniejsza, więc przyspieszenie 2 razy większe. Dlatego ciężarówki z ładunkiem wolno ruszają spod świateł.' },
-  b1: { concept: 'B', scene: 'rocket', text: 'Rakieta leci w pustym kosmosie. Silnik cały czas pcha z tą samą siłą. Nic nie hamuje. Jak porusza się rakieta?',
-    hint: 'Czy siła silnika się z czymś znosi? Co robi siła, która się nie znosi?',
-    preds: [
-      { t: 'Coraz szybciej. Co sekundę jej prędkość rośnie o tyle samo.', ok: true },
-      { t: 'Cały czas tak samo szybko.', fb: 'Tak byłoby bez siły albo gdy siły się znoszą. Tu siła silnika się nie znosi, więc prędkość rośnie.', mis: 'stala_v' },
-      { t: 'Najpierw przyspiesza, a potem leci cały czas tak samo szybko.', fb: 'Dopóki silnik pcha, prędkość rośnie. Stała byłaby dopiero po wyłączeniu silnika.', mis: 'stala_v' },
-    ],
-    reasons: [
-      { t: 'Działa stała siła niezrównoważona, więc przyspieszenie jest stałe.', ok: true },
-      { t: 'Stała siła daje stałą prędkość.', fb: 'Stała siła daje stałe przyspieszenie. Prędkość co sekundę rośnie o tyle samo.', mis: 'stala_v' },
-      { t: 'Rakieta przyzwyczaja się do siły.', fb: 'Ciała nie przyzwyczajają się do sił. Dopóki siła działa, prędkość się zmienia.', mis: 'stala_v' },
-    ],
-    explain: 'To ruch jednostajnie przyspieszony. Kropki co 0,4 s są coraz dalej od siebie, bo rakieta jedzie coraz szybciej.' },
-  b2: { concept: 'B', scene: 'tow', text: 'Holownik w pustym kosmosie pcha przed sobą kontener. Silnik holownika cały czas pracuje z tą samą siłą. Nic nie hamuje. Jak poruszają się holownik i kontener?',
+  b1: { concept: 'B', scene: 'rocket', text: 'W module 1 sonda miała WYŁĄCZONY silnik i leciała cały czas tak samo szybko. Teraz rakieta ma WŁĄCZONY silnik. Silnik cały czas pcha, a nic nie hamuje. Jak leci rakieta?',
     hint: 'Czy coś znosi siłę silnika?',
     preds: [
-      { t: 'Coraz szybciej. Co sekundę prędkość rośnie o tyle samo.', ok: true },
+      { t: 'Coraz szybciej.', ok: true },
+      { t: 'Cały czas tak samo szybko.', fb: 'Tak było przy wyłączonym silniku, w module 1. Teraz silnik pcha, więc prędkość rośnie.', mis: 'stala_v' },
+      { t: 'Coraz wolniej.', fb: 'Nic nie hamuje, a silnik pcha do przodu. Prędkość rośnie.', mis: 'stala_v' },
+    ],
+    reasons: [
+      { t: 'Silnik pcha, a nic nie hamuje. Siła się nie znosi, więc prędkość rośnie.', ok: true },
+      { t: 'W kosmosie rakieta zawsze leci tak samo szybko.', fb: 'Tylko wtedy, gdy nic jej nie pcha. Włączony silnik zmienia prędkość.', mis: 'stala_v' },
+      { t: 'Stała siła daje stałą prędkość.', fb: 'Stała siła sprawia, że prędkość cały czas rośnie, co sekundę o tyle samo.', mis: 'stala_v' },
+    ],
+    explain: 'Silnik wyłączony: rakieta leci cały czas tak samo szybko (I zasada). Silnik włączony: siła się nie znosi, więc rakieta leci coraz szybciej (II zasada). Kropki są coraz dalej od siebie.' },
+  b2: { concept: 'B', scene: 'tow', text: 'Holownik w kosmosie pcha przed sobą kontener. Silnik holownika cały czas pracuje. Nic nie hamuje. Jak lecą holownik i kontener?',
+    hint: 'Czy coś znosi siłę silnika?',
+    preds: [
+      { t: 'Coraz szybciej.', ok: true },
       { t: 'Cały czas tak samo szybko.', fb: 'Siła silnika się nie znosi, więc prędkość nie może być stała. Rośnie.', mis: 'stala_v' },
       { t: 'Coraz wolniej, bo kontener jest ciężki.', fb: 'Ciężki kontener rozpędza się wolniej, ale nadal coraz szybciej. Nic go nie hamuje.', mis: 'masa' },
     ],
     reasons: [
-      { t: 'Działa stała siła niezrównoważona, więc przyspieszenie jest stałe.', ok: true },
-      { t: 'Stała siła daje stałą prędkość.', fb: 'Stała siła daje stałe przyspieszenie. Prędkość co sekundę rośnie o tyle samo.', mis: 'stala_v' },
+      { t: 'Silnik pcha, a nic nie hamuje. Siła się nie znosi, więc prędkość rośnie.', ok: true },
+      { t: 'Stała siła daje stałą prędkość.', fb: 'Stała siła sprawia, że prędkość cały czas rośnie, co sekundę o tyle samo.', mis: 'stala_v' },
       { t: 'Kontener hamuje holownik.', fb: 'Kontener ma masę, więc całość rozpędza się wolniej. Ale nic jej nie hamuje.', mis: 'masa' },
     ],
     explain: 'Stała siła, która się nie znosi, daje ruch jednostajnie przyspieszony. Duża masa sprawia tylko, że przyspieszenie jest mniejsze.' },
@@ -2154,7 +2259,7 @@ function flyEnd() {
       const ol = document.createElement('ol'); ol.className = 'steps-sol';
       R.sol.forEach(s => { const li = document.createElement('li'); li.textContent = s; ol.append(li); }); fb.append(ol);
       add('Wpisz ten wynik i leć jeszcze raz.');
-    } else add('Policz jeszcze raz. Możesz zajrzeć do podpowiedzi.');
+    } else { add('Podpowiedź: ' + R.hint); add('Policz jeszcze raz.'); }
     const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Popraw liczbę';
     b.addEventListener('click', () => {
       fly.state = 'input'; fly.t = 0; fb.hidden = true;
