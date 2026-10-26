@@ -636,16 +636,16 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
         <div class="bigstars" id="endStars" aria-label="Gwiazdki"><i>★</i><i>★</i><i>★</i></div>
       </div>
       <p id="endXp" class="lead"></p>
-      <div class="patch" id="patch"><img src="img/naszywka-m3.jpg" alt="Naszywka „Akcja i reakcja”"><div><span class="label" id="patchLbl"></span><b>Akcja i reakcja</b><p id="patchTxt"></p></div></div>
-      <div class="say" id="say-end"></div>
-      <div class="report" id="report"></div>
       <div class="end-next">
         <div class="node active"><img class="ico" src="img/ikona-m4.jpg" alt=""><span class="n">Następny moduł, s. 174</span><b>Swobodne spadanie ciał</b><span class="src">wkrótce</span></div>
         <a class="btn ghost" href="dynamika-poziom2.html">Moduł 2</a>
         <button class="btn ghost" id="againBtn">Zagraj od nowa</button>
       </div>
+      <div class="say" id="say-end"></div>
+      <div class="report" id="report"></div>
      </div>
      <div class="col side">
+      <div class="patch" id="patch"><img src="img/naszywka-m3.jpg" alt="Naszywka „Akcja i reakcja”"><div><span class="label" id="patchLbl"></span><b>Akcja i reakcja</b><p id="patchTxt"></p></div></div>
       <div class="panel">
         <h3>Pojęcia</h3>
         <ul class="terms" id="endTerms"></ul>
@@ -678,6 +678,9 @@ const fmt = (n, d = 1) => n.toFixed(d).replace('.', ',');
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const MOD = 3; // numer modułu (wyniki i zapis gry w koncie)
+// tryb twórcy: włącza go tworca.js dla konta twórcy (fast = bez odliczania, ans = widać dobre odpowiedzi)
+const dev = { on: false, fast: false, ans: false, hist: [] };
+const devWait = n => dev.fast ? 1 : n;
 // konto gracza (konto.js); bez niego gra działa jak gość, tylko bez wznawiania
 const Konto = window.Konto || { bohater() {}, pojecia() {}, wynik() {}, zapisz() {}, wczytaj: () => null };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -1804,7 +1807,7 @@ function cardShow(phase) {
   $('#cQ').textContent = q.text;
   const box = $('#cOpts'); box.innerHTML = '';
   shuffle(q.opts.map((o, i) => ({ o, i }))).forEach(({ o, i }) => {
-    const b = document.createElement('button'); b.className = 'opt'; b.textContent = o.t; b.dataset.i = i; b.setAttribute('aria-pressed', 'false');
+    const b = document.createElement('button'); b.className = 'opt'; b.textContent = o.t; b.dataset.i = i; b.setAttribute('aria-pressed', 'false'); if (dev.on && o.ok) b.dataset.ok = '1';
     b.addEventListener('click', () => {
       if (cards.answered) return;
       box.querySelectorAll('.opt').forEach(x => x.setAttribute('aria-pressed', 'false'));
@@ -1815,7 +1818,7 @@ function cardShow(phase) {
   $('#cFb').hidden = true; $('#cNext').hidden = true; $('#cCheck').hidden = false;
   cardDots();
   // czas na przeczytanie karty: dłużej przy pierwszym pytaniu
-  let left = phase === 0 ? 6 : 4;
+  let left = devWait(phase === 0 ? 6 : 4);
   const btn = $('#cCheck'); btn.disabled = true; btn.textContent = `Przeczytaj kartę… ${left}`;
   clearInterval(cards.timer);
   cards.timer = setInterval(() => {
@@ -1856,7 +1859,7 @@ $('#cCheck').addEventListener('click', () => {
   const label = retry ? 'Inne pytanie' : (cards.i < cards.list.length - 1 ? 'Następne pojęcie' : 'Podsumowanie');
   if (o.ok) { nb.disabled = false; nb.textContent = label; }
   else {
-    let left = 4; nb.disabled = true; nb.textContent = `Przeczytaj wyjaśnienie… ${left}`;
+    let left = devWait(4); nb.disabled = true; nb.textContent = `Przeczytaj wyjaśnienie… ${left}`;
     const tm = setInterval(() => { left--; if (left <= 0) { clearInterval(tm); nb.disabled = false; nb.textContent = label; } else nb.textContent = `Przeczytaj wyjaśnienie… ${left}`; }, 1000);
   }
   nb.onclick = () => {
@@ -1880,6 +1883,7 @@ function termCounts() {
   return { ok: v.filter(x => x === 'ok').length, retry: v.filter(x => x === 'retry').length, weak: GLOS.filter(g => S.terms[g.id] === 'weak').map(g => g.term) };
 }
 function cardsSummary() {
+  devMark({ etap: 'cardsum', S: devS() });
   show('cardsum'); setStep('cards');
   const c = termCounts();
   if (!c.weak.length) { const [x, y] = center($('#csTitle')); burst(x, y, true); }
@@ -2294,7 +2298,7 @@ function nextQuestion() {
     const box = document.createElement('div'); box.className = 'group';
     if (title) { const h = document.createElement('h3'); h.textContent = title; box.append(h); }
     shuffle(list.map((o, i) => ({ o, i }))).forEach(({ o, i }) => {
-      const b = document.createElement('button'); b.className = 'opt'; b.textContent = o.t; b.dataset.slot = slot; b.dataset.i = i;
+      const b = document.createElement('button'); b.className = 'opt'; b.textContent = o.t; b.dataset.slot = slot; b.dataset.i = i; if (dev.on && o.ok) b.dataset.ok = '1';
       b.setAttribute('aria-pressed', 'false');
       b.addEventListener('click', () => {
         if (cur.answered) return;
@@ -2314,7 +2318,7 @@ function nextQuestion() {
     else { stopLoop(); requestAnimationFrame(() => { const { ctx, w, h } = fit($('#qCanvas'), 0.36, 200, 300); SCENES[q.scene](ctx, w, h, 0); }); }
   } else { stopLoop(); $('#qSceneWrap').hidden = true; }
   // czas na przeczytanie
-  let left = st.cfg.minRead;
+  let left = devWait(st.cfg.minRead);
   const btn = $('#qCheck'); btn.disabled = true; btn.textContent = `Przeczytaj uważnie… ${left}`;
   cur.timer = setInterval(() => {
     left--; if (left <= 0) { clearInterval(cur.timer); cur.ready = true; btn.textContent = 'Sprawdź'; updateCheck(); }
@@ -2384,7 +2388,7 @@ $('#qCheck').addEventListener('click', () => {
   const nb = $('#qNext'); nb.hidden = false;
   if (ok) { nb.disabled = false; nb.textContent = 'Dalej'; }
   else {
-    let left = 4; nb.disabled = true; nb.textContent = `Przeczytaj wyjaśnienie… ${left}`;
+    let left = devWait(4); nb.disabled = true; nb.textContent = `Przeczytaj wyjaśnienie… ${left}`;
     const tm = setInterval(() => { left--; if (left <= 0) { clearInterval(tm); nb.disabled = false; nb.textContent = 'Rozumiem, dalej'; } else nb.textContent = `Przeczytaj wyjaśnienie… ${left}`; }, 1000);
   }
   fb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -2440,7 +2444,7 @@ function flyRound() {
   $('#flyTask').textContent = R.task;
   $('#flyVar').textContent = R.ask + ' =';
   $('#flyUnit').textContent = R.unit;
-  const inp = $('#flyIn'); inp.value = ''; inp.disabled = false;
+  const inp = $('#flyIn'); inp.value = ''; inp.disabled = false; inp.placeholder = dev.ans ? String(R.ans).replace('.', ',') : '';
   $('#flyHint').hidden = true; $('#flyHint').textContent = R.hint; $('#flyHintBtn').hidden = false; $('#flyHintBtn').disabled = false;
   $('#flyFb').hidden = true; $('#flyGo').hidden = false; $('#flyGo').disabled = true; $('#flyNext').hidden = true;
   $('#flyStatus').textContent = 'Czekam na liczbę.';
@@ -2585,6 +2589,7 @@ document.addEventListener('keydown', e => {
 function load() { try { return JSON.parse(localStorage.getItem('orion-m3') || 'null'); } catch { return null; } }
 function save(r) { try { localStorage.setItem('orion-m3', JSON.stringify(r)); } catch {} }
 function endScreen() {
+  devMark({ etap: 'end', S: devS() });
   stopLoop(); show('end'); setStep('end'); setWorld(2);
   const n = starCount();
   $('#endTitle').textContent = n === 3 ? 'Powrót do śluzy w 100%!' : n > 0 ? 'Bezpiecznie w śluzie. Kilka rzeczy do poprawy' : 'Dolecieliśmy, ale temat trzeba powtórzyć';
@@ -2632,7 +2637,7 @@ function endScreen() {
   $('#patchTxt').textContent = earned ? 'Za zaliczenie modułu 3. Przypięta do skafandra!' : 'Zdobądź co najmniej 2 gwiazdki, a naszywka będzie Twoja.';
   if (earned && !RM) gsap.fromTo('#patch img', { scale: 0, rotation: -200 }, { scale: 1, rotation: 0, duration: 1.1, delay: .8 + n * .45, ease: 'back.out(1.8)', clearProps: 'transform' });
   const best = load();
-  if (!best || n > best.stars || (n === best.stars && S.xp > best.xp)) save({ stars: n, xp: S.xp, date: new Date().toISOString().slice(0, 10) });
+  if (!dev.on) if (!best || n > best.stars || (n === best.stars && S.xp > best.xp)) save({ stars: n, xp: S.xp, date: new Date().toISOString().slice(0, 10) });
   Konto.wynik(MOD, n, S.xp, JSON.parse(JSON.stringify(S)));
 }
 function resetAll() {
@@ -2658,7 +2663,7 @@ renderGlossary();
 
 // ---------- wznawianie przerwanej gry ----------
 // migawka { etap, S, … } powstaje na początku laboratorium, każdej karty, pytania i kroku etapu ★★★ (snap)
-function snap(etap, extra) { Konto.zapisz(MOD, { etap, S: JSON.parse(JSON.stringify(S)), ...extra }); }
+function snap(etap, extra) { const z = { etap, S: JSON.parse(JSON.stringify(S)), ...extra }; devMark(z); Konto.zapisz(MOD, z); }
 const STEP_NAME = { lab: 'Laboratorium', cards: 'Pojęcia', s1: '★ Pamiętam', s2: '★★ Rozumiem', s3: '★★★ Stosuję' };
 function resumeText(z) {
   let t = STEP_NAME[z.etap] || '';
@@ -2678,6 +2683,9 @@ function resumeGame(z) {
   try {
     Object.assign(S, JSON.parse(JSON.stringify(z.S || {})));
     $('#xp').textContent = S.xp; refreshStars(); renderGlossary();
+    if (z.etap === 'start') { devMark(z); stopLoop(); show('start'); setStep(''); setWorld(0); showBest(); showResume(); return; }
+    if (z.etap === 'cardsum') return (cards.list = cardList(), cardsSummary());
+    if (z.etap === 'end') return endScreen();
     if (z.etap === 'cards') return cardsStart(z.karta || 0);
     if (z.quiz && STAGES[z.quiz.key]) return enterQuiz({ ...z.quiz, cfg: STAGES[z.quiz.key] });
     if (z.lot != null) return flyStart(z.lot);
@@ -2693,7 +2701,45 @@ window.orion = { WD, lab, fly, S, tick(dt = 1 / 60) {
   if (loopFn) { loopT += dt; loopFn(loopT, dt); }
   worldFrame(dt);
 } };
+// ---------- tryb twórcy (panel z tworca.js, tylko konto twórcy) ----------
+// historia migawek (snap, podsumowanie pojęć, raport) do „Wstecz”; skoki używają tych samych wejść co wznawianie gry
+function devMark(z) {
+  if (!dev.on) return;
+  const c = JSON.stringify(z);
+  if (dev.hist.length && JSON.stringify(dev.hist[dev.hist.length - 1]) === c) return;
+  dev.hist.push(JSON.parse(c)); if (dev.hist.length > 40) dev.hist.shift();
+}
+const devS = () => JSON.parse(JSON.stringify(S));
+function devQuiz(key, id) {
+  const cfg = STAGES[key], i = cfg.ids.indexOf(id);
+  enterQuiz({ key, cfg, queue: (i >= 0 ? cfg.ids.slice(i) : [id]).map(q => ({ id: q, original: cfg.ids.includes(q) })), done: Math.max(0, i),
+    firstTry: 0, spare: (cfg.spare || []).slice(), variants: JSON.parse(JSON.stringify(cfg.variants || {})), tries: {} });
+}
+function devPlaces() {
+  const P = [], add = (grp, label, go) => P.push({ grp, label, go });
+  add('Ekrany', 'Start', () => resumeGame({ etap: 'start', S: devS() }));
+  add('Ekrany', 'Laboratorium', () => { resetAll(); labStart(); });
+  add('Ekrany', 'Laboratorium: wniosek', () => { resetAll(); labStart(); $('#labConclusion').hidden = false; $('#labShowConc').hidden = false; labConclude(true); });
+  add('Ekrany', 'Pojęcia: podsumowanie', () => resumeGame({ etap: 'cardsum', S: devS() }));
+  DEV_LEVEL.cards().forEach((g, i) => add('Pojęcia', `${i + 1}. ${g.term}`, () => cardsStart(i)));
+  for (const [key, cfg] of Object.entries(STAGES)) {
+    const extra = [...(cfg.spare || []), ...Object.values(cfg.variants || {}).flat()];
+    [...cfg.ids, ...extra].forEach(id => add(cfg.label, (cfg.ids.includes(id) ? '' : '(zapasowe) ') + Q[id].text, () => devQuiz(key, id)));
+  }
+  DEV_LEVEL.game().forEach(([label, go]) => add('Mini-gra ★★★', label, go));
+  [3, 2, 1, 0].forEach(n => add('Raport', `${'★'.repeat(n)}${'☆'.repeat(3 - n)}`, () => { S.stars = { s1: n > 0, s2: n > 1, s3: n > 2 }; refreshStars(); endScreen(); }));
+  return P;
+}
+window.orion.dev = {
+  enable() { dev.on = true; },
+  set(o) { dev.fast = !!o.fast; dev.ans = !!o.ans; document.body.classList.toggle('dev-ans', dev.ans); },
+  places: devPlaces,
+  canBack: () => dev.hist.length > 1,
+  back() { dev.hist.pop(); const z = dev.hist.pop(); if (z) resumeGame(z); },
+};
+const DEV_LEVEL = { cards: cardList, game: () => FLY.map((R, r) => [`Odcinek ${r + 1}: ${R.task}`, () => flyStart(r)]) };
 })();
 </script>
+<script src="tworca.js"></script>
 </body>
 </html>

@@ -3,7 +3,8 @@
 // Ten plik:
 //  - po zalogowaniu pobiera dane konta do localStorage (konto jest źródłem prawdy),
 //  - każdą zmianę wysyła do bazy przez kolejkę; bez sieci kolejka czeka i wysyła później,
-//  - dokłada przycisk konta w HUD i panel logowania (style z gry: .panel, .btn, .name-row).
+//  - dokłada przycisk konta w HUD i panel logowania (style z gry: .panel, .btn, .name-row),
+//  - rozpoznaje konto twórcy gry (Konto.tworca): wtedy nic nie zapisuje (zob. tworca.js).
 // Baza: supabase/migrations/20261019080154_konta_wyniki_zapisy.sql
 (() => {
 'use strict';
@@ -111,13 +112,23 @@ const ready = new Promise(ok => {
   const u = data.session && data.session.user;
   if (!u) return; // sesja wygasła: dane zostają lokalnie, kolejka czeka na ponowne logowanie
   sessionOk = true;
-  setUser({ id: u.id, nick: (u.user_metadata && u.user_metadata.nick) || (user && user.nick) || '' });
+  setUser({ id: u.id, nick: (u.user_metadata && u.user_metadata.nick) || (user && user.nick) || '', tworca: !!(user && user.tworca) });
+  await checkTworca();
   await flush();
   // dane z innego komputera: odśwież ekran startowy, jeśli gracz jeszcze nie zaczął grać
   if (!queue().length && await pull() && onStartScreen()) location.reload();
 }).catch(e => console.warn('Konto:', e && e.message || e)).finally(() => renderUI());
 
 function setUser(u) { user = u; LS.set('orion-konto', u); }
+// twórca gry (gracze.tworca, ustawiane tylko migracją): panel testowy z tworca.js, wyniki i postęp się nie zapisują.
+// Znacznik jest też w orion-konto, żeby panel był od razu po wczytaniu strony; serwer go potwierdza albo zdejmuje.
+async function checkTworca() {
+  const r = await sb.from('gracze').select('tworca').maybeSingle();
+  if (r.error) return;
+  const t = !!(r.data && r.data.tworca);
+  if (t !== !!user.tworca) setUser({ ...user, tworca: t });
+  dispatchEvent(new CustomEvent('orion-tworca'));
+}
 
 // ---------- logowanie, rejestracja, wylogowanie ----------
 const MSG = {
@@ -145,7 +156,7 @@ async function login(nick, pass) {
   // zalogowany widzi dane konta, a nie gościa
   LS.clearGame(); sessionOk = true;
   setUser({ id: data.user.id, nick: (data.user.user_metadata && data.user.user_metadata.nick) || nick });
-  try { await flush(); await pull(); } catch {}
+  try { await checkTworca(); await flush(); await pull(); } catch {}
   location.reload();
 }
 async function register(nick, pass) {
@@ -212,7 +223,7 @@ function renderUI(force) {
   drawn = state;
   if (inside) {
     box.innerHTML = `<div class="panel"><h2></h2>
-      <p>Wyniki, pojęcia i przerwana gra zapisują się na koncie. Zagrasz dalej na każdym komputerze.</p>
+      <p>${user.tworca ? 'Konto twórcy: panel „Twórca” w lewym dolnym rogu. Wyniki, pojęcia i przerwana gra się nie zapisują.' : 'Wyniki, pojęcia i przerwana gra zapisują się na koncie. Zagrasz dalej na każdym komputerze.'}</p>
       <p class="src" data-sync></p>
       <div class="actions"><button class="btn ghost" data-out>Wyloguj</button><button class="btn ghost" data-close>Zamknij</button></div></div>`;
     box.querySelector('h2').textContent = 'Grasz jako ' + user.nick;
@@ -259,13 +270,14 @@ renderUI();
 window.Konto = {
   ready,
   get nick() { return sessionOk && user ? user.nick : null; },
+  get tworca() { return !!(user && user.tworca); },
   bohater(h) { enqueue({ t: 'bohater', id: h.id, name: h.name }); },
   // cała lokalna mapa pojęć (orion-pojecia), już zapisana przez grę
-  pojecia() { const p = LS.get('orion-pojecia'); if (p && Object.keys(p).length) enqueue({ t: 'pojecia', rows: p }); },
+  pojecia() { if (this.tworca) return; const p = LS.get('orion-pojecia'); if (p && Object.keys(p).length) enqueue({ t: 'pojecia', rows: p }); },
   // ukończony moduł: wynik do historii; przerwana gra tego modułu znika (w bazie robi to trigger)
-  wynik(modul, gwiazdki, xp, raport) { LS.set('orion-zapis-m' + modul, null); enqueue({ t: 'wynik', modul, gwiazdki, xp, raport }); },
+  wynik(modul, gwiazdki, xp, raport) { if (this.tworca) return; LS.set('orion-zapis-m' + modul, null); enqueue({ t: 'wynik', modul, gwiazdki, xp, raport }); },
   // przerwana gra: migawka { etap, S, … } do wznowienia
-  zapisz(modul, stan) { LS.set('orion-zapis-m' + modul, stan); enqueue({ t: 'zapis', modul, stan }); },
+  zapisz(modul, stan) { if (this.tworca) return; LS.set('orion-zapis-m' + modul, stan); enqueue({ t: 'zapis', modul, stan }); },
   wczytaj(modul) { return LS.get('orion-zapis-m' + modul); },
   nickEmail,
 };
