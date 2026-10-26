@@ -119,6 +119,8 @@ p { margin: 0; max-width: 62ch; text-shadow: var(--shadow); }
 .lead { font-size: 20px; font-weight: 700; }
 .soft { color: var(--ash); }
 .label { font-weight: 800; font-size: 15px; color: var(--accent); text-shadow: var(--shadow); }
+/* ekran startowy: nad tytułem duży napis, jakie prawo jest tematem modułu */
+#scr-start .label { display: block; font-size: clamp(17px, 1.7vw, 24px); margin-bottom: 6px; }
 .panel { background: var(--veil); border-radius: 22px; padding: 20px 22px; display: grid; gap: 12px; min-width: 0; }
 .panel p, .panel li, .card p, .fb p, .exp span, .report li { text-shadow: none; }
 a { color: var(--accent); }
@@ -410,7 +412,7 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
 
 <div class="app">
   <header class="hud">
-    <span class="hud-title">Moduł 2: Przyspieszenie</span>
+    <span class="hud-title">Moduł 2: II zasada dynamiki Newtona</span>
     <div class="hero-tag" id="hudHero" hidden></div>
     <ol class="steps" id="steps">
       <li data-s="lab">Laboratorium</li>
@@ -441,14 +443,15 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
     <!-- START -->
     <section id="scr-start" class="split fill">
      <div class="col">
+      <span class="label">Moduł 2: II zasada dynamiki Newtona</span>
       <h1>Silniki do kalibracji!</h1>
       <p class="lead">Moduł 1 działa. Orion wie już, że w kosmosie nic go nie hamuje. Teraz trzeba ustawić siłę silników.</p>
       <p>Komputer nie wie, jak mocno pchać. Za słabo: statek się nie rozpędzi. Za mocno: przeciążenie. Żeby to policzyć, poznasz II zasadę dynamiki.</p>
       <p class="soft" id="m1note"></p>
       <div class="map" aria-label="Mapa modułów">
-        <a class="node done" href="dynamika-poziom1.html"><img class="ico" src="img/ikona-m1.jpg" alt=""><span class="n">Temat 24, s. 162</span><b>I zasada dynamiki, bezwładność</b><span class="n" id="m1stars"></span></a>
-        <div class="node active"><img class="ico" src="img/ikona-m2.jpg" alt=""><span class="n">Temat 25, s. 169</span><b>II zasada dynamiki</b></div>
-        <a class="node" href="dynamika-poziom3.html"><img class="ico" src="img/ikona-m3.jpg" alt=""><span class="n">Temat 27, s. 179</span><b>III zasada, odrzut</b></a>
+        <a class="node done" href="dynamika-poziom1.html"><img class="ico" src="img/ikona-m1.jpg" alt=""><span class="n">Temat 24, s. 162</span><b>I zasada dynamiki Newtona</b><span class="n" id="m1stars"></span></a>
+        <div class="node active"><img class="ico" src="img/ikona-m2.jpg" alt=""><span class="n">Temat 25, s. 169</span><b>II zasada dynamiki Newtona</b></div>
+        <a class="node" href="dynamika-poziom3.html"><img class="ico" src="img/ikona-m3.jpg" alt=""><span class="n">Temat 27, s. 179</span><b>III zasada dynamiki Newtona</b></a>
         <a class="node" href="dynamika-poziom4.html"><img class="ico" src="img/ikona-m4.jpg" alt=""><span class="n">Temat 26, s. 174</span><b>Swobodne spadanie ciał</b></a>
         <a class="node" href="dynamika-poziom5.html"><img class="ico" src="img/ikona-m5.jpg" alt=""><span class="n">Temat 28, s. 183</span><b>Opory ruchu</b></a>
         <div class="node locked"><img class="ico" src="img/ikona-m6.jpg" alt=""><span class="n">S. 190</span><b>Boss: powtórzenie działu</b></div>
@@ -629,7 +632,7 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
       </div>
       <p id="endXp" class="lead"></p>
       <div class="end-next">
-        <a class="node active" href="dynamika-poziom3.html"><img class="ico" src="img/ikona-m3.jpg" alt=""><span class="n">Następny moduł, s. 179</span><b>III zasada, odrzut</b><span class="src">Graj dalej →</span></a>
+        <a class="node active" href="dynamika-poziom3.html"><img class="ico" src="img/ikona-m3.jpg" alt=""><span class="n">Następny moduł, s. 179</span><b>III zasada dynamiki Newtona</b><span class="src">Graj dalej →</span></a>
         <a class="btn ghost" href="dynamika-poziom1.html">Moduł 1</a>
         <button class="btn ghost" id="againBtn">Zagraj od nowa</button>
       </div>
@@ -1035,13 +1038,13 @@ const GLOS_M1 = [
     formal: 'Siła tarcia działa między stykającymi się powierzchniami i przeciwdziała ruchowi ciała.',
     simple: 'Tarcie to siła, która hamuje. Działa zawsze w stronę przeciwną do ruchu. Na szorstkiej podłodze jest duże, na lodzie małe, a w kosmosie go nie ma.',
     example: 'Hulajnoga sama zwalnia i staje, jeśli przestaniesz się odpychać.' },
-  { id: 'zasada1', term: 'I zasada dynamiki Newtona',
+  { id: 'zasada1', term: 'I zasada dynamiki Newtona (zasada bezwładności)',
     formal: 'Jeżeli na ciało nie działa żadna siła lub działające siły się równoważą, to ciało pozostaje w spoczynku lub porusza się ruchem jednostajnym prostoliniowym.',
     simple: 'Jeśli nic ciała nie pcha i nic go nie hamuje (albo siły się znoszą), to: ciało, które stoi, dalej stoi. Ciało, które jedzie, jedzie dalej prosto i tak samo szybko.',
     example: 'Sonda w kosmosie z wyłączonymi silnikami leci dalej prosto i tak samo szybko, bo nic jej nie hamuje.' },
   { id: 'bezwladnosc', term: 'Bezwładność',
     formal: 'Bezwładność to właściwość ciał. Polega na tym, że ciało samo nie zmienia swojej prędkości. Do zmiany prędkości potrzebna jest siła.',
-    simple: 'Każde ciało jest trochę „uparte”. Jak stoi, to chce dalej stać. Jak jedzie, to chce dalej jechać tak samo szybko i w tę samą stronę.',
+    simple: 'Każde ciało jest trochę „uparte”. Jak stoi, to chce dalej stać. Jak jedzie, to chce dalej jechać tak samo szybko i w tę samą stronę. Uwaga: bezwładność to cecha ciała, a nie prawo. Prawo, które ją opisuje, to I zasada dynamiki Newtona. Dlatego nazywa się ją też zasadą bezwładności.',
     example: 'Autobus nagle hamuje, a Ty lecisz do przodu. Twoje ciało „chce” jechać dalej.' },
   { id: 'masa', term: 'Masa jako miara bezwładności',
     formal: 'Masa jest miarą bezwładności ciała. Im większa masa, tym większa bezwładność. Jednostką masy jest kilogram (1 kg).',
@@ -1126,7 +1129,7 @@ const TQ_M1 = {
       { t: 'Właściwością ciał: ciało samo nie zmienia swojej prędkości', ok: true },
       { t: 'Siłą, która pcha ciała do przodu', fb: 'Bezwładność to nie siła! To cecha ciała, jego „upór”.' },
       { t: 'Tym, że ciało stoi w miejscu', fb: 'Bezwładność ma też ciało, które jedzie. Ono chce jechać dalej tak samo szybko.' },
-      { t: 'Inną nazwą tarcia', fb: 'Tarcie to siła, która hamuje. Bezwładność to cecha ciała, a nie siła.' } ] },
+      { t: 'Prawem, które mówi, kiedy ciało stoi albo jedzie ruchem jednostajnym', fb: 'To prawo to I zasada dynamiki Newtona. Bezwładność to cecha ciała, którą to prawo opisuje.' } ] },
     { text: 'Strzepujesz wodę z mokrych rąk. Ręce nagle się zatrzymują, a krople lecą dalej. Dlaczego?', opts: [
       { t: 'Krople chcą dalej lecieć tak samo szybko. To bezwładność.', ok: true },
       { t: 'Ręce odpychają krople.', fb: 'Ręce się zatrzymują, a krople nie, bo nic ich nie zatrzymuje. To bezwładność, a nie odpychanie.' },
