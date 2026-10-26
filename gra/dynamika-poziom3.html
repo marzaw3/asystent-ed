@@ -919,7 +919,7 @@ const GLOS = [
     keys: { title: 'Jak to policzyć', formula: 'a = F : m', read: '„przyspieszenie równa się siła podzielona przez masę”',
       items: [['ta sama siła F', 'działa na oba ciała'], ['mała masa m', 'duże przyspieszenie a'], ['duża masa m', 'małe przyspieszenie a'],
         ['przykład', 'siła 50 N. Sanie 50 kg: a = 50 : 50 = 1 m/s². Sanie 100 kg: a = 50 : 100 = 0,5 m/s², czyli o połowę mniej.']] },
-    example: 'Pływaczka odpycha się od ściany basenu. Ściana pcha ją tak samo mocno. Ale ściana to cały budynek i cała Ziemia. Ich masa jest tak ogromna, że ruchu nie widać.' },
+    example: 'Stoisz na deskorolce i rzucasz do przodu ciężką piłkę. Piłka leci szybko do przodu, a Ty powoli odjeżdżasz do tyłu. Siły są tak samo duże, ale Ty masz większą masę niż piłka.' },
   { id: 'odrzut', term: 'Zjawisko odrzutu',
     formal: 'Odrzut to zjawisko, w którym ciało wyrzuca coś (np. gaz albo korek) w jedną stronę, a samo zaczyna poruszać się w przeciwną stronę. To przykład III zasady dynamiki.',
     simple: 'Coś wylatuje do tyłu, a Ty jedziesz do przodu. Wyrzucasz coś w jedną stronę, a ono odpycha Ciebie w drugą.',
@@ -979,10 +979,10 @@ const TQ = {
       { t: 'Oboje tak samo, bo siły są równe', fb: 'Siły są równe, ale masy nie. Mniejsza masa dostaje większe przyspieszenie.' },
       { t: 'Odjedzie tylko Ola', fb: 'Odjadą oboje, bo na każde z nich działa siła. Ola szybciej.' } ] },
     { text: 'Pływaczka odpycha się od ściany basenu. Ściana pcha ją tak samo mocno. Dlaczego nie widać, żeby basen się ruszył?', opts: [
-      { t: 'Basen jest połączony z Ziemią, a masa Ziemi jest ogromna', ok: true },
+      { t: 'Ściana dostaje pchnięcie, ale jest częścią Ziemi. Ziemia jest tak ciężka, że jej ruch jest za mały, żeby go zobaczyć.', ok: true },
       { t: 'Ściana nie działa na pływaczkę żadną siłą', fb: 'Działa! To właśnie ściana wypycha pływaczkę do przodu.' },
       { t: 'Siły się znoszą', fb: 'Te siły działają na różne ciała, więc się nie znoszą.' },
-      { t: 'Woda zatrzymuje basen', fb: 'Chodzi o masę. Basen razem z Ziemią ma tak ogromną masę, że jego ruchu nie widać.' } ] },
+      { t: 'Woda zatrzymuje basen', fb: 'Chodzi o masę. Żeby ruszyć ścianę, trzeba ruszyć całą Ziemię, a ona jest ogromnie ciężka.' } ] },
   ],
   odrzut: [
     { text: 'Na czym polega zjawisko odrzutu?', opts: [
@@ -2069,7 +2069,7 @@ const SCENES = {
       arrow(ctx, bx - 20, y - 62, bx + 60, y - 62, col('cyan'), 'powietrze pcha balon', { x: bx + 20, y: y - 80 });
     } else { txt(ctx, '?', bx + 140, y, col('amber'), 44, 'center', 900); txt(ctx, 'powietrze ucieka z balonu w lewo', 14, 18, col('muted'), 12, 'left', 700); }
   },
-  // pływaczka odpycha się od ściany basenu: ona odpływa, ściana (z Ziemią) stoi
+  // pływaczka odpycha się od ściany basenu: ona odpływa, ściana (z całą Ziemią) dostaje to samo pchnięcie, ale ruchu nie widać
   swimmer(ctx, w, h, t) {
     ctx.fillStyle = col('panel-2'); ctx.fillRect(0, 0, w, h);
     const run = loopRun(t, 3), u = w * .13, pushing = run > 0 && run < PUSH, water = h * .3, wall = w * .8;
@@ -2091,7 +2091,7 @@ const SCENES = {
       arrow(ctx, wall + 2, sy + 30, wall + 62, sy + 30, col('amber'), 'pływaczka pcha ścianę', { x: wall + 32, y: sy + 48 });
     }
     if (t === 0) txt(ctx, '?', w * .3, h * .5, col('amber'), 44, 'center', 900);
-    else txt(ctx, pushing ? 'siły tak samo duże, w przeciwne strony' : 'pływaczka odpływa; ściana z Ziemią ma ogromną masę, więc stoi', w * .4, h - 16, col('ink'), 13, 'center', 700);
+    else txt(ctx, pushing ? 'siły tak samo duże, w przeciwne strony' : 'ściana też jest pchnięta, ale razem z całą Ziemią: ruchu nie widać', w * .42, h - 16, col('ink'), 13, 'center', 700);
   },
   // rakieta w pustym kosmosie: gazy lecą do tyłu, rakieta przyspiesza do przodu
   rocket(ctx, w, h, t) {
@@ -2212,18 +2212,18 @@ const Q = {
     ],
     explain: 'Balon wypycha powietrze w lewo, a powietrze pcha balon w prawo. Tak samo działa silnik rakiety.' },
   c1: { concept: 'C', scene: 'swimmer', text: 'Pływaczka robi nawrót. Odpycha się stopami od ściany basenu. Co się dzieje?',
-    hint: 'Ściana jest połączona z budynkiem i z całą Ziemią.',
+    hint: 'Pamiętasz sanie z laboratorium? Cięższe odjeżdżały wolniej. A ściana basenu jest częścią całej Ziemi.',
     preds: [
       { t: 'Pływaczka odpływa od ściany, a ruchu ściany nie widać.', ok: true },
       { t: 'Pływaczka zostaje przy ścianie, bo siły się znoszą.', fb: 'Siły działają na różne ciała, więc się nie znoszą. Pływaczka odpływa.', mis: 'rownowaza' },
       { t: 'Ściana odsuwa się tak samo szybko jak pływaczka.', fb: 'Siły są równe, ale masa ściany z Ziemią jest ogromna.', mis: 'skutki' },
     ],
     reasons: [
-      { t: 'Ściana pcha pływaczkę tak samo mocno, jak ona ścianę. Ale ściana to cały budynek z Ziemią, a ich masa jest ogromna.', ok: true },
+      { t: 'Ściana też dostaje pchnięcie, ale razem z nią trzeba ruszyć całą Ziemię. Ziemia jest tak ciężka, że jej ruchu nie widać.', ok: true },
       { t: 'Siły pływaczki i ściany się znoszą.', fb: 'Te siły działają na różne ciała: jedna na ścianę, druga na pływaczkę. Nie znoszą się.', mis: 'rownowaza' },
       { t: 'Ściana nie działa żadną siłą, bo stoi.', fb: 'Działa! To właśnie ściana wypycha pływaczkę.', mis: 'tylko_jeden' },
     ],
-    explain: 'Siły są równe, ale działają na różne ciała. Pływaczka ma małą masę, więc odpływa. Ściana razem z Ziemią ma ogromną masę, więc jej ruchu nie widać.' },
+    explain: 'Siła działa naprawdę: pływaczka pcha ścianę, a ściana pływaczkę, tak samo mocno. Ale ściana jest wbudowana w ziemię. Żeby ją przesunąć, trzeba przesunąć całą Ziemię. Pamiętasz sanie? Cięższe odjeżdżały wolniej. Ziemia jest miliardy miliardów razy cięższa od pływaczki, więc rusza się tak malutko, że tego nie widać.' },
   c2: { concept: 'C', text: 'Koń ciągnie wóz. Według III zasady wóz ciągnie konia do tyłu tak samo mocno. Czy wóz może ruszyć?',
     hint: 'Na jakie ciało działa każda z tych dwóch sił?',
     preds: [
