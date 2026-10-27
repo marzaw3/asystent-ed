@@ -205,8 +205,9 @@ const glosBtn = document.getElementById('glosBtn');
 if (glosBtn) glosBtn.before(btn);
 const box = document.createElement('section');
 box.id = 'konto'; box.hidden = true;
-const glos = document.getElementById('glossary');
-if (glos) glos.after(box);
+// panel konta stoi nad ekranami gry (Słowniczek jest osobnym oknem, więc nie on wyznacza miejsce)
+const main = document.querySelector('main');
+if (main) main.before(box);
 const toggle = open => { box.hidden = !open; btn.setAttribute('aria-expanded', open); if (open) { renderUI(true); box.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
 btn.addEventListener('click', () => toggle(box.hidden));
 
@@ -270,6 +271,8 @@ renderUI();
 window.Konto = {
   ready,
   get nick() { return sessionOk && user ? user.nick : null; },
+  // gracz zapamiętany na tym komputerze (od razu po wczytaniu strony, zanim serwer potwierdzi sesję)
+  get gracz() { return user ? user.nick : null; },
   get tworca() { return !!(user && user.tworca); },
   bohater(h) { enqueue({ t: 'bohater', id: h.id, name: h.name }); },
   // cała lokalna mapa pojęć (orion-pojecia), już zapisana przez grę
