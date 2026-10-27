@@ -130,3 +130,91 @@ def test_settings_from_dict():
 def test_settings_from_dict_rejects_bad_values(bad):
     with pytest.raises(ValueError):
         LimitSettings.from_dict(bad)
+
+
+# --- should_handle_command (kanał poleceń) ------------------------------------
+
+from zasady import check_levels, should_handle_command  # noqa: E402
+
+OWNER = 42
+PLAYER = 7
+COMMANDS = 333
+
+
+def test_owner_on_command_channel_is_handled():
+    assert should_handle_command(False, OWNER, COMMANDS, COMMANDS, OWNER)
+
+
+def test_player_on_command_channel_is_skipped():
+    assert not should_handle_command(False, PLAYER, COMMANDS, COMMANDS, OWNER)
+
+
+def test_owner_on_other_channel_is_skipped():
+    assert not should_handle_command(False, OWNER, ASK, COMMANDS, OWNER)
+
+
+def test_bot_on_command_channel_is_skipped():
+    assert not should_handle_command(True, PLAYER, COMMANDS, COMMANDS, OWNER)
+    assert not should_handle_command(True, OWNER, COMMANDS, COMMANDS, OWNER)
+
+
+def test_no_owner_configured_means_nobody():
+    assert not should_handle_command(False, OWNER, COMMANDS, COMMANDS, None)
+
+
+# --- statystyki ---------------------------------------------------------------
+
+def test_stats_count_questions_and_players_without_ids():
+    limits, _ = make_limits(cooldown=0, per_player=2)
+    limits.check_and_count(1, NOON)
+    limits.check_and_count(1, NOON)
+    limits.check_and_count(2, NOON)
+    stats = limits.stats(NOON)
+    assert stats["pytania"] == 3
+    assert stats["gracze"] == 2
+    assert stats["gracze_na_limicie"] == 1
+    assert "1" not in str(stats.keys())
+
+
+def test_stats_start_from_zero_on_new_day():
+    limits, _ = make_limits(cooldown=0)
+    limits.check_and_count(1, NOON)
+    assert limits.stats(NOON + timedelta(days=1))["pytania"] == 0
+
+
+# --- check_levels (poziomy.json zmieniany przez Claude) -----------------------
+
+@pytest.fixture
+def wiedza(tmp_path):
+    folder = tmp_path / "wiedza"
+    folder.mkdir()
+    (folder / "poziom-1.md").write_text("# Poziom 1", encoding="utf-8")
+    (tmp_path / ".env").write_text("SEKRET=1", encoding="utf-8")
+    return folder
+
+
+def level(**changes):
+    data = {"numer": 1, "tytul": "Orion ma awarię!", "plik_wiedzy": "wiedza/poziom-1.md", "channel_id": ""}
+    data.update(changes)
+    return data
+
+
+def test_good_levels_have_no_errors(wiedza):
+    assert check_levels([level()], wiedza) == []
+
+
+@pytest.mark.parametrize("bad", ["../.env", ".env", "wiedza/../../.env", "wiedza/poziom-1.txt", "wiedza/sub/poziom-1.md"])
+def test_knowledge_file_outside_folder_is_rejected(wiedza, bad):
+    assert check_levels([level(plik_wiedzy=bad)], wiedza)
+
+
+def test_missing_knowledge_file_is_rejected(wiedza):
+    assert check_levels([level(plik_wiedzy="wiedza/poziom-7.md")], wiedza)
+
+
+def test_duplicate_number_and_bad_fields_are_rejected(wiedza):
+    assert check_levels([level(), level()], wiedza)
+    assert check_levels([level(numer="1")], wiedza)
+    assert check_levels([level(tytul="")], wiedza)
+    assert check_levels([level(channel_id="abc")], wiedza)
+    assert check_levels({"numer": 1}, wiedza)

@@ -77,25 +77,25 @@ def claude_args() -> list[str]:
     ]
 
 
-async def ask_claude(stdin_text: str) -> str:
+async def run_claude(args: list[str], stdin_text: str, cwd: Path, timeout: int) -> str:
+    """Uruchamia claude z podanymi argumentami; tekst idzie na stdin, wynik czytamy jako UTF-8."""
     program = find_claude()
     if program is None:
         raise AskError("Nie znaleziono programu claude. Sprawdź, czy Claude Code jest zainstalowany.")
 
-    EMPTY_DIR.mkdir(parents=True, exist_ok=True)
     process = await asyncio.create_subprocess_exec(
-        program, *claude_args(),
+        program, *args,
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
-        cwd=EMPTY_DIR,
+        cwd=cwd,
     )
     try:
-        out, err = await asyncio.wait_for(process.communicate(stdin_text.encode("utf-8")), TIMEOUT_SECONDS)
+        out, err = await asyncio.wait_for(process.communicate(stdin_text.encode("utf-8")), timeout)
     except asyncio.TimeoutError:
         process.kill()
         await process.wait()
-        raise AskError(f"Claude nie odpowiedział w {TIMEOUT_SECONDS} s.") from None
+        raise AskError(f"Claude nie odpowiedział w {timeout} s.") from None
 
     if process.returncode != 0:
         details = err.decode("utf-8", errors="replace").strip()[:300]
@@ -105,6 +105,12 @@ async def ask_claude(stdin_text: str) -> str:
     if not answer:
         raise AskError("Claude zwrócił pustą odpowiedź.")
     return answer
+
+
+async def ask_claude(stdin_text: str) -> str:
+    """Odpowiedź dla gracza: pusty folder roboczy, bez narzędzi."""
+    EMPTY_DIR.mkdir(parents=True, exist_ok=True)
+    return await run_claude(claude_args(), stdin_text, EMPTY_DIR, TIMEOUT_SECONDS)
 
 
 def split_message(text: str, limit: int = DISCORD_LIMIT) -> list[str]:

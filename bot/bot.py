@@ -13,17 +13,20 @@ from pathlib import Path
 import discord
 from dotenv import dotenv_values
 
-from odpowiedzi import AskError, ask_claude, build_input, pick_levels, split_message
-from zasady import LimitSettings, Limits, should_handle
+from odpowiedzi import AskError, ask_claude, build_input, pick_levels, run_claude, split_message
+from polecenia import OWNER_TIMEOUT_SECONDS, build_owner_input, owner_args, parse_command
+from zasady import LimitSettings, Limits, check_levels, should_handle, should_handle_command
 
 BOT_DIR = Path(__file__).resolve().parent
 REPO_DIR = BOT_DIR.parent
 ENV_FILE = REPO_DIR / ".env"
 POZIOMY_FILE = BOT_DIR / "poziomy.json"
+WIEDZA_DIR = BOT_DIR / "wiedza"
 USTAWIENIA_FILE = BOT_DIR / "ustawienia.json"
 STAN_DIR = BOT_DIR / "stan"
 KANALY_FILE = STAN_DIR / "kanaly.json"
 LIMITY_FILE = STAN_DIR / "limity.json"
+PAUZA_FILE = STAN_DIR / "pauza.json"
 
 ONLINE_MESSAGE = "Orion online - pytaj o fizykę!"
 CATEGORY_NAME = "Misja Orion"
@@ -34,9 +37,15 @@ MAX_PARALLEL = 2   # naraz najwyżej 2 wywołania Claude
 MAX_WAITING = 10   # i najwyżej 10 pytań w kolejce
 BUSY_MESSAGE = "Dużo pytań naraz, spróbuj za minutę."
 ERROR_MESSAGE = "Orion ma teraz kłopot z odpowiedzią. Spróbuj za chwilę."
+PAUSED_MESSAGE = "Orion ma teraz przerwę. Wróci niedługo - zapytaj trochę później!"
+OWNER_BUSY_MESSAGE = "Jeszcze pracuję nad poprzednią prośbą, spróbuj za chwilę."
 
 # Odpowiedź AI nie może nikogo oznaczyć (np. @everyone) - poza autorem pytania.
 REPLY_MENTIONS = discord.AllowedMentions(everyone=False, users=False, roles=False, replied_user=True)
+
+
+class ConfigError(Exception):
+    """Błąd w plikach bota - komunikat po polsku."""
 
 
 @dataclass(frozen=True)
@@ -85,12 +94,15 @@ def load_settings() -> Settings:
     if not token:
         fail("W pliku .env brakuje tokenu bota (DISCORD_TOKEN).")
 
-    return Settings(
+    settings = Settings(
         token=token,
         guild_id=read_id(values, "DISCORD_GUILD_ID", required=True),
         owner_id=read_id(values, "DISCORD_OWNER_ID", required=False),
         command_channel_id=read_id(values, "DISCORD_COMMAND_CHANNEL_ID", required=True),
     )
+    if settings.owner_id is None:
+        warn("Brak DISCORD_OWNER_ID w pliku .env - kanał poleceń nie będzie nikogo słuchał.")
+    return settings
 
 
 # --- pliki JSON (UTF-8) -------------------------------------------------------
@@ -101,7 +113,7 @@ def read_json(path: Path, default):
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as error:
-        fail(f"Plik {path.name} ma błąd w zapisie JSON (linia {error.lineno}): {error.msg}.")
+        raise ConfigError(f"Plik {path.name} ma błąd w zapisie JSON (linia {error.lineno}): {error.msg}.") from None
 
 
 def write_json(path: Path, data) -> None:
@@ -114,30 +126,27 @@ def write_json(path: Path, data) -> None:
 
 def load_levels() -> list[dict]:
     levels = read_json(POZIOMY_FILE, None)
-    if not isinstance(levels, list):
-        fail(f"Nie znaleziono listy poziomów w pliku {POZIOMY_FILE.name}.")
+    if levels is None:
+        raise ConfigError(f"Nie znaleziono pliku {POZIOMY_FILE.name}.")
+    errors = check_levels(levels, WIEDZA_DIR)
+    if errors:
+        raise ConfigError(f"Błędy w pliku {POZIOMY_FILE.name}:\n- " + "\n- ".join(errors))
     return levels
+
+
+def load_knowledge(levels: list[dict]) -> dict[int, str]:
+    """Treść plików wiedzy według numeru poziomu (ścieżki sprawdza wcześniej check_levels)."""
+    return {level["numer"]: (BOT_DIR / level["plik_wiedzy"]).read_text(encoding="utf-8") for level in levels}
 
 
 def load_limit_settings() -> LimitSettings:
     data = read_json(USTAWIENIA_FILE, None)
     if not isinstance(data, dict):
-        fail(f"Nie znaleziono ustawień w pliku {USTAWIENIA_FILE.name}.")
+        raise ConfigError(f"Nie znaleziono ustawień w pliku {USTAWIENIA_FILE.name}.")
     try:
         return LimitSettings.from_dict(data)
     except ValueError as error:
-        fail(f"Błąd w pliku {USTAWIENIA_FILE.name}: {error}")
-
-
-def load_knowledge(levels: list[dict]) -> dict[int, str]:
-    """Treść plików wiedzy według numeru poziomu."""
-    knowledge = {}
-    for level in levels:
-        path = BOT_DIR / level["plik_wiedzy"]
-        if not path.is_file():
-            fail(f"Brakuje pliku wiedzy {level['plik_wiedzy']} dla poziomu {level['numer']}.")
-        knowledge[level["numer"]] = path.read_text(encoding="utf-8")
-    return knowledge
+        raise ConfigError(f"Błąd w pliku {USTAWIENIA_FILE.name}: {error}") from None
 
 
 # --- pomocnicze ---------------------------------------------------------------
@@ -150,7 +159,7 @@ def slugify(text: str) -> str:
 
 
 def level_channel_name(level: dict) -> str:
-    return f"poziom-{level['numer']}-{slugify(level['tytul'])}"
+    return f"poziom-{level['numer']}-{slugify(level['tytul'])}"[:100]
 
 
 def level_topic(level: dict) -> str | None:
@@ -178,9 +187,11 @@ class Orion(discord.Client):
         self.started = False
 
         self.limits = Limits(limit_settings, read_json(LIMITY_FILE, {}), lambda state: write_json(LIMITY_FILE, state))
-        self.limit_notices: dict[int, float] = {}  # kiedy gracz ostatnio dostał info o limicie
+        self.limit_notices: dict[int, float] = {}  # kiedy gracz ostatnio dostał info o limicie / pauzie
         self.ai_slots = asyncio.Semaphore(MAX_PARALLEL)
         self.pending = 0  # pytania w kolejce + w trakcie odpowiedzi
+        self.paused = bool(read_json(PAUZA_FILE, {}).get("pauza"))
+        self.owner_busy = False
 
         self.levels: list[dict] = []
         self.knowledge: dict[int, str] = {}
@@ -197,18 +208,21 @@ class Orion(discord.Client):
 
         await self.setup_channels()
         self.load_question_channels()
+        if self.paused:
+            print("Odpowiedzi dla graczy są wstrzymane (!pauza). Wznowisz je poleceniem !wznow.")
         await self.send_online_message()
 
     # --- kanały ---------------------------------------------------------------
 
-    async def setup_channels(self) -> None:
+    async def setup_channels(self) -> list[discord.TextChannel]:
+        """Zakłada brakującą kategorię i kanały. Zwraca nowo założone kanały poziomów."""
         guild = self.get_guild(self.settings.guild_id)
         if guild is None:
             warn(
                 f"Bot nie jest na serwerze o ID {self.settings.guild_id}. "
                 "Sprawdź DISCORD_GUILD_ID i czy bot został dodany do serwera. Kanały nie zostały założone."
             )
-            return
+            return []
 
         try:
             category = discord.utils.get(guild.categories, name=CATEGORY_NAME)
@@ -217,29 +231,30 @@ class Orion(discord.Client):
                 print(f"Założono kategorię „{CATEGORY_NAME}”.")
 
             await self.setup_ask_channel(guild, category)
-            await self.setup_level_channels(guild, category)
+            return await self.setup_level_channels(guild, category)
         except discord.Forbidden:
             warn("Bot nie ma uprawnienia „Zarządzanie kanałami” na serwerze. Kanały nie zostały założone.")
         except discord.HTTPException as error:
             warn(f"Discord nie pozwolił założyć kanałów: {error}")
+        return []
 
     async def ensure_channel(
         self, guild: discord.Guild, category: discord.CategoryChannel, saved_id: int | None,
         name: str, topic: str, greeting: str,
-    ) -> discord.TextChannel:
-        """Zwraca kanał: zapisany, istniejący o tej nazwie albo nowo założony (z powitaniem)."""
+    ) -> tuple[discord.TextChannel, bool]:
+        """Zwraca (kanał, czy_nowy): zapisany, istniejący o tej nazwie albo nowo założony (z powitaniem)."""
         if saved_id and (channel := guild.get_channel(saved_id)):
-            return channel
+            return channel, False
 
         channel = discord.utils.get(category.text_channels, name=name)
         if channel is not None:
             print(f"Kanał #{name} już jest - zapisuję jego ID.")
-            return channel
+            return channel, False
 
         channel = await guild.create_text_channel(name, category=category, topic=topic)
         await channel.send(greeting)
         print(f"Założono kanał #{name} i wysłano powitanie.")
-        return channel
+        return channel, True
 
     async def setup_ask_channel(self, guild: discord.Guild, category: discord.CategoryChannel) -> None:
         state = read_json(KANALY_FILE, {})
@@ -248,7 +263,7 @@ class Orion(discord.Client):
             "Tutaj pytaj o wszystko z całej gry: zasady dynamiki Newtona, swobodne spadanie i opory ruchu.\n"
             f"{AI_NOTE}"
         )
-        channel = await self.ensure_channel(
+        channel, _ = await self.ensure_channel(
             guild, category, parse_channel_id(state.get(ASK_CHANNEL_NAME)),
             ASK_CHANNEL_NAME, "Pytania o fizykę z całej gry Misja Orion", greeting,
         )
@@ -256,8 +271,11 @@ class Orion(discord.Client):
             state[ASK_CHANNEL_NAME] = str(channel.id)
             write_json(KANALY_FILE, state)
 
-    async def setup_level_channels(self, guild: discord.Guild, category: discord.CategoryChannel) -> None:
+    async def setup_level_channels(
+        self, guild: discord.Guild, category: discord.CategoryChannel,
+    ) -> list[discord.TextChannel]:
         levels = load_levels()
+        created = []
         for level in levels:
             saved_id = parse_channel_id(level.get("channel_id"))
             if saved_id:
@@ -275,22 +293,26 @@ class Orion(discord.Client):
                 "Pytaj tu o pojęcia, wzory i sytuacje z tego poziomu gry.\n"
                 f"{AI_NOTE}"
             )
-            channel = await self.ensure_channel(
+            channel, is_new = await self.ensure_channel(
                 guild, category, None, level_channel_name(level),
                 f"Poziom {level['numer']}: {level['tytul']}", greeting,
             )
             level["channel_id"] = str(channel.id)
             write_json(POZIOMY_FILE, levels)
+            if is_new:
+                created.append(channel)
+        return created
 
     def load_question_channels(self) -> None:
-        """Kanały, na których bot odpowiada: #zapytaj-oriona i kanały poziomów."""
-        self.levels = load_levels()
-        self.knowledge = load_knowledge(self.levels)
+        """Wczytuje poziomy i wiedzę; ustala kanały, na których bot odpowiada graczom."""
+        levels = load_levels()
+        self.knowledge = load_knowledge(levels)
+        self.levels = levels
         self.ask_channel_id = parse_channel_id(read_json(KANALY_FILE, {}).get(ASK_CHANNEL_NAME))
-        channels = {parse_channel_id(level.get("channel_id")) for level in self.levels}
+        channels = {parse_channel_id(level.get("channel_id")) for level in levels}
         channels.add(self.ask_channel_id)
         channels.discard(None)
-        channels.discard(self.settings.command_channel_id)  # kanał poleceń - nie w tym kroku
+        channels.discard(self.settings.command_channel_id)  # kanał poleceń nie jest dla graczy
         self.question_channels = channels
         print(f"Odpowiadam na pytania na {len(channels)} kanałach.")
 
@@ -307,13 +329,28 @@ class Orion(discord.Client):
         except discord.HTTPException as error:
             warn(f"Nie udało się wysłać wiadomości: {error}")
 
-    # --- pytania graczy -------------------------------------------------------
+    # --- wiadomości -----------------------------------------------------------
 
     async def on_message(self, message: discord.Message) -> None:
-        if not should_handle(message.author.bot, message.channel.id, message.content, self.question_channels):
+        if message.channel.id == self.settings.command_channel_id:
+            if should_handle_command(
+                message.author.bot, message.author.id, message.channel.id,
+                self.settings.command_channel_id, self.settings.owner_id,
+            ):
+                await self.handle_owner(message)
             return
 
+        if should_handle(message.author.bot, message.channel.id, message.content, self.question_channels):
+            await self.handle_player(message)
+
+    # --- pytania graczy -------------------------------------------------------
+
+    async def handle_player(self, message: discord.Message) -> None:
         author_id = message.author.id
+        if self.paused:
+            await self.notify_once(message, PAUSED_MESSAGE)
+            return
+
         if self.pending >= MAX_PARALLEL + MAX_WAITING:
             log(f"#{message.channel} | gracz {author_id} | kolejka pełna")
             await message.reply(BUSY_MESSAGE, allowed_mentions=REPLY_MENTIONS)
@@ -322,7 +359,7 @@ class Orion(discord.Client):
         decision = self.limits.check_and_count(author_id, datetime.now())
         if not decision.allowed:
             log(f"#{message.channel} | gracz {author_id} | limit")
-            await self.notify_limit(message, decision.message)
+            await self.notify_once(message, decision.message)
             return
 
         levels = pick_levels(self.levels, message.channel.id, self.ask_channel_id)
@@ -346,8 +383,8 @@ class Orion(discord.Client):
         log(f"#{message.channel} | gracz {author_id} | pytanie {len(message.content.strip())} zn. | odpowiedź w {seconds:.1f} s")
         await self.send_answer(message, answer)
 
-    async def notify_limit(self, message: discord.Message, text: str) -> None:
-        """Info o limicie najwyżej raz na przerwę - żeby seria wiadomości nie dostała serii odpowiedzi."""
+    async def notify_once(self, message: discord.Message, text: str) -> None:
+        """Info o limicie lub pauzie najwyżej raz na przerwę - seria wiadomości nie dostaje serii odpowiedzi."""
         now = time.monotonic()
         last = self.limit_notices.get(message.author.id)
         if last is not None and now - last < self.limits.settings.cooldown_seconds:
@@ -364,6 +401,76 @@ class Orion(discord.Client):
         except discord.HTTPException as error:
             warn(f"Nie udało się wysłać odpowiedzi na #{message.channel}: {error}")
 
+    # --- kanał poleceń (tylko właściciel) -------------------------------------
+
+    async def handle_owner(self, message: discord.Message) -> None:
+        command = parse_command(message.content)
+        if command == "statystyki":
+            await message.reply(self.stats_text(), allowed_mentions=REPLY_MENTIONS)
+        elif command == "pauza":
+            self.set_paused(True)
+            await message.reply("Wstrzymałem odpowiedzi dla graczy. Wznowisz je poleceniem !wznow.", allowed_mentions=REPLY_MENTIONS)
+        elif command == "wznow":
+            self.set_paused(False)
+            await message.reply("Wznowiłem odpowiedzi dla graczy.", allowed_mentions=REPLY_MENTIONS)
+        elif message.content.strip():
+            await self.ask_owner_claude(message)
+
+    def set_paused(self, paused: bool) -> None:
+        self.paused = paused
+        write_json(PAUZA_FILE, {"pauza": paused})
+        log(f"kanał poleceń | odpowiedzi dla graczy {'wstrzymane' if paused else 'wznowione'}")
+
+    def stats_text(self) -> str:
+        stats = self.limits.stats(datetime.now())
+        return "\n".join([
+            f"**Statystyki z dnia {stats['dzien']}**",
+            f"Pytania dziś: {stats['pytania']} z {stats['limit_bota']} (limit bota)",
+            f"Gracze, którzy dziś pytali: {stats['gracze']}",
+            f"Gracze na dziennym limicie ({stats['limit_gracza']} pytań): {stats['gracze_na_limicie']}",
+            f"Przerwa między pytaniami gracza: {stats['przerwa_sekund']} s",
+            f"Pytania w kolejce lub w trakcie odpowiedzi: {self.pending}",
+            f"Odpowiedzi dla graczy: {'WSTRZYMANE (!wznow)' if self.paused else 'włączone'}",
+        ])
+
+    async def ask_owner_claude(self, message: discord.Message) -> None:
+        if self.owner_busy:
+            await message.reply(OWNER_BUSY_MESSAGE, allowed_mentions=REPLY_MENTIONS)
+            return
+
+        self.owner_busy = True
+        started = time.monotonic()
+        try:
+            await message.reply("Pracuję...", allowed_mentions=REPLY_MENTIONS)
+            async with message.channel.typing():
+                try:
+                    answer = await run_claude(
+                        owner_args(), build_owner_input(message.content), REPO_DIR, OWNER_TIMEOUT_SECONDS,
+                    )
+                except AskError as error:
+                    answer = f"Nie udało się: {error}"
+            log(f"kanał poleceń | prośba {len(message.content.strip())} zn. | odpowiedź w {time.monotonic() - started:.1f} s")
+            await self.send_answer(message, answer)
+            await self.refresh_after_owner(message.channel)
+        finally:
+            self.owner_busy = False
+
+    async def refresh_after_owner(self, channel: discord.abc.Messageable) -> None:
+        """Po rozmowie: wczytuje poziomy i wiedzę od nowa i zakłada kanały nowych poziomów."""
+        try:
+            load_knowledge(load_levels())  # najpierw sprawdzamy, czy pliki są w porządku
+        except (ConfigError, OSError) as error:
+            await channel.send(
+                f"Nie wczytałem zmian - zostaję przy poprzednich poziomach.\n{error}",
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return
+
+        created = await self.setup_channels()
+        self.load_question_channels()
+        for new_channel in created:
+            await channel.send(f"Założyłem kanał {new_channel.mention} i wysłałem na nim powitanie.")
+
 
 def main() -> None:
     # Polskie znaki w komunikatach także wtedy, gdy konsola Windows nie używa UTF-8.
@@ -371,13 +478,18 @@ def main() -> None:
     sys.stderr.reconfigure(encoding="utf-8")
 
     settings = load_settings()
-    # Błędy w plikach JSON zgłaszamy przed logowaniem, a nie w trakcie działania bota.
-    load_knowledge(load_levels())
-    limit_settings = load_limit_settings()
-    if not isinstance(read_json(KANALY_FILE, {}), dict):
-        fail(f"Plik {KANALY_FILE.name} powinien zawierać obiekt JSON, np. {{}}.")
-    if not isinstance(read_json(LIMITY_FILE, {}), dict):
-        fail(f"Plik {LIMITY_FILE.name} jest uszkodzony - usuń go, a liczniki zaczną się od zera.")
+    # Błędy w plikach bota zgłaszamy przed logowaniem, a nie w trakcie działania.
+    try:
+        load_knowledge(load_levels())
+        limit_settings = load_limit_settings()
+        if not isinstance(read_json(KANALY_FILE, {}), dict):
+            raise ConfigError(f"Plik {KANALY_FILE.name} powinien zawierać obiekt JSON, np. {{}}.")
+        if not isinstance(read_json(LIMITY_FILE, {}), dict):
+            raise ConfigError(f"Plik {LIMITY_FILE.name} jest uszkodzony - usuń go, a liczniki zaczną się od zera.")
+        if not isinstance(read_json(PAUZA_FILE, {}), dict):
+            raise ConfigError(f"Plik {PAUZA_FILE.name} jest uszkodzony - usuń go.")
+    except ConfigError as error:
+        fail(str(error))
 
     bot = Orion(settings, limit_settings)
     try:
