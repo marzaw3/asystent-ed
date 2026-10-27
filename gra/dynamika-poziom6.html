@@ -1,0 +1,2542 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Misja Orion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Manrope:wght@500;700;800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+/* Styl „Żywioły”: świat gry to obraz miejsca akcji + shader z ruchem (każdy moduł ma swój motyw, zob. THEMES w skrypcie).
+   UI leży na nim na półprzezroczystych podkładach. Akcent (--accent) to kolor wiodący modułu. */
+:root {
+  --plum: #140a1e;
+  --magma: #ff5a1f;
+  --ice: #a8e9ff;
+  --violet: #8f84ff;
+  --white: #ffffff;
+  --ash: #c9c2d6;
+  --accent: var(--magma);
+  --veil: rgba(20,10,30,.66);
+  --veil-2: rgba(20,10,30,.82);
+  --rim: rgba(255,255,255,.2);
+  --good: #74e8a0;
+  --wrong: #ff5a6a;
+  /* tokeny czytane przez sceny na canvasie (col()) */
+  --space: #140a1e;
+  --scene: rgba(20,10,30,.6);
+  --panel-2: rgba(20,10,30,.55);
+  --line: #3d2d52;
+  --ink: #ffffff;
+  --muted: #c9c2d6;
+  --amber: #ff7a3d;
+  --cyan: #a8e9ff;
+  --ok: #74e8a0;
+  --bad: #ff5a6a;
+  --floor: #3d2d52;
+  --crate: #ff9a3c;
+  --f-display: "Unbounded", "Arial Black", sans-serif;
+  --f-body: "Manrope", system-ui, sans-serif;
+  --f-mono: "Manrope", system-ui, sans-serif;
+  --shadow: 0 2px 2px rgba(20,10,30,.55), 0 0 28px rgba(20,10,30,.6);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; min-height: 100%; background: var(--plum); color: var(--white); }
+body { font-family: var(--f-body); font-size: 18px; line-height: 1.5; overflow-x: hidden; }
+
+/* warstwy: obrazy światów (0) → shader (1) → scrim (2) → UI (3) → cząsteczki (4) */
+#gl, #fx { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#gl { z-index: 1; }
+/* obrazy hangaru, lodowiska i kosmosu (img/); gdy są, shader rysuje na nich już tylko ruch i dodaje go jak światło */
+.art { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0; }
+.art i { position: absolute; inset: 0; background: center bottom / cover no-repeat; }
+.has-art #gl { mix-blend-mode: screen; }
+#fx { z-index: 4; pointer-events: none; }
+.scrim { position: fixed; inset: 0; z-index: 2; pointer-events: none;
+  background: linear-gradient(90deg, rgba(20,10,30,.5) 0%, rgba(20,10,30,.36) 60%, rgba(20,10,30,.28) 100%); }
+.flash { position: fixed; z-index: 2; left: 0; top: 0; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%;
+  background: var(--accent); pointer-events: none; opacity: 0; transform: scale(0); }
+
+/* cała szerokość ekranu; ekrany robocze to dwie kolumny (.split): co robisz | wyniki i pytania */
+.app { position: relative; z-index: 3; padding: 14px clamp(16px, 3vw, 48px) 16px; display: grid; gap: 16px; }
+
+/* HUD: jedna linia — tytuł, bohater, etapy, słowniczek, XP, gwiazdki */
+.hud { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 26px; font-weight: 700; text-shadow: var(--shadow); }
+.hud-title { font-family: var(--f-display); font-size: 15px; letter-spacing: -.01em; }
+.hero-tag { display: flex; align-items: center; gap: 8px; }
+.hero-tag svg { width: 36px; height: 36px; }
+.meters { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; }
+.meter { font-family: var(--f-display); font-size: 20px; font-variant-numeric: tabular-nums; display: inline-block; }
+.meter small { font-family: var(--f-body); font-size: 14px; color: var(--ash); margin-left: 4px; }
+.stars { font-size: 22px; letter-spacing: 3px; color: rgba(255,255,255,.28); }
+.stars .on { color: var(--accent); text-shadow: 0 0 12px var(--accent); }
+.glos-btn { font-weight: 700; font-size: 15px; padding: 8px 16px; border-radius: 999px; border: 0;
+  background: var(--veil); box-shadow: inset 0 0 0 2px var(--rim); }
+.glos-btn[aria-expanded="true"] { background: var(--white); color: var(--plum); box-shadow: none; }
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 15px; font-weight: 700; color: var(--ash); text-shadow: var(--shadow); }
+.steps li { padding-bottom: 3px; border-bottom: 3px solid transparent; }
+.steps li.cur { color: var(--white); border-color: var(--accent); }
+.steps li.done { color: var(--white); opacity: .7; }
+@media (max-width: 640px) { .meters { margin-left: 0; width: 100%; } }
+
+/* typografia */
+section { display: grid; gap: 16px; min-width: 0; }
+main > section { margin-top: 1vh; }
+.split { grid-template-columns: minmax(0, 1.6fr) minmax(340px, 1fr); gap: 16px clamp(20px, 2.6vw, 44px); align-items: start; }
+.split > .col { display: grid; gap: 14px; min-width: 0; align-content: start; }
+.split > .full { grid-column: 1 / -1; display: grid; gap: 10px; }
+.split > .stick { position: sticky; top: 12px; }
+@media (max-width: 900px) {
+  .split { grid-template-columns: 1fr; } .split > .stick { position: static; }
+  .split.fill { min-height: 0; }
+  /* start na telefonie: najpierw tytuł, potem wybór bohatera, mapa modułów na końcu */
+  #scr-start > .col:first-child { display: contents; }
+  #scr-start .map, #best { order: 2; }
+  /* selektory z „canvas#…” / „div.…”, bo reguły bazowe stoją niżej w arkuszu */
+}
+/* ekrany bez sceny (start, podsumowanie) wypełniają wysokość okna i stoją na środku */
+.split.fill { min-height: calc(100dvh - 120px); align-items: center; }
+.title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; }
+.title-row p { flex: 1 1 280px; font-size: 16px; }
+h2 .label { display: block; margin-bottom: 4px; font-family: var(--f-body); letter-spacing: 0; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
+.panel-text { background: var(--veil); border-radius: 18px; padding: 14px 18px; text-shadow: none; max-width: none; }
+h1, h2, h3 { font-family: var(--f-display); margin: 0; line-height: 1.05; text-wrap: balance; text-shadow: var(--shadow); }
+h1 { font-size: clamp(42px, 6.4vw, 104px); font-weight: 900; letter-spacing: -.035em; }
+h2 { font-size: clamp(22px, 2.3vw, 34px); font-weight: 900; letter-spacing: -.025em; }
+h3 { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+p { margin: 0; max-width: 62ch; text-shadow: var(--shadow); }
+.lead { font-size: 20px; font-weight: 700; }
+.soft { color: var(--ash); }
+.label { font-weight: 800; font-size: 15px; color: var(--accent); text-shadow: var(--shadow); }
+/* ekran startowy: nad tytułem duży napis, jakie prawo jest tematem modułu */
+#scr-start .label { display: block; font-size: clamp(17px, 1.7vw, 24px); margin-bottom: 6px; }
+.panel { background: var(--veil); border-radius: 22px; padding: 20px 22px; display: grid; gap: 12px; min-width: 0; }
+.panel p, .panel li, .card p, .fb p, .exp span, .report li { text-shadow: none; }
+a { color: var(--accent); }
+
+canvas.scene { display: block; width: 100%; border-radius: 20px; background: transparent; touch-action: none;
+  box-shadow: inset 0 0 0 2px var(--rim); }
+/* data-fit="css": wysokość sceny ustala CSS, fit() tylko ją odczytuje */
+
+
+/* przyciski */
+button { font: inherit; cursor: pointer; color: inherit; }
+button:focus-visible, input:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--white); outline-offset: 3px; }
+.btn { font-family: var(--f-display); font-weight: 700; font-size: 17px; padding: 14px 26px; border-radius: 999px;
+  border: 0; background: var(--accent); color: var(--plum); transition: transform .15s; }
+.btn:hover:not(:disabled) { transform: translateY(-2px); }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.btn.ghost { background: var(--veil); color: var(--white); box-shadow: inset 0 0 0 2px rgba(255,255,255,.35); }
+.btn.hold { min-width: 170px; font-size: 22px; padding: 18px 32px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.btn.hold.active { background: var(--white); transform: scale(.96); }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.actions .resume-info { flex-basis: 100%; margin: 0; }
+.seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.seg button { font-weight: 700; font-size: 17px; padding: 10px 18px; border-radius: 999px; border: 0;
+  background: var(--veil); box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); }
+.seg button[aria-pressed="true"] { background: var(--white); color: var(--plum); box-shadow: none; }
+
+ul.clean { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.src { font-size: 14px; color: var(--ash); }
+
+/* słowniczek: karta pojęcia = definicja do zeszytu + po prostu + przykład */
+.defs { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, max(340px, 23%)), 1fr)); align-items: start; }
+.def { background: var(--veil-2); border-radius: 16px; overflow: hidden; }
+.def summary { list-style: none; cursor: pointer; padding: 12px 18px; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.def summary::-webkit-details-marker { display: none; }
+.def summary b { font-family: var(--f-display); font-size: 17px; }
+.def summary span { font-size: 14px; color: var(--ash); }
+.def[open] summary span { visibility: hidden; }
+.def-body { padding: 0 18px 16px; display: grid; gap: 12px; }
+.def-row { display: grid; gap: 2px; }
+.def-row i { font-style: normal; font-weight: 800; font-size: 14px; color: var(--accent); }
+.def-row.formal p { border-left: 4px solid var(--accent); padding-left: 12px; }
+.def-row.simple p { font-size: 19px; font-weight: 700; }
+/* słowniczek w osobnym oknie: na górze wyszukiwarka, niżej każdy moduł jako rozwijana sekcja
+   w kolorze swojego świata (--mod), po rozwinięciu karty pojęć */
+.glos-dlg { position: fixed; inset: 0; z-index: 5; display: grid; place-items: start center; padding: max(16px, 5dvh) 16px 16px; background: rgba(10,5,18,.74); backdrop-filter: blur(6px); }
+.glos-box { width: min(1000px, 100%); max-height: calc(100dvh - max(16px, 5dvh) - 16px); display: flex; flex-direction: column; gap: 14px; padding: clamp(18px, 2.6vw, 30px);
+  border-radius: 26px; background: rgba(20,10,30,.95); box-shadow: inset 0 0 0 2px var(--accent), 0 20px 60px rgba(0,0,0,.6); }
+.glos-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.glos-head p { color: var(--ash); font-size: 15px; margin-right: auto; }
+.glos-x { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.1); color: var(--white); font-size: 20px; cursor: pointer; }
+.glos-x:hover { background: var(--accent); color: var(--plum); }
+.glos-search { display: flex; align-items: center; gap: 10px; padding: 0 18px; border-radius: 999px; background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 2px rgba(255,255,255,.18); }
+.glos-search:focus-within { box-shadow: inset 0 0 0 2px var(--accent); }
+.glos-search svg { flex: none; width: 22px; height: 22px; fill: none; stroke: var(--ash); stroke-width: 2.4; stroke-linecap: round; }
+.glos-search input { flex: 1; min-width: 0; border: 0; background: none; color: var(--white); font: inherit; font-weight: 700; font-size: 18px; padding: 12px 0; outline: none; }
+.glos-search input::placeholder { color: var(--ash); opacity: .8; }
+.glos-list { overflow-y: auto; display: grid; gap: 12px; align-content: start; padding-right: 4px; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.3) transparent; }
+.glos-mod { border-radius: 18px; background: rgba(255,255,255,.05); box-shadow: inset 6px 0 0 var(--mod); }
+.glos-mod[open] { background: rgba(255,255,255,.08); }
+.glos-mod > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px 16px; padding: 12px 18px 12px 22px; }
+.glos-mod > summary::-webkit-details-marker { display: none; }
+.glos-mod > summary img { width: 52px; height: 52px; border-radius: 50%; box-shadow: 0 0 0 2px var(--mod), 0 0 16px color-mix(in srgb, var(--mod) 55%, transparent); }
+.gm-t { display: grid; gap: 2px; min-width: 0; }
+.gm-t small { font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--mod); }
+.gm-t b { font-family: var(--f-display); font-size: clamp(18px, 1.8vw, 24px); line-height: 1.15; }
+.gm-c { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; color: var(--ash); white-space: nowrap; }
+.gm-c::after { content: "▾"; font-size: 22px; line-height: 1; color: var(--mod); transition: transform .25s; }
+.glos-mod[open] .gm-c::after { transform: rotate(180deg); }
+.glos-mod .defs { padding: 4px 18px 18px 22px; }
+.glos-mod .def-row i { color: var(--mod); }
+.glos-mod .def-row.formal p { border-left-color: var(--mod); }
+.glos-mod .def.hit { box-shadow: inset 0 0 0 2px var(--mod); }
+.glos-none { color: var(--ash); text-align: center; padding: 18px; }
+body.glos-open { overflow: hidden; }
+@media (max-width: 560px) {
+  .glos-mod > summary { grid-template-columns: auto minmax(0, 1fr); padding-left: 18px; }
+  .glos-mod > summary img { width: 42px; height: 42px; grid-row: span 2; }
+  .gm-c { grid-column: 2; }
+  .glos-head p { display: none; }
+}
+/* sztuczki: bohater w dymku pyta „pokazać Ci…?”, po kliknięciu okno z animacją krok po kroku */
+.tip-ask { display: flex; align-items: center; gap: 12px; justify-self: start; text-align: left; border: 0; padding: 4px 0; background: none; font-weight: 700; }
+.tip-ask svg { flex: none; filter: drop-shadow(0 4px 8px rgba(0,0,0,.45)); }
+.tip-ask .bubble { position: relative; display: grid; gap: 2px; padding: 10px 18px; border-radius: 18px; background: var(--white); color: var(--plum);
+  font-size: clamp(16px, 1.2vw, 19px); animation: tipPulse 2.4s ease-in-out infinite; }
+.tip-ask .bubble::before { content: ""; position: absolute; left: -8px; top: 50%; margin-top: -8px; border: 8px solid transparent; border-left: 0; border-right-color: var(--white); }
+.tip-ask .bubble b { font-family: var(--f-display); font-size: 13px; opacity: .65; }
+.tip-ask:hover .bubble { background: var(--accent); }
+.tip-ask:hover .bubble::before { border-right-color: var(--accent); }
+@keyframes tipPulse { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 35%, transparent); } }
+.tip-dlg { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 16px; background: rgba(10,5,18,.74); backdrop-filter: blur(6px); }
+.tip-box { width: min(760px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; display: grid; gap: 18px; padding: clamp(18px, 3vw, 34px);
+  border-radius: 26px; background: rgba(20,10,30,.94); box-shadow: inset 0 0 0 2px var(--accent), 0 20px 60px rgba(0,0,0,.6); }
+.tip-head { display: flex; align-items: center; gap: 12px; }
+.tip-head h2 { font-size: clamp(22px, 2.6vw, 32px); }
+#tipStage { display: grid; gap: 16px; min-height: 180px; align-content: start; }
+.tip-f { display: flex; flex-wrap: wrap; justify-content: center; font-family: var(--f-display); font-size: clamp(40px, 7vw, 76px); font-weight: 900; line-height: 1.1; }
+.tip-f span { display: inline-block; }
+.tip-f .sp { width: .35em; }
+.tip-f .hl, .tip-pic text.hl { color: var(--accent); fill: var(--accent); text-shadow: 0 0 22px var(--accent); }
+.tip-read { text-align: center; color: var(--ash); font-style: italic; max-width: none; text-shadow: none; }
+.tip-rows { margin: 0; display: grid; gap: 8px; }
+.tip-row { display: grid; grid-template-columns: minmax(70px, max-content) 1fr; gap: 4px 16px; align-items: baseline; padding: 10px 16px; border-radius: 14px; background: rgba(255,255,255,.05); opacity: .55; }
+.tip-row.on { opacity: 1; background: rgba(255,255,255,.1); box-shadow: inset 0 0 0 2px var(--accent); }
+.tip-row dt { font-family: var(--f-display); font-weight: 800; color: var(--accent); }
+.tip-row dd { margin: 0; font-weight: 700; font-size: clamp(17px, 1.3vw, 20px); }
+.tip-pic { display: flex; justify-content: center; }
+.tip-pic svg { width: min(100%, 440px); height: auto; overflow: visible; }
+.tip-trick { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px 28px; }
+.tip-trick svg { width: clamp(150px, 22vw, 200px); height: auto; color: var(--white); overflow: visible; }
+.tip-trick p { flex: 1 1 240px; max-width: 28ch; font-size: clamp(18px, 1.6vw, 22px); font-weight: 700; text-shadow: none; }
+.tip-trick p b { color: var(--accent); font-family: var(--f-display); white-space: nowrap; }
+.tip-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.tip-foot .dots { margin-right: auto; }
+body.tip-open { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .tip-ask .bubble { animation: none; } }
+
+.chip { justify-self: start; font-weight: 800; font-size: 14px; padding: 4px 12px; border-radius: 999px; box-shadow: inset 0 0 0 2px var(--rim); color: var(--ash); }
+.chip.new { background: var(--accent); color: var(--plum); box-shadow: none; }
+.dots { display: flex; gap: 8px; flex-wrap: wrap; }
+.dots i { width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(255,255,255,.4); }
+.dots i.cur { box-shadow: inset 0 0 0 3px var(--accent); }
+.dots i.ok { background: var(--good); box-shadow: none; }
+.dots i.retry { background: var(--ice); box-shadow: none; }
+.dots i.weak { background: var(--wrong); box-shadow: none; }
+.terms { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.terms li { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 16px; background: var(--veil); border-radius: 14px; }
+.terms li span { font-size: 15px; font-weight: 700; }
+.st-ok { color: var(--good); }
+.st-retry { color: var(--ice); }
+.st-weak { color: var(--wrong); }
+.def summary span.st-weak { visibility: visible !important; color: var(--wrong); }
+
+/* mapa modułów */
+.map { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.node { border-radius: 16px; padding: 16px 16px; display: grid; gap: 4px; align-content: start; background: var(--veil); min-width: 0; min-height: 92px; }
+.node .n { font-size: 13px; color: var(--ash); font-weight: 700; }
+.node b { font-family: var(--f-display); font-size: 14px; line-height: 1.2; }
+.node.active { box-shadow: inset 0 0 0 3px var(--accent); }
+.node.locked { opacity: .55; }
+a.node { color: inherit; text-decoration: none; }
+a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
+.node .ico { width: 64px; height: 64px; border-radius: 50%; margin-bottom: 6px; box-shadow: 0 0 0 2px var(--rim); }
+.node.active .ico { box-shadow: 0 0 0 2px var(--accent), 0 0 18px var(--accent); }
+.node.locked .ico { filter: grayscale(.85); }
+.node.done b::before { content: "✓ "; color: var(--good); }
+
+/* quiz: treść zadania bywa długa, więc lżejszy i mniejszy nagłówek niż na innych ekranach */
+#qText { font-size: clamp(22px, 2.4vw, 34px); font-weight: 700; line-height: 1.3; letter-spacing: -.015em; max-width: 30em; }
+.qhead { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 15px; font-weight: 700; color: var(--ash); text-shadow: var(--shadow); }
+.qhead .label { font-size: 15px; }
+.retry { font-weight: 800; color: var(--ice); text-shadow: var(--shadow); }
+.group { display: grid; gap: 10px; }
+.group h3 { font-size: 16px; color: var(--accent); }
+.opt { text-align: left; font-weight: 700; font-size: 18px; line-height: 1.4; padding: 14px 18px; border-radius: 16px; border: 0;
+  background: var(--veil); box-shadow: inset 0 0 0 2px rgba(255,255,255,.22); }
+.opt:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--white); }
+.opt[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--accent); background: var(--veil-2); }
+.opt.good { background: var(--accent); color: var(--plum); box-shadow: none; }
+.opt.bad { box-shadow: inset 0 0 0 3px var(--wrong); }
+.opt:disabled { cursor: default; }
+.hint { border-radius: 16px; padding: 12px 18px; background: var(--veil); box-shadow: inset 0 0 0 2px var(--ice); color: var(--ice); font-weight: 700; }
+.fb { border-radius: 20px; padding: 16px 20px; display: grid; gap: 8px; background: var(--veil-2); }
+.fb.good { box-shadow: inset 0 0 0 3px var(--good); }
+.fb.bad { box-shadow: inset 0 0 0 3px var(--wrong); }
+.fb .tag { font-family: var(--f-display); font-size: 22px; font-weight: 900; }
+.fb.good .tag { color: var(--good); }
+.fb.bad .tag { color: var(--wrong); }
+.xp-pop { font-family: var(--f-display); color: var(--accent); }
+
+/* bohater: wybór postaci, dymki */
+.heroes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.hero-opt { display: grid; justify-items: center; gap: 10px; padding: 18px 10px 14px; border-radius: 22px; border: 0;
+  background: var(--veil); box-shadow: inset 0 0 0 2px var(--rim); font-weight: 700; }
+.hero-opt svg { width: 104px; height: 104px; filter: drop-shadow(0 6px 10px rgba(0,0,0,.45)); }
+.hero-opt:hover { box-shadow: inset 0 0 0 2px var(--white); }
+.hero-opt[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--accent); background: var(--veil-2); }
+.hero-opt[aria-pressed="true"] svg { filter: drop-shadow(0 0 16px var(--accent)); }
+/* start: zalogowany gracz z wybranym bohaterem widzi kartę „Twój bohater” zamiast wyboru;
+   pod portretem naszywki: zdobyte w kolorze, brakujące jako puste miejsca z podpowiedzią */
+.hero-setup { display: contents; }
+.my-hero { display: grid; justify-items: center; gap: 10px; padding: 18px 16px; border-radius: 22px; text-align: center;
+  background: var(--veil-2); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); }
+.my-hero .ava { width: clamp(88px, 15dvh, 136px); height: auto; filter: drop-shadow(0 0 18px var(--accent)); }
+.mh-name { font-family: var(--f-display); font-size: clamp(24px, 2.4vw, 32px); line-height: 1.1; text-shadow: var(--shadow); }
+.mh-role { color: var(--ash); font-weight: 700; margin-top: -6px; }
+/* naszywki w jednym rzędzie, kolumny równej szerokości; na telefonie zawijają się */
+.mh-patches { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 12px; width: 100%; margin: 4px 0; }
+.mh-patch { display: grid; justify-items: center; align-content: start; gap: 8px; min-width: 0; font-size: 13px; font-weight: 700; line-height: 1.25; color: var(--ash); }
+.mh-patch img, .mh-patch i { width: min(100%, clamp(72px, 14dvh, 112px)); height: auto; aspect-ratio: 1; border-radius: 50%; }
+.mh-patch img { filter: drop-shadow(0 0 10px var(--accent)); }
+.mh-patch i { display: grid; place-items: center; font-style: normal; font-family: var(--f-display);
+  color: rgba(255,255,255,.4); border: 2px dashed rgba(255,255,255,.3); background: rgba(255,255,255,.04); font-size: clamp(22px, 2.4vw, 32px); }
+.mh-patch.got { color: var(--white); }
+@media (max-width: 560px) { .mh-patches { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.name-row { display: grid; gap: 6px; max-width: 340px; font-weight: 700; text-shadow: var(--shadow); }
+.name-row input { font: inherit; font-size: 20px; padding: 12px 16px; border-radius: 14px; border: 0; color: var(--white);
+  background: var(--veil-2); box-shadow: inset 0 0 0 2px rgba(255,255,255,.3); width: 100%; }
+.say { display: flex; gap: 12px; align-items: flex-start; }
+.say svg { flex: none; width: 60px; height: 60px; filter: drop-shadow(0 4px 8px rgba(0,0,0,.45)); }
+.say .bubble { background: var(--veil-2); border-radius: 18px; padding: 10px 16px; display: grid; gap: 2px; min-width: 0; }
+.say .bubble b { font-family: var(--f-display); font-size: 15px; color: var(--accent); }
+.say .bubble p { text-shadow: none; font-weight: 700; }
+
+
+/* naszywka za moduł: okrągły obraz; szara, dopóki nie ma 2 gwiazdek */
+.patch { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; }
+.patch img { width: clamp(96px, 12vw, 150px); height: auto; aspect-ratio: 1; border-radius: 50%; filter: drop-shadow(0 0 22px var(--accent)); }
+.patch b { display: block; font-family: var(--f-display); font-size: clamp(20px, 2vw, 28px); text-shadow: var(--shadow); }
+.patch p { color: var(--ash); }
+.patch.locked img { filter: grayscale(1) brightness(.6); }
+/* boss: arena walki (canvas) z nakładkami: życie Grawitora u góry, amunicja w lewym dolnym rogu, licznik dogrywki w prawym */
+.arena { position: relative; }
+#bossCanvas { height: clamp(320px, calc(100dvh - 120px), 900px); }
+#scr-boss.shoot #bossCanvas { cursor: none; }
+.hpbar { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: grid; justify-items: center; gap: 6px; pointer-events: none; text-shadow: var(--shadow); }
+.hpbar b { font-family: var(--f-display); font-size: clamp(15px, 1.4vw, 20px); }
+.hp { display: flex; gap: 5px; }
+.hp i { width: clamp(14px, 2vw, 28px); height: 12px; border-radius: 4px; background: var(--accent); box-shadow: 0 0 10px var(--accent); transition: background .3s, box-shadow .3s; }
+.hp i.off { background: rgba(255,255,255,.15); box-shadow: none; }
+.ammo { position: absolute; left: 12px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; max-width: 46%; }
+.ammo button { display: grid; justify-items: center; gap: 2px; min-width: 54px; padding: 6px 8px; border-radius: 14px; border: 0; background: var(--veil-2);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--c) 55%, transparent); font-family: var(--f-display); font-size: 15px; }
+.ammo button i { width: 18px; height: 18px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
+.ammo button[aria-pressed="true"] { background: rgba(20,10,30,.96); box-shadow: inset 0 0 0 3px var(--c), 0 0 16px color-mix(in srgb, var(--c) 60%, transparent); }
+.ammo button:disabled { opacity: .35; cursor: default; }
+.need { position: absolute; right: 12px; bottom: 12px; padding: 10px 18px; border-radius: 999px; background: var(--accent); color: var(--plum);
+  font-family: var(--f-display); font-weight: 700; font-size: clamp(14px, 1.3vw, 18px); pointer-events: none; }
+.boss-say { display: flex; gap: 12px; align-items: flex-start; }
+.boss-say svg { flex: none; width: 64px; height: 64px; filter: drop-shadow(0 0 10px rgba(255,77,46,.6)); }
+.boss-say .bubble { background: var(--veil-2); border-radius: 18px; padding: 10px 16px; display: grid; gap: 2px; min-width: 0; box-shadow: inset 0 0 0 2px var(--accent); }
+.boss-say .bubble b { font-family: var(--f-display); font-size: 15px; color: var(--accent); }
+.boss-say .bubble p { text-shadow: none; font-weight: 700; }
+#bText { font-size: clamp(20px, 1.8vw, 28px); font-weight: 700; line-height: 1.3; letter-spacing: -.01em; }
+#scr-boss .opt { font-size: clamp(16px, 1.15vw, 19px); padding: 12px 18px; }
+.am-info { box-shadow: inset 0 0 0 2px var(--c); }
+.am-name { font-family: var(--f-display); font-size: clamp(18px, 1.6vw, 24px); color: var(--c); }
+@media (max-width: 900px) {
+  #bossCanvas { height: clamp(300px, 88vw, 520px); }
+  /* przy pytaniach arena jest niska, żeby odpowiedzi były blisko */
+  #scr-boss:not(.shoot) #bossCanvas { height: clamp(170px, 46vw, 300px); }
+  .ammo button { min-width: 44px; font-size: 13px; }
+}
+/* raport */
+#endTitle { font-size: clamp(34px, 4.6vw, 72px); }
+.end-next { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.end-next .node { flex: 0 1 300px; }
+.end-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 28px; }
+.panel .terms li { background: rgba(255,255,255,.06); }
+.bigstars { display: flex; gap: 10px; font-size: clamp(56px, 10vw, 104px); line-height: 1; color: rgba(255,255,255,.2); }
+.bigstars i { font-style: normal; display: inline-block; }
+.bigstars .on { color: var(--accent); text-shadow: 0 0 24px var(--accent); }
+/* desktop: wszystko mieści się bez przewijania. Po lewej gwiazdki i XP, obok nich dymek bohatera
+   i następny moduł z przyciskami; pod spodem zwarty raport */
+@media (min-width: 901px) {
+  #scr-end > .col:first-child { grid-template-columns: auto minmax(0, 1fr); column-gap: clamp(20px, 2.4vw, 36px); align-items: center; }
+  #scr-end .end-head { display: contents; }
+  #endTitle { grid-column: 1 / -1; font-size: clamp(30px, min(4vw, 6.4dvh), 64px); }
+  #endStars { grid-column: 1; grid-row: 2; font-size: clamp(44px, min(5vw, 9dvh), 80px); }
+  #endXp { grid-column: 1; grid-row: 3; align-self: start; }
+  #scr-end .say { grid-column: 2; grid-row: 2; }
+  #scr-end .end-next { grid-column: 2; grid-row: 3; display: grid; grid-template-columns: minmax(0, 300px) auto; justify-content: start; gap: 10px 16px; }
+  #scr-end .end-next .btn { grid-column: 2; }
+  #scr-end .end-next .node { grid-row: 1 / span 2; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; align-content: center; }
+  #scr-end .end-next .node .ico { grid-row: 1 / span 3; width: 52px; height: 52px; margin: 0; align-self: center; }
+  #scr-end .report { grid-column: 1 / -1; padding: 14px 22px; gap: 4px 22px; }
+  #scr-end .report > svg { width: clamp(72px, 7vw, 110px); }
+  #scr-end .report h2 { font-size: clamp(22px, 2.4vw, 32px); }
+  #scr-end .report ul { gap: 4px; }
+}
+.report { display: grid; grid-template-columns: auto 1fr; gap: 10px 24px; align-items: start; padding: 22px 24px; border-radius: 22px;
+  background: var(--veil); }
+.report > svg { width: clamp(96px, 14vw, 140px); height: auto; grid-row: span 4; filter: drop-shadow(0 0 18px var(--accent)); }
+.report h2 { font-size: clamp(24px, 3.4vw, 38px); }
+.report .role { color: var(--ash); font-weight: 700; margin-top: -4px; }
+.report ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.report li { display: flex; gap: 10px; align-items: baseline; font-weight: 700; }
+.report li::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); transform: translateY(-1px); }
+@media (max-width: 560px) { .report { grid-template-columns: 1fr; } .report > svg { grid-row: auto; } }
+
+/* desktop: ekran mieści się w oknie. Prawa kolumna nie wychodzi poza okno; jeśli treści jest za dużo,
+   przewija się sama, a przyciski (Sprawdź / Dalej) zostają przyklejone na dole, zawsze widoczne */
+@media (min-width: 901px) {
+  .split > .col.side { position: sticky; top: 12px; max-height: calc(100dvh - 100px); overflow-y: auto; overscroll-behavior: contain;
+    scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.3) transparent; padding: 4px 6px 0 4px; margin: -4px -6px 0 -4px; }
+  .split > .col.side .actions { position: sticky; bottom: 0; z-index: 1; padding: 14px 0 10px; }
+  /* ciemny podkład pod przyciskami tylko wtedy, gdy kolumna naprawdę się przewija; inaczej odcinałby się od obrazu świata */
+  .split > .col.side.scrolls .actions { background: linear-gradient(rgba(20,10,30,0), rgba(20,10,30,.92) 38%); }
+}
+/* niskie okno (laptop): mniejsze odstępy, postacie i sceny, żeby wszystko weszło bez przewijania */
+@media (min-width: 901px) and (max-height: 860px) {
+  body { font-size: 16px; }
+  .app { padding-top: 8px; padding-bottom: 6px; gap: 10px; }
+  main > section { margin-top: 0; }
+  .split.fill { min-height: calc(100dvh - 80px); }
+  section, .split > .col { gap: 10px; }
+  h1 { font-size: clamp(36px, min(6.4vw, 11dvh), 104px); }
+  h2 { font-size: clamp(20px, min(2.3vw, 4.2dvh), 34px); }
+  .lead { font-size: 18px; }
+  .map { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .node { min-height: 0; padding: 10px 12px; }
+  .node .ico { width: 52px; height: 52px; margin-bottom: 2px; }
+  .heroes { gap: 8px; }
+  .hero-opt { padding: 10px 8px; gap: 4px; }
+  .hero-opt svg { width: clamp(48px, 9dvh, 80px); height: clamp(48px, 9dvh, 80px); }
+  .name-row input { font-size: 18px; padding: 8px 14px; }
+  .say svg { width: 44px; height: 44px; }
+  .say .bubble { padding: 8px 14px; }
+  .btn { padding: 11px 22px; font-size: 16px; }
+  .btn.hold { padding: 13px 26px; font-size: 19px; min-width: 140px; }
+  .seg button { padding: 7px 14px; font-size: 16px; }
+  .opt, #scr-boss .opt { padding: 10px 16px; font-size: 16px; }
+  .panel { padding: 14px 18px; gap: 8px; }
+  #bossCanvas { height: clamp(260px, calc(100dvh - 90px), 900px); }
+  .fb { padding: 12px 16px; gap: 6px; }
+  .fb .tag { font-size: 19px; }
+  .bigstars { font-size: clamp(44px, min(10vw, 12dvh), 104px); }
+  .report { padding: 16px 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="art" id="art" aria-hidden="true"><i></i><i></i><i></i></div>
+<canvas id="gl" aria-hidden="true"></canvas>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="scrim" aria-hidden="true"></div>
+<div class="flash" id="flash" aria-hidden="true"></div>
+
+<div class="app">
+  <header class="hud">
+    <span class="hud-title">Boss: powtórzenie działu</span>
+    <div class="hero-tag" id="hudHero" hidden></div>
+    <ol class="steps" id="steps">
+      <li data-s="r1">Runda 1</li>
+      <li data-s="r2">Runda 2</li>
+      <li data-s="r3">Runda 3</li>
+      <li data-s="r4">Runda 4</li>
+      <li data-s="r5">Runda 5</li>
+      <li data-s="extra">Dogrywka</li>
+      <li data-s="end">Raport</li>
+    </ol>
+    <div class="meters">
+      <button class="glos-btn" id="glosBtn" aria-expanded="false" aria-controls="glossary">Słowniczek</button>
+      <div class="meter" id="xpBox"><span id="xp">0</span><small>XP</small></div>
+      <div class="stars" id="hudStars" aria-label="Gwiazdki"><i>★</i><i>★</i><i>★</i></div>
+    </div>
+  </header>
+
+  <main>
+    <!-- START -->
+    <section id="scr-start" class="split fill">
+     <div class="col">
+      <span class="label">Boss: powtórzenie działu „Dynamika”</span>
+      <h1>Ostatnia bitwa</h1>
+      <p class="lead">Orion jest naprawiony i leci do domu. Ale na polu asteroid czeka Grawitor, kamienny strażnik. Przepuści nas tylko wtedy, gdy go pokonamy.</p>
+      <p>Grawitor zada pytania z całego działu: po dwa z każdego modułu. Każda dobra odpowiedź to pocisk do kosmicznej spluwy. Celuj i strzelaj!</p>
+      <p class="soft" id="prevNote"></p>
+      <div class="map" aria-label="Mapa modułów">
+        <a class="node done" href="dynamika-poziom1.html"><img class="ico" src="img/ikona-m1.jpg" alt=""><span class="n">Temat 24, s. 162</span><b>I zasada dynamiki Newtona</b><span class="n" id="m1stars"></span></a>
+        <a class="node done" href="dynamika-poziom2.html"><img class="ico" src="img/ikona-m2.jpg" alt=""><span class="n">Temat 25, s. 169</span><b>II zasada dynamiki Newtona</b><span class="n" id="m2stars"></span></a>
+        <a class="node done" href="dynamika-poziom3.html"><img class="ico" src="img/ikona-m3.jpg" alt=""><span class="n">Temat 27, s. 179</span><b>III zasada dynamiki Newtona</b><span class="n" id="m3stars"></span></a>
+        <a class="node done" href="dynamika-poziom4.html"><img class="ico" src="img/ikona-m4.jpg" alt=""><span class="n">Temat 26, s. 174</span><b>Swobodne spadanie ciał</b><span class="n" id="m4stars"></span></a>
+        <a class="node done" href="dynamika-poziom5.html"><img class="ico" src="img/ikona-m5.jpg" alt=""><span class="n">Temat 28, s. 183</span><b>Opory ruchu</b><span class="n" id="m5stars"></span></a>
+        <div class="node active"><img class="ico" src="img/ikona-m6.jpg" alt=""><span class="n">S. 190</span><b>Boss: powtórzenie działu</b></div>
+      </div>
+      <p class="src" id="best"></p>
+     </div>
+     <div class="col side">
+      <div class="my-hero" id="myHero" hidden>
+        <span class="label">Twój bohater</span>
+        <div id="mhAva"></div>
+        <b class="mh-name" id="mhName"></b>
+        <span class="mh-role" id="mhRole"></span>
+        <div class="mh-patches" id="mhPatches" role="list" aria-label="Naszywki"></div>
+        <button class="btn ghost" id="heroChange">Zmień</button>
+      </div>
+      <div class="hero-setup" id="heroSetup">
+      <h3>Wybierz bohatera</h3>
+      <div class="heroes" id="heroPick" role="group" aria-label="Bohater"></div>
+      <label class="name-row">Jak ma na imię?
+        <input id="heroName" maxlength="14" autocomplete="off" placeholder="Wpisz imię">
+      </label>
+      <button class="btn ghost" id="heroDone" hidden>Gotowe</button>
+      </div>
+      <div class="say" id="say-start" hidden></div>
+      <div class="actions"><p class="src resume-info" id="resumeInfo" hidden></p><button class="btn" id="resumeBtn" hidden>Wznów grę</button><button class="btn" id="startBtn">Do walki!</button></div>
+     </div>
+    </section>
+
+    <!-- WALKA Z BOSSEM: arena (Grawitor, ręce ze spluwą, celownik) | rozmowa z Grawitorem, pytania, opis pocisku -->
+    <section id="scr-boss" class="split" hidden>
+     <div class="col stick">
+      <div class="arena">
+        <canvas class="scene" id="bossCanvas" data-fit="css" aria-label="Walka z Grawitorem: celuj i strzelaj"></canvas>
+        <div class="hpbar"><b>Grawitor</b><div class="hp" id="hp" aria-label="Życie Grawitora"></div></div>
+        <div class="ammo" id="ammo" role="group" aria-label="Amunicja"></div>
+        <div class="need" id="need" hidden></div>
+      </div>
+     </div>
+     <div class="col side">
+      <div class="qhead"><span class="label" id="bRound"></span><span id="bCount"></span></div>
+      <div class="boss-say" id="bSay"></div>
+      <div class="group" id="bQ" hidden>
+        <h2 id="bText"></h2>
+        <div class="group" id="bOpts"></div>
+      </div>
+      <div class="fb" id="bFb" hidden></div>
+      <div class="panel am-info" id="bShoot" hidden>
+        <b class="am-name" id="amName"></b>
+        <p id="amInfo"></p>
+        <p class="src" id="amLeft"></p>
+      </div>
+      <div class="say" id="say-boss" hidden></div>
+      <div class="actions">
+        <button class="btn" id="bCheck" hidden disabled>Sprawdź</button>
+        <button class="btn" id="bNext" hidden>Dalej</button>
+      </div>
+     </div>
+    </section>
+
+    <!-- RAPORT -->
+    <section id="scr-end" class="split" hidden>
+     <div class="col">
+      <div class="end-head">
+        <h1 id="endTitle">Grawitor pokonany!</h1>
+        <div class="bigstars" id="endStars" aria-label="Gwiazdki"><i>★</i><i>★</i><i>★</i></div>
+      </div>
+      <p id="endXp" class="lead"></p>
+      <div class="end-next">
+        <div class="node active"><img class="ico" src="img/ikona-m6.jpg" alt=""><span class="n">Dział „Dynamika”</span><b>Wszystkie moduły za Tobą!</b><span class="src">tematy 24–28</span></div>
+        <a class="btn ghost" href="dynamika-poziom5.html">Moduł 5</a>
+        <button class="btn ghost" id="againBtn">Zagraj od nowa</button>
+      </div>
+      <div class="say" id="say-end"></div>
+      <div class="report" id="report"></div>
+     </div>
+     <div class="col side">
+      <div class="patch" id="patch"><img src="img/naszywka-m6.jpg" alt="Naszywka „Pogromca bossa”"><div><span class="label" id="patchLbl"></span><b>Pogromca bossa</b><p id="patchTxt"></p></div></div>
+      <div class="panel">
+        <h3>Moduły</h3>
+        <ul class="terms" id="endTerms"></ul>
+      </div>
+      <div class="panel" id="endMisWrap">
+        <h3>Do powtórki</h3>
+        <ul class="clean" id="endMis"></ul>
+      </div>
+     </div>
+    </section>
+  </main>
+</div>
+
+<!-- Słowniczek: osobne okno (przycisk w HUD); przed oknem sztuczki, żeby sztuczka otwarta ze Słowniczka była na wierzchu -->
+<div class="glos-dlg" id="glossary" role="dialog" aria-modal="true" aria-labelledby="glosTitle" hidden>
+  <div class="glos-box">
+    <div class="glos-head">
+      <h2 id="glosTitle">Słowniczek</h2>
+      <p>Definicję warto zapisać w zeszycie.</p>
+      <button class="glos-x" id="glosClose" aria-label="Zamknij Słowniczek">✕</button>
+    </div>
+    <label class="glos-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+      <input id="glosSearch" type="search" placeholder="Szukaj pojęcia, np. siła" autocomplete="off" aria-label="Szukaj pojęcia"></label>
+    <div class="glos-list" id="glosList"></div>
+    <p class="glos-none" id="glosNone" hidden>Nic nie znaleziono. Spróbuj krótszego słowa.</p>
+  </div>
+</div>
+
+<!-- okno sztuczki (otwiera dymek bohatera na karcie pojęcia albo w Słowniczku) -->
+<div class="tip-dlg" id="tipDlg" role="dialog" aria-modal="true" aria-labelledby="tipTitle" hidden>
+  <div class="tip-box">
+    <div class="tip-head"><span id="tipAva"></span><h2 id="tipTitle"></h2></div>
+    <div id="tipStage"></div>
+    <div class="tip-foot"><div class="dots" id="tipDots" aria-hidden="true"></div><button class="btn ghost" id="tipAgain">Od początku</button><button class="btn" id="tipNext">Dalej</button></div>
+  </div>
+</div>
+
+<script src="konto.js?v=2"></script>
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const css = getComputedStyle(document.documentElement);
+const col = n => css.getPropertyValue('--' + n).trim();
+const fmt = (n, d = 1) => n.toFixed(d).replace('.', ',');
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const MOD = 6; // numer modułu (6 = boss) (wyniki i zapis gry w koncie)
+// tryb twórcy: włącza go tworca.js dla konta twórcy (fast = bez odliczania, ans = widać dobre odpowiedzi)
+const dev = { on: false, fast: false, ans: false, hist: [] };
+const devWait = n => dev.fast ? 1 : n;
+// konto gracza (konto.js); bez niego gra działa jak gość, tylko bez wznawiania
+const Konto = window.Konto || { bohater() {}, pojecia() {}, wynik() {}, zapisz() {}, wczytaj: () => null };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ========== ŚWIAT: shader tła + cząsteczki + efekty ==========
+// motyw modułu: każdy moduł dzieje się w innym miejscu (tło, kolor wiodący, efekty shadera, wybuchy).
+// mode shadera: 0 hangar (żar, iskry), 1 lód (mgiełka, śnieg z wiatrem), 2 kosmos (mgławica w kolorach ta/tb), 3 zmierzch (wiatr, opadające drobinki), 4 lawa (żarzące się okruchy)
+const THEMES = {
+  1: { art: 'img/swiat-orbita.jpg', accent: '#f2c14e', mode: 2, ta: [.2, .35, .9], tb: [1, .72, .3], burst: 'gold' },
+  2: { art: 'img/swiat-hangar.jpg', accent: '#ff5a1f', mode: 0, ta: [0, 0, 0], tb: [0, 0, 0], burst: 'spark' },
+  3: { art: 'img/swiat-kosmos.jpg', accent: '#a99bff', mode: 2, ta: [.36, .29, 1], tb: [.9, .3, .6], burst: 'dust' },
+  4: { art: 'img/swiat-poligon.jpg', accent: '#58e0a0', mode: 3, ta: [0, 0, 0], tb: [0, 0, 0], burst: 'mint' },
+  5: { art: 'img/swiat-lod.jpg', accent: '#a8e9ff', mode: 1, ta: [0, 0, 0], tb: [0, 0, 0], burst: 'crystal' },
+  6: { art: 'img/swiat-asteroidy.jpg', accent: '#ff4d2e', mode: 4, ta: [0, 0, 0], tb: [0, 0, 0], burst: 'lava' },
+};
+const THEME = THEMES[MOD];
+document.documentElement.style.setProperty('--accent', THEME.accent);
+// stan świata = uniformy shadera; calm 0..1 przygasza świat (spokojne czytanie kart pojęć)
+const WD = { calm: 0, heat: 0, tone: 0, dark: 1, img: 0, shock: { x: .5, y: .5, r: 0, s: 0 } };
+const VS = `attribute vec2 a; void main(){ gl_Position = vec4(a, 0., 1.); }`;
+const FS = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform float u_time; uniform vec2 u_res; uniform float u_mode;
+uniform vec4 u_shock;   // x,y środek (0..1), z promień, w siła
+uniform float u_heat;   // 0..1, rośnie przy pchaniu / pracy silnika
+uniform float u_tone;   // 0..1, czerwony ton po błędzie
+uniform float u_dark;   // 1 = czerń (start), 0 = pełne światło
+uniform float u_calm;   // 0..1, przygaszenie przy spokojnym czytaniu
+uniform float u_img;    // 1 = pod spodem leży obraz świata: bez własnego tła, sam ruch na czarnym (canvas w trybie screen)
+uniform vec3 u_ta; uniform vec3 u_tb;   // kolory mgławicy (tryb kosmos)
+
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.-2.*f);
+  return mix(mix(hash(i), hash(i+vec2(1,0)), f.x), mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y); }
+float fbm(vec2 p){ float v = 0., a = .5; for (int i = 0; i < 5; i++){ v += a*noise(p); p = p*2.03 + vec2(1.7, 9.2); a *= .5; } return v; }
+// drobiny: jedna kropka w co drugiej komórce siatki
+float dots(vec2 p, float size){ vec2 i = floor(p), f = fract(p); vec2 c = vec2(hash(i+1.3), hash(i+7.1));
+  return smoothstep(size, 0., length(f-c)) * step(.5, hash(i)); }
+
+// Hangar: żar od dołu, rozgrzane powietrze, iskry lecące w górę
+vec3 hangar(vec2 uv, float t){
+  vec2 p = uv; p.x += sin(p.y*18. + t*3.) * (.004 + .02*u_heat);
+  float glow = pow(1.-p.y, 2.2);
+  float n = fbm(p*vec2(3., 2.) + vec2(0., -t*.25));
+  vec3 c = mix(vec3(.08,.04,.12), vec3(1.,.35,.12), glow*(.45+.55*n)*(.8+u_heat));
+  // na obrazie: zamiast tła tylko falujący żar przy podłodze, iskry gęstsze nisko
+  c = mix(c, vec3(1.,.35,.12) * pow(glow, 1.6) * n * (.22 + .6*u_heat), u_img);
+  float e = dots(vec2(p.x*40., p.y*40. - t*4.), .08) + dots(vec2(p.x*22.+5., p.y*22. - t*2.5), .07);
+  e *= mix(1., .3 + .7*smoothstep(1., .2, p.y), u_img);
+  c += vec3(1.,.6,.25) * e * (.5+.5*sin(t*6. + p.x*50.)) * (1.+2.*u_heat);
+  return c;
+}
+// Lód: zimna mgła, szkliste smugi, migoczące kryształki i śnieg niesiony wiatrem w prawo
+vec3 ice(vec2 uv, float t){
+  vec2 p = uv;
+  float fog = fbm(p*2.5 + vec2(t*.05, t*.02));
+  vec3 c = mix(vec3(.05,.08,.16), vec3(.66,.91,1.), fog*.75);
+  c = mix(c, vec3(.66,.91,1.) * fog*fog * .14, u_img);   // na obrazie: tylko płynąca mgiełka
+  float st = smoothstep(.965, 1., sin((p.x*.6+p.y)*26. + t*.4 + fbm(p*5.)*2.5)*.5+.5);
+  c += vec3(.6,.9,1.) * st * .16;
+  float cry = dots(p*30., .05) * (.5+.5*sin(t*4. + hash(floor(p*30.))*40.));
+  c += vec3(1.) * cry * mix(1.2, .5, u_img);
+  c += vec3(1.) * (dots(vec2(p.x*26. - t*1.4, p.y*26. + t*1.1), .05) + dots(vec2(p.x*14. - t*.9 + 3., p.y*14. + t*.7), .04)) * .6;
+  return c;
+}
+// Kosmos: mgławica w dryfie (kolory u_ta, u_tb), dwie warstwy gwiazd
+vec3 space(vec2 uv, float t){
+  vec2 p = uv + vec2(t*.01, 0.);
+  float n1 = fbm(p*2. + vec2(t*.03)), n2 = fbm(p*3.5 - vec2(t*.02));
+  vec3 neb = u_ta*pow(n1, 2.2)*1.2 + u_tb*pow(n2, 3.5)*.8;
+  vec3 c = vec3(.06,.03,.12)*(1.-u_img) + neb*mix(1., .22, u_img);   // na obrazie: mgławica ledwie dryfuje
+  c += vec3(1.) * (dots(p*60., .04)*.9 + dots(p*120.+3., .025)*.6) * mix(1., .7, u_img);
+  return c;
+}
+// Zmierzch nad poligonem: miętowa poświata przy horyzoncie, smugi wiatru, drobinki powoli opadające w dół
+vec3 dusk(vec2 uv, float t){
+  vec2 p = uv;
+  float glow = pow(1.-p.y, 3.), n = fbm(p*vec2(1.5, 4.) + vec2(t*.06, 0.));
+  vec3 c = mix(vec3(.04,.12,.14), vec3(.35,.88,.63), glow*n*.6);
+  c = mix(c, vec3(.35,.88,.63) * glow * n * .2, u_img);
+  float st = smoothstep(.975, 1., sin(p.y*44. + fbm(vec2(p.x*2. - t*.3, p.y*6.))*6.)*.5+.5) * smoothstep(.3, .9, p.y);
+  c += vec3(.75,1.,.9) * st * .1;
+  c += vec3(.6,1.,.8) * (dots(vec2(p.x*34., p.y*34. + t*1.6), .06) + dots(vec2(p.x*18. + 7., p.y*18. + t*.9), .05)) * .75;
+  return c;
+}
+// Lawa: czerwona mgła i żarzące się okruchy lecące w górę
+vec3 lava(vec2 uv, float t){
+  vec2 p = uv;
+  float n = fbm(p*2.2 + vec2(t*.04, -t*.03));
+  vec3 c = mix(vec3(.05,.01,.02), vec3(.8,.12,.06), pow(n, 2.5)*.9);
+  c = mix(c, vec3(.9,.18,.08) * pow(n, 3.) * .3, u_img);
+  c += vec3(1.,.4,.15) * dots(vec2(p.x*30., p.y*30. - t*2.2), .07) * (.6+.4*sin(t*7. + p.x*40.)) * (1.+u_heat);
+  return c;
+}
+void main(){
+  vec2 uv = gl_FragCoord.xy / u_res; float asp = u_res.x/u_res.y; float t = u_time;
+  // fala uderzeniowa: pierścień, który odpycha obraz i świeci
+  vec2 d = uv - u_shock.xy; d.x *= asp; float dist = length(d);
+  float ring = smoothstep(.14, 0., abs(dist - u_shock.z));
+  vec2 dir = dist > .001 ? d/dist : vec2(0.); dir.x /= asp;
+  uv -= dir * ring * u_shock.w * .08;
+  vec3 c;
+  if (u_mode < .5) c = hangar(uv, t);
+  else if (u_mode < 1.5) c = ice(uv, t);
+  else if (u_mode < 2.5) c = space(uv, t);
+  else if (u_mode < 3.5) c = dusk(uv, t);
+  else c = lava(uv, t);
+  c *= 1. - .5*u_calm;
+  c += ring * u_shock.w * vec3(1., .95, .9);
+  c = mix(c, vec3(.5,.05,.08), u_tone*.6);
+  c *= 1. - .45*length((uv-.5)*vec2(1., 1.3));   // winieta
+  c *= 1. - u_dark;
+  gl_FragColor = vec4(c, 1.);
+}`;
+const glc = $('#gl');
+const gl = glc.getContext('webgl', { antialias: false, alpha: false });
+let U = null;
+if (!gl) {
+  console.warn('Brak WebGL: tło statyczne, gra działa.');
+  glc.hidden = true;
+} else {
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s)); return s; };
+  const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog); gl.useProgram(prog);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const a = gl.getAttribLocation(prog, 'a'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
+  U = {}; ['u_time','u_res','u_mode','u_shock','u_heat','u_tone','u_dark','u_calm','u_img','u_ta','u_tb'].forEach(n => U[n] = gl.getUniformLocation(prog, n));
+  gl.uniform1f(U.u_mode, THEME.mode); gl.uniform3fv(U.u_ta, THEME.ta); gl.uniform3fv(U.u_tb, THEME.tb);
+}
+function drawGL(t) {
+  if (!gl) return;
+  gl.uniform1f(U.u_time, t); gl.uniform2f(U.u_res, glc.width, glc.height);
+  gl.uniform4f(U.u_shock, WD.shock.x, WD.shock.y, WD.shock.r, WD.shock.s);
+  gl.uniform1f(U.u_heat, WD.heat); gl.uniform1f(U.u_tone, WD.tone); gl.uniform1f(U.u_dark, WD.dark); gl.uniform1f(U.u_calm, WD.calm); gl.uniform1f(U.u_img, WD.img);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+// obraz świata modułu: wczytany przez <img>, nie jako tekstura WebGL, więc działa też po otwarciu pliku dwuklikiem (file://).
+// Gdy go brak, zostaje samo tło z shadera.
+const ART = $('#art');
+new Promise((ok, no) => { const im = new Image(); im.onload = ok; im.onerror = no; im.src = THEME.art; })
+  .then(() => {
+    ART.children[0].style.backgroundImage = `url("${THEME.art}")`;
+    document.body.classList.add('has-art'); WD.img = 1; drawArt(); if (RM) drawGL(10);
+  })
+  .catch(() => console.warn('Brak obrazu świata w img/: tło z samego shadera.'));
+function drawArt() {
+  if (!WD.img) return;
+  ART.style.opacity = (1 - WD.dark) * (1 - .3 * WD.calm);
+}
+
+// cząsteczki: canvas 2D nad UI, składanie addytywne
+const fxc = $('#fx'), fx = fxc.getContext('2d');
+const P = [];
+function emit(x, y, o) {
+  if (RM) return;
+  for (let i = 0; i < o.count; i++) {
+    const ang = o.spread === undefined ? Math.random() * Math.PI * 2 : o.dir + (Math.random() - .5) * o.spread;
+    const sp = o.speed * (.4 + Math.random() * .8);
+    P.push({ x, y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: 0, max: o.life * (.6 + Math.random() * .6),
+      size: o.size * (.5 + Math.random()), color: Array.isArray(o.color) ? o.color[(Math.random() * o.color.length) | 0] : o.color,
+      type: o.type, g: o.g || 0, rot: Math.random() * Math.PI });
+  }
+}
+function drawFX(dt) {
+  fx.save(); fx.setTransform(1, 0, 0, 1, 0, 0); fx.clearRect(0, 0, fxc.width, fxc.height); fx.restore(); // czyść w pikselach urządzenia (dpr może być < 1)
+  if (!P.length) return;
+  fx.globalCompositeOperation = 'lighter';
+  for (let i = P.length - 1; i >= 0; i--) {
+    const p = P[i]; p.life += dt;
+    if (p.life > p.max) { P.splice(i, 1); continue; }
+    p.vy += p.g * dt; p.vx *= .985; p.vy *= .985; p.x += p.vx * dt; p.y += p.vy * dt;
+    const k = 1 - p.life / p.max; fx.globalAlpha = k; fx.fillStyle = fx.strokeStyle = p.color;
+    if (p.type === 'spark') { fx.lineWidth = p.size * .5; fx.beginPath(); fx.moveTo(p.x, p.y); fx.lineTo(p.x - p.vx * .03, p.y - p.vy * .03); fx.stroke(); }
+    else if (p.type === 'crystal') { fx.save(); fx.translate(p.x, p.y); fx.rotate(p.rot + p.life * 2); fx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size); fx.restore(); }
+    else { fx.beginPath(); fx.arc(p.x, p.y, p.size * .5 * k + .5, 0, Math.PI * 2); fx.fill(); }
+  }
+  fx.globalAlpha = 1; fx.globalCompositeOperation = 'source-over';
+}
+// wybuch w stylu świata modułu
+const BURSTS = {
+  spark: { type: 'spark', color: ['#ff5a1f', '#ffb347', '#fff2c8'], g: 300 },
+  crystal: { type: 'crystal', color: ['#a8e9ff', '#ffffff', '#d7f6ff'], g: 120 },
+  dust: { type: 'dust', color: ['#5b4bff', '#b7a9ff', '#ffffff'], g: 0 },
+  gold: { type: 'crystal', color: ['#f2c14e', '#fff2c8', '#9fc2ff'], g: 0 },
+  mint: { type: 'dust', color: ['#58e0a0', '#d7ffe9', '#ffd9b0'], g: 260 },
+  lava: { type: 'spark', color: ['#ff4d2e', '#ff9a3c', '#ffd0a0'], g: 200 },
+};
+function burst(x, y, big) {
+  emit(x, y, { count: big ? 220 : 60, speed: big ? 520 : 260, life: big ? 1.6 : .9, size: big ? 7 : 4, ...BURSTS[THEME.burst] });
+}
+function shock(px, py, strength, dur = 1.1) {
+  if (RM) return;
+  WD.shock.x = px / innerWidth; WD.shock.y = 1 - py / innerHeight;
+  gsap.killTweensOf(WD.shock);
+  gsap.fromTo(WD.shock, { r: 0, s: strength }, { r: 1.6, s: 0, duration: dur, ease: 'power2.out' });
+}
+function spill(px, py) {
+  if (RM) return;
+  gsap.fromTo('#flash', { x: px, y: py, scale: 0, opacity: .85 }, { scale: 60, opacity: 0, duration: 1.2, ease: 'power3.out' });
+}
+const center = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+// jeden efekt na zdarzenie: dobra odpowiedź = supernowa, zła = pęknięcie świata
+function cheer(el) { const [x, y] = center(el); shock(x, y, 1.1, 1.3); burst(x, y, true); spill(x, y); }
+function oops(el) {
+  if (RM) return;
+  const [x, y] = center(el); shock(x, y, .45, .8);
+  gsap.fromTo(WD, { tone: .9 }, { tone: 0, duration: .8, ease: 'power2.out' });
+  gsap.fromTo('.app', { x: -7 }, { x: 0, duration: .5, ease: 'elastic.out(1, .25)', clearProps: 'transform' });
+}
+// nastrój etapu w obrębie motywu modułu: 0 zwykły, 1 spokojny (karty pojęć, przygaszony świat), 2 akcja
+function setWorld(i) {
+  const calm = i === 1 ? 1 : 0;
+  if (RM || !gl) { WD.calm = calm; drawGL(10); drawArt(); return; }
+  gsap.to(WD, { calm, duration: 1.4, ease: 'sine.inOut' });
+}
+
+function resize() {
+  const dpr = Math.min(devicePixelRatio || 1, 1.5);
+  glc.width = Math.round(innerWidth * dpr * .7); glc.height = Math.round(innerHeight * dpr * .7); // shader w 70% rozdzielczości
+  fxc.width = innerWidth * dpr; fxc.height = innerHeight * dpr; fx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (gl) gl.viewport(0, 0, glc.width, glc.height);
+  if (RM) drawGL(10);
+}
+addEventListener('resize', resize); resize();
+// prawa kolumna: znacznik .scrolls, gdy treść nie mieści się w oknie (sprawdzane raz na klatkę po zmianie treści)
+const sideCols = [...document.querySelectorAll('.split > .col.side')];
+let scrollCheck = 0;
+const markScroll = () => { if (scrollCheck) return; scrollCheck = requestAnimationFrame(() => { scrollCheck = 0;
+  sideCols.forEach(c => c.classList.toggle('scrolls', c.scrollHeight > c.clientHeight + 1)); }); };
+new MutationObserver(markScroll).observe($('main'), { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden'] });
+addEventListener('resize', markScroll); document.fonts.ready.then(markScroll); markScroll();
+let wT = 0, wLast = performance.now();
+function worldFrame(dt) { wT += dt; if (!RM) drawGL(wT); drawArt(); drawFX(dt); }
+requestAnimationFrame(function wloop(now) { const dt = Math.min(.05, (now - wLast) / 1000); wLast = now; worldFrame(dt); requestAnimationFrame(wloop); });
+if (RM) { WD.dark = 0; drawGL(10); }
+else gsap.to(WD, { dark: 0, duration: 1.8, ease: 'power2.inOut' });
+
+// ---------- słowniczek ----------
+// rysunek do karty „Te siły się nie równoważą” (moduł 3): magnes i śruba; F₁ działa na magnes, F₂ na śrubę
+const MAG_SVG = '<svg viewBox="0 0 300 84" aria-hidden="true">' +
+  '<rect x="8" y="34" width="56" height="28" fill="#ff5a6a"/><rect x="64" y="34" width="56" height="28" fill="#3c8cff"/>' +
+  '<rect x="196" y="38" width="16" height="20" rx="3" fill="#c9c2d6"/><rect x="212" y="42" width="56" height="12" fill="#c9c2d6"/>' +
+  '<g stroke="#ffb347" stroke-width="4" stroke-linecap="round"><line x1="120" y1="48" x2="144" y2="48"/><line x1="196" y1="48" x2="172" y2="48"/></g>' +
+  '<g fill="#ffb347"><path d="M154 48 l-12 -8 v16 z"/><path d="M162 48 l12 -8 v16 z"/></g>' +
+  '<g font-size="18" font-weight="800" fill="#ffffff" text-anchor="middle"><text x="134" y="26">F₁</text><text x="182" y="26">F₂</text></g>' +
+  '<g font-size="12" font-weight="700" fill="#c9c2d6" text-anchor="middle"><text x="64" y="80">magnes</text><text x="232" y="80">śruba</text></g></svg>';
+// rysunek do karty „Wszystkie ciała spadają tak samo” (moduł 4): kulka 1 kg i kulka 2 kg, siły ciężkości i przyspieszenia
+const BALLS_SVG = '<svg viewBox="0 0 300 150" aria-hidden="true">' +
+  '<circle cx="80" cy="28" r="12" fill="#c9c2d6"/><circle cx="220" cy="28" r="18" fill="#c9c2d6"/>' +
+  '<g stroke="#ffb347" stroke-width="4" stroke-linecap="round"><line x1="80" y1="44" x2="80" y2="66"/><line x1="220" y1="50" x2="220" y2="96"/></g>' +
+  '<g fill="#ffb347"><path d="M80 78 l-8 -12 h16 z"/><path d="M220 108 l-8 -12 h16 z"/></g>' +
+  '<g font-size="16" font-weight="800" fill="#ffffff"><text x="96" y="66">10 N</text><text x="242" y="86">20 N</text></g>' +
+  '<g font-size="14" font-weight="700" fill="#c9c2d6" text-anchor="end"><text x="62" y="33">1 kg</text><text x="196" y="33">2 kg</text></g>' +
+  '<g font-size="14" font-weight="800" fill="#a8e9ff" text-anchor="middle"><text x="80" y="138">a = 10 m/s²</text><text x="220" y="138">a = 10 m/s²</text></g></svg>';
+// pojęcia z modułu 5 (boss pyta o pojęcia wszystkich modułów)
+const GLOS_M5 = [
+  { id: 'opory', term: 'Opory ruchu',
+    formal: 'Siły oporu ruchu to tarcie oraz inne opory utrudniające ruch, np. opór powietrza albo wody.',
+    simple: 'Opory ruchu to wszystko, co hamuje. Dlatego jadący rower w końcu się zatrzyma, jeśli przestaniesz pedałować.',
+    example: 'W basenie biegnie się dużo trudniej niż na boisku. Sanki łatwiej ciągnąć po śniegu niż po chodniku.' },
+  { id: 'sila_tarcia', term: 'Siła tarcia',
+    formal: 'Siła tarcia działa między stykającymi się powierzchniami i utrudnia ruch ciała. Jej przyczyną są zaczepiające o siebie nierówności stykających się powierzchni.',
+    simple: 'Nawet gładki stół ma maleńkie górki i dołki. Zaczepiają o nie górki i dołki kubka. Im bardziej chropowata powierzchnia, tym większe tarcie.',
+    example: 'Kubek łatwo przesunąć po gładkim stole, a trudno po papierze ściernym.' },
+  { id: 'statyczne', term: 'Tarcie statyczne i kinetyczne',
+    formal: 'Tarcie statyczne działa na ciało w spoczynku i przeciwdziała wprawianiu go w ruch. Tarcie kinetyczne działa na ciało w ruchu i przeciwdziała temu ruchowi. Największe tarcie statyczne jest większe niż tarcie kinetyczne.',
+    simple: 'Ruszyć ciężką szafę jest trudniej, niż potem pchać ją dalej. Przy ruszaniu działa tarcie statyczne, a w czasie jazdy kinetyczne, które jest mniejsze.',
+    keys: { title: 'Trudne słowa',
+      items: [['statyczne', 'gdy ciało stoi (w spoczynku), a próbujemy je ruszyć'], ['kinetyczne', 'gdy ciało już się porusza'],
+        ['największe tarcie statyczne', 'siła, przy której ciało w końcu rusza'], ['większe niż kinetyczne', 'dlatego najtrudniej jest ruszyć, a potem idzie łatwiej']] },
+    example: 'W laboratorium siłomierz pokazał 1,2 N tuż przed ruszeniem kubka, a tylko 0,9 N, gdy kubek już jechał.' },
+  { id: 'wzor_tarcia', term: 'Siła tarcia a siła nacisku',
+    formal: 'Siła tarcia zależy od rodzaju stykających się powierzchni i od siły nacisku: FT = f · FN. Współczynnik tarcia f zależy od tego, z jakich materiałów są obie powierzchnie.',
+    simple: 'Im mocniej ciało naciska na podłoże, tym większe tarcie. 2 razy większy nacisk, 2 razy większe tarcie. Na poziomej podłodze nacisk jest równy sile ciężkości.',
+    keys: { title: 'Jak czytać wzór', formula: 'FT = f · FN', read: '„siła tarcia równa się współczynnik tarcia razy siła nacisku”',
+      items: [['FT', 'siła tarcia, w niutonach (N)'], ['f', 'współczynnik tarcia: liczba bez jednostki. Na lodzie mała, na papierze ściernym duża.'],
+        ['FN', 'siła nacisku: jak mocno ciało naciska na podłoże, w niutonach. Na poziomej podłodze FN = m · g.'],
+        ['przykład', 'skrzynia naciska siłą 500 N, f = 0,3. FT = 0,3 · 500 N = 150 N']] },
+    example: 'Kubek z wodą naciska na stół 2 razy mocniej niż pusty, więc trzeba go ciągnąć 2 razy mocniej.' },
+  { id: 'uzyteczne', term: 'Tarcie pomaga i przeszkadza',
+    formal: 'Tarcie bywa pożyteczne: dzięki niemu chodzimy, hamujemy i trzymamy przedmioty. Bywa też szkodliwe: ściera części maszyn. Tarcie zmniejszamy łożyskami i smarami, a zwiększamy chropowatymi powierzchniami.',
+    simple: 'Stawiasz krok: stopa pcha podłogę do tyłu, a podłoga pcha stopę do przodu. Ta siła to tarcie. Na gładkim lodzie tarcie jest małe, dlatego trudno chodzić.',
+    example: 'Sprinterzy biegają w butach z kolcami, żeby tarcie było większe. W maszynach są łożyska kulkowe, żeby tarcie było mniejsze.' },
+  { id: 'opor_powietrza', term: 'Opór powietrza',
+    formal: 'Opór powietrza (albo wody) zależy od kształtu ciała i rośnie, gdy rośnie prędkość. Kształty, które mają mały opór, nazywamy opływowymi albo aerodynamicznymi.',
+    simple: 'Im szybciej jedziesz, tym mocniej hamuje Cię powietrze. Opływowe auto ma mały opór, a otwarty spadochron ogromny.',
+    keys: { title: 'Trudne słowa',
+      items: [['opływowy', 'gładki i wydłużony kształt, który łatwo „przecina” powietrze'], ['aerodynamiczny', 'to samo co opływowy'],
+        ['rośnie z prędkością', 'szybciej jedziesz, mocniej hamuje powietrze'], ['spadochron', 'ogromna powierzchnia, ogromny opór: skoczek spada wolno i bezpiecznie']] },
+    example: 'Spadochroniarz spada najpierw bardzo szybko. Gdy otworzy spadochron, opór powietrza rośnie i hamuje go do bezpiecznej prędkości.' },
+];
+// dwa pytania na pojęcie: główne i drugie (po błędzie, w innej formie)
+const TQ_M5 = {
+  opory: [
+    { text: 'Co to są opory ruchu?', opts: [
+      { t: 'Siły, które utrudniają ruch: tarcie i opór powietrza albo wody', ok: true },
+      { t: 'Siły, które pomagają ciału jechać szybciej', fb: 'Opory ruchu hamują, a nie pomagają.' },
+      { t: 'Tylko siła ciężkości', fb: 'Siła ciężkości to przyciąganie Ziemi. Opory ruchu to tarcie i opór powietrza albo wody.' },
+      { t: 'Tylko tarcie kół o drogę', fb: 'Tarcie kół to jeden z oporów. Jest też opór powietrza i wody.' } ] },
+    { text: 'Dlaczego w basenie biegnie się trudniej niż na boisku?', opts: [
+      { t: 'Bo woda stawia dużo większy opór niż powietrze', ok: true },
+      { t: 'Bo w wodzie jesteśmy ciężsi', fb: 'W wodzie wcale nie jesteśmy ciężsi. Hamuje nas opór wody.' },
+      { t: 'Bo w basenie nie ma tarcia', fb: 'Chodzi o opór wody: woda hamuje dużo mocniej niż powietrze.' },
+      { t: 'Bo woda jest zimna', fb: 'Temperatura nie ma tu znaczenia. Woda stawia duży opór.' } ] },
+  ],
+  sila_tarcia: [
+    { text: 'Skąd się bierze siła tarcia?', opts: [
+      { t: 'Z nierówności stykających się powierzchni, które o siebie zaczepiają', ok: true },
+      { t: 'Z przyciągania magnesów', fb: 'Tarcie powstaje, gdy zaczepiają o siebie nierówności powierzchni.' },
+      { t: 'Z powietrza między przedmiotami', fb: 'Tarcie działa tam, gdzie powierzchnie się stykają. Zaczepiają o siebie ich nierówności.' },
+      { t: 'Tylko z kleju i brudu', fb: 'Nawet czyste i gładkie powierzchnie mają maleńkie nierówności. To one dają tarcie.' } ] },
+    { text: 'Po czym najtrudniej przesunąć kubek?', opts: [
+      { t: 'Po grubym papierze ściernym', ok: true },
+      { t: 'Po gładkim stole', fb: 'Gładki stół ma małe nierówności, więc tarcie jest małe.' },
+      { t: 'Po szkle', fb: 'Szkło jest bardzo gładkie. Najtrudniej po chropowatym papierze ściernym.' },
+      { t: 'Wszędzie tak samo', fb: 'Tarcie zależy od rodzaju powierzchni. Na chropowatej jest największe.' } ] },
+  ],
+  statyczne: [
+    { text: 'Kiedy działa tarcie statyczne?', opts: [
+      { t: 'Gdy ciało stoi, a próbujemy je ruszyć', ok: true },
+      { t: 'Gdy ciało już jedzie', fb: 'Wtedy działa tarcie kinetyczne. Statyczne działa na ciało w spoczynku.' },
+      { t: 'Tylko na lodzie', fb: 'Tarcie statyczne działa na każdej powierzchni, gdy ciało jeszcze stoi.' },
+      { t: 'Gdy ciało spada', fb: 'Statyczne znaczy: w spoczynku. Działa, gdy próbujemy ruszyć stojące ciało.' } ] },
+    { text: 'Pchasz ciężką szafę. Kiedy potrzeba większej siły?', opts: [
+      { t: 'Żeby ją ruszyć z miejsca', ok: true },
+      { t: 'Żeby pchać ją dalej, gdy już jedzie', fb: 'Gdy szafa jedzie, działa tarcie kinetyczne. Jest mniejsze niż największe tarcie statyczne.' },
+      { t: 'Zawsze tyle samo', fb: 'Ruszyć jest trudniej. Największe tarcie statyczne jest większe niż kinetyczne.' },
+      { t: 'Szafy nie da się ruszyć', fb: 'Da się. Trzeba pchać mocniej, niż wynosi największe tarcie statyczne.' } ] },
+  ],
+  wzor_tarcia: [
+    { text: 'Skrzynia naciska na podłogę siłą 200 N. Współczynnik tarcia f = 0,5. Jaka jest siła tarcia?', opts: [
+      { t: '100 N', ok: true },
+      { t: '200 N', fb: 'To siła nacisku. Tarcie: FT = f · FN = 0,5 · 200 N = 100 N.' },
+      { t: '400 N', fb: 'Tu podzielono 200 przez 0,5. We wzorze jest mnożenie: 0,5 · 200 = 100 N.' },
+      { t: '200,5 N', fb: 'Liczby trzeba pomnożyć, a nie dodać: 0,5 · 200 = 100 N.' } ] },
+    { text: 'Nacisk kubka na stół wzrósł 2 razy. Co z siłą tarcia?', opts: [
+      { t: 'Też wzrosła 2 razy', ok: true },
+      { t: 'Nie zmieniła się', fb: 'Tarcie zależy od nacisku: FT = f · FN. 2 razy większy nacisk, 2 razy większe tarcie.' },
+      { t: 'Zmalała o połowę', fb: 'Odwrotnie: większy nacisk daje większe tarcie.' },
+      { t: 'Wzrosła 4 razy', fb: 'Tarcie rośnie tyle samo razy co nacisk, czyli 2 razy.' } ] },
+  ],
+  uzyteczne: [
+    { text: 'Co pcha Cię do przodu, gdy idziesz?', opts: [
+      { t: 'Podłoga, siłą tarcia', ok: true },
+      { t: 'Powietrze za plecami', fb: 'Powietrze raczej hamuje. Do przodu pcha Cię podłoga, siłą tarcia.' },
+      { t: 'Nic, idziesz sam z siebie', fb: 'Stopa pcha podłogę do tyłu, a podłoga pcha stopę do przodu. To III zasada i tarcie.' },
+      { t: 'Siła ciężkości', fb: 'Siła ciężkości ciągnie w dół, a nie do przodu.' } ] },
+    { text: 'Jak zmniejszyć tarcie w maszynie?', opts: [
+      { t: 'Zastosować łożyska kulkowe albo smar', ok: true },
+      { t: 'Zrobić części bardziej chropowate', fb: 'Chropowate powierzchnie zwiększają tarcie.' },
+      { t: 'Mocniej docisnąć części do siebie', fb: 'Większy nacisk to większe tarcie.' },
+      { t: 'Owinąć części papierem ściernym', fb: 'Papier ścierny zwiększa tarcie. Zmniejszają je łożyska i smary.' } ] },
+  ],
+  opor_powietrza: [
+    { text: 'Od czego zależy opór powietrza?', opts: [
+      { t: 'Od kształtu ciała i od jego prędkości', ok: true },
+      { t: 'Tylko od masy ciała', fb: 'Opór powietrza zależy od kształtu i prędkości, a nie od masy.' },
+      { t: 'Od koloru ciała', fb: 'Kolor nie ma znaczenia. Liczą się kształt i prędkość.' },
+      { t: 'Od niczego, jest zawsze taki sam', fb: 'Opór rośnie, gdy rośnie prędkość, i zależy od kształtu.' } ] },
+    { text: 'Po co samochody sportowe mają opływowe kształty?', opts: [
+      { t: 'Żeby powietrze stawiało im jak najmniejszy opór', ok: true },
+      { t: 'Żeby były cięższe', fb: 'Kształt opływowy zmniejsza opór powietrza.' },
+      { t: 'Żeby miały większe tarcie opon', fb: 'Chodzi o opór powietrza, a nie o tarcie opon.' },
+      { t: 'Tylko dla ozdoby', fb: 'Nie tylko. Opływowy kształt zmniejsza opór powietrza.' } ] },
+  ],
+};
+const TERM_ST = { ok: 'znam od razu', retry: 'znam po powtórce', weak: 'do powtórki' };
+// ---------- pojęcia z poprzednich modułów (do powtórki: wracają tu te, które były „do powtórki”) ----------
+// pojęcia z modułu 4
+const GLOS_M4 = [
+  { id: 'ciezkosc', term: 'Siła ciężkości',
+    formal: 'Siła ciężkości to siła, z jaką Ziemia przyciąga każde ciało. Obliczamy ją ze wzoru F = m · g, gdzie g ≈ 10 N/kg.',
+    simple: 'Ziemia ciągnie w dół wszystko, co ma masę. Im większa masa, tym mocniej: każdy kilogram jest przyciągany siłą około 10 N.',
+    keys: { title: 'Jak czytać wzór', formula: 'F = m · g', read: '„siła równa się masa razy g”',
+      items: [['F', 'siła ciężkości, w niutonach (N)'], ['m', 'masa ciała, w kilogramach (kg)'], ['g', 'około 10 N/kg, czyli 10 niutonów na każdy kilogram'],
+        ['przykład', 'plecak 5 kg: F = 5 · 10 = 50 N']] },
+    example: 'Plecak ma masę 5 kg. Ziemia przyciąga go siłą 5 · 10 = 50 N. Tę siłę czujesz na ramionach.' },
+  { id: 'spadanie', term: 'Swobodne spadanie',
+    formal: 'Swobodne spadanie to ruch ciała puszczonego z pewnej wysokości, na które działa tylko siła ciężkości. Opór powietrza jest wtedy tak mały, że go pomijamy.',
+    simple: 'Puszczasz coś z ręki i to spada. Nic tego nie popycha i prawie nic nie hamuje. Tylko Ziemia ciągnie w dół.',
+    example: 'Kamień puszczony z mostu spada swobodnie. Piórko nie, bo mocno hamuje je powietrze.' },
+  { id: 'spadanie_przysp', term: 'Spadanie jest coraz szybsze',
+    formal: 'Swobodne spadanie jest ruchem jednostajnie przyspieszonym: prędkość ciała rośnie co sekundę o tyle samo, o około 10 m/s.',
+    simple: 'Spadające ciało leci coraz szybciej. Co sekundę jego prędkość rośnie o 10 m/s.',
+    example: 'Kamień spada z wysokiej wieży. Po 1 s ma prędkość 10 m/s, po 2 s 20 m/s, a po 3 s 30 m/s.' },
+  { id: 'g', term: 'Przyspieszenie ziemskie g',
+    formal: 'Przyspieszenie ciała spadającego swobodnie to przyspieszenie ziemskie. Oznaczamy je literą g. Wynosi około 9,81 m/s². W zadaniach przyjmujemy g ≈ 10 m/s².',
+    simple: 'g mówi, jak szybko rozpędza się spadające ciało: o 10 m/s co sekundę. Prędkość po t sekundach spadania: v = g · t.',
+    keys: { title: 'Jak czytać wzór', formula: 'v = g · t', read: '„prędkość równa się g razy czas”',
+      items: [['v', 'prędkość spadającego ciała, w m/s'], ['g', 'przyspieszenie ziemskie, około 10 m/s²'], ['t', 'czas spadania, w sekundach'],
+        ['przykład', 'po 1 s: 10 m/s, po 2 s: 20 m/s, po 3 s: 30 m/s']] },
+    example: 'Skoczek do wody spada z wieży 10 m przez około 1,4 s. Wpada do wody z prędkością około 14 m/s, czyli ponad 50 km/h.' },
+  { id: 'jednakowo', term: 'Wszystkie ciała spadają tak samo',
+    formal: 'Gdy nie ma oporu powietrza, wszystkie ciała spadają z takim samym przyspieszeniem g, bez względu na masę.',
+    simple: 'Ciężka kula i lekka kulka, puszczone razem, spadną razem. Ciężką Ziemia przyciąga mocniej, ale też trudniej ją rozpędzić.',
+    keys: { title: 'Dlaczego razem?', pic: BALLS_SVG, ask: 'Zdradzić Ci, dlaczego ciężka kulka nie spada szybciej od lekkiej?',
+      items: [['10 N', 'Ziemia przyciąga kulkę 1 kg siłą 10 N.'], ['20 N', 'Kulkę 2 kg przyciąga 2 razy mocniej: 20 N.'],
+        ['2 kg', 'Ale ta kulka ma 2 razy większą masę, więc 2 razy trudniej ją rozpędzić.'],
+        ['a = 10 m/s²', 'Liczymy z II zasady: 10 N : 1 kg = 10 m/s² i 20 N : 2 kg = 10 m/s². Wychodzi tyle samo, więc spadają razem!']] },
+    example: 'Galileusz sprawdzał to ponad 400 lat temu. Podobno zrzucał kule z krzywej wieży w Pizie.' },
+  { id: 'proznia', term: 'Próżnia i opór powietrza',
+    formal: 'Próżnia to przestrzeń, w której nie ma powietrza. W powietrzu lekkie i płaskie ciała spadają wolniej, bo hamuje je opór powietrza. W próżni wszystkie ciała spadają jednakowo.',
+    simple: 'Piórko spada wolno nie dlatego, że jest lekkie. Hamuje je powietrze. Gdy wypompujesz powietrze, piórko spadnie tak szybko jak moneta.',
+    example: 'W 1971 roku astronauta David Scott na Księżycu, gdzie nie ma powietrza, puścił naraz młotek i pióro sokoła. Spadły w tej samej chwili.' },
+];
+const TQ_M4 = {
+  ciezkosc: [
+    { text: 'Z jaką siłą Ziemia przyciąga ciało o masie 2 kg?', opts: [
+      { t: '20 N', ok: true },
+      { t: '2 N', fb: 'Każdy kilogram jest przyciągany siłą 10 N. F = m · g = 2 · 10 = 20 N.' },
+      { t: '2 kg', fb: 'Kilogramy to jednostka masy. Siłę podajemy w niutonach: 2 · 10 = 20 N.' },
+      { t: '12 N', fb: 'Liczby trzeba pomnożyć, a nie dodać: 2 · 10 = 20 N.' } ] },
+    { text: 'Na którą rzecz Ziemia działa większą siłą ciężkości?', opts: [
+      { t: 'Na tornister o masie 6 kg', ok: true },
+      { t: 'Na piórko o masie 0,01 kg', fb: 'Siła ciężkości zależy od masy. Tornister ma dużo większą masę.' },
+      { t: 'Na obie tak samo', fb: 'Większa masa, większa siła ciężkości: F = m · g.' },
+      { t: 'Na żadną, bo leżą na podłodze', fb: 'Ziemia przyciąga je cały czas, także wtedy, gdy leżą.' } ] },
+  ],
+  spadanie: [
+    { text: 'Kiedy ciało spada swobodnie?', opts: [
+      { t: 'Gdy działa na nie tylko siła ciężkości', ok: true },
+      { t: 'Gdy ktoś mocno rzuci je w dół', fb: 'Swobodnie spada ciało puszczone, a nie rzucone. Działa na nie tylko siła ciężkości.' },
+      { t: 'Gdy spada cały czas tak samo szybko', fb: 'Ciało spadające swobodnie przyspiesza.' },
+      { t: 'Gdy hamuje je spadochron', fb: 'Spadochron mocno hamuje. A przy swobodnym spadaniu działa tylko siła ciężkości.' } ] },
+    { text: 'Który ruch jest najbliższy swobodnemu spadaniu?', opts: [
+      { t: 'Kamień puszczony z mostu', ok: true },
+      { t: 'Liść spadający z drzewa', fb: 'Liść mocno hamuje powietrze. Ciężki kamień powietrze hamuje słabo.' },
+      { t: 'Skoczek ze spadochronem', fb: 'Spadochron mocno hamuje. To nie jest swobodne spadanie.' },
+      { t: 'Balon, który leci w górę', fb: 'Balon wznosi się, a nie spada.' } ] },
+  ],
+  spadanie_przysp: [
+    { text: 'Jak zmienia się prędkość kamienia, który spada swobodnie?', opts: [
+      { t: 'Rośnie co sekundę o około 10 m/s', ok: true },
+      { t: 'Jest cały czas taka sama', fb: 'Spadający kamień przyspiesza: co sekundę jest szybszy o 10 m/s.' },
+      { t: 'Maleje, bo hamuje go powietrze', fb: 'Ciężki kamień powietrze hamuje słabo. Jego prędkość rośnie.' },
+      { t: 'Rośnie tylko w pierwszej sekundzie', fb: 'Rośnie przez cały czas spadania, co sekundę o 10 m/s.' } ] },
+    { text: 'Kamień spada swobodnie. Po 1 s ma prędkość 10 m/s. Jaką prędkość ma po 2 s?', opts: [
+      { t: '20 m/s', ok: true },
+      { t: '10 m/s', fb: 'Prędkość rośnie: po każdej sekundzie o 10 m/s więcej.' },
+      { t: '12 m/s', fb: 'Co sekundę przybywa 10 m/s, a nie 2 m/s. Po 2 s jest 20 m/s.' },
+      { t: '40 m/s', fb: 'Co sekundę przybywa 10 m/s. Po 2 s jest 20 m/s.' } ] },
+  ],
+  g: [
+    { text: 'Ile w przybliżeniu wynosi przyspieszenie ziemskie g?', opts: [
+      { t: '10 m/s²', ok: true },
+      { t: '1 m/s²', fb: 'To za mało. Spadające ciało rozpędza się o około 10 m/s co sekundę.' },
+      { t: '100 m/s²', fb: 'To za dużo. g ≈ 10 m/s².' },
+      { t: '0 m/s², bo ciała spadają równo', fb: 'Spadające ciała przyspieszają. g ≈ 10 m/s².' } ] },
+    { text: 'Jaką prędkość ma ciało po 4 s swobodnego spadania? Wzór: v = g · t.', opts: [
+      { t: '40 m/s', ok: true },
+      { t: '4 m/s', fb: 'Pomnóż czas przez g: v = 10 · 4 = 40 m/s.' },
+      { t: '14 m/s', fb: 'Liczby trzeba pomnożyć, a nie dodać: 10 · 4 = 40 m/s.' },
+      { t: '2,5 m/s', fb: 'We wzorze v = g · t jest mnożenie: 10 · 4 = 40 m/s.' } ] },
+  ],
+  jednakowo: [
+    { text: 'Bez powietrza puszczamy razem kulkę 1 kg i kulę 5 kg. Która spadnie pierwsza?', opts: [
+      { t: 'Spadną razem', ok: true },
+      { t: 'Kula 5 kg', fb: 'Cięższą kulę Ziemia przyciąga mocniej, ale też trudniej ją rozpędzić. Spadają razem.' },
+      { t: 'Kulka 1 kg', fb: 'Lżejsza kulka nie spada szybciej. Spadają razem.' },
+      { t: 'Żadna, bo bez powietrza nic nie spada', fb: 'Ziemia przyciąga ciała także tam, gdzie nie ma powietrza.' } ] },
+    { text: 'Dlaczego cięższa kula nie spada szybciej od lżejszej?', opts: [
+      { t: 'Jest mocniej przyciągana, ale ma też większą masę. Przyspieszenie wychodzi takie samo.', ok: true },
+      { t: 'Bo Ziemia przyciąga wszystkie ciała tak samo mocno', fb: 'Nie tak samo: cięższą kulę przyciąga mocniej. Ale cięższą kulę trudniej też rozpędzić.' },
+      { t: 'Bo cięższe ciała mają w sobie mniej powietrza', fb: 'Powietrze w środku nie ma znaczenia. Liczą się siła i masa: a = F : m.' },
+      { t: 'Bo spada szybciej, tylko tego nie widać', fb: 'Bez oporu powietrza naprawdę spada tak samo jak lżejsza.' } ] },
+  ],
+  proznia: [
+    { text: 'Dlaczego w powietrzu piórko spada wolniej niż moneta?', opts: [
+      { t: 'Bo piórko mocno hamuje powietrze', ok: true },
+      { t: 'Bo piórko jest lżejsze', fb: 'W próżni piórko spada razem z monetą, choć dalej jest lżejsze. Winne jest powietrze.' },
+      { t: 'Bo Ziemia nie przyciąga piórka', fb: 'Ziemia przyciąga piórko. Piórko spada wolno, bo hamuje je powietrze.' },
+      { t: 'Bo moneta jest z metalu', fb: 'Materiał nie ma znaczenia. W próżni piórko i moneta spadają razem.' } ] },
+    { text: 'Co to jest próżnia?', opts: [
+      { t: 'Miejsce, w którym nie ma powietrza', ok: true },
+      { t: 'Miejsce, w którym nic nie spada', fb: 'W próżni ciała spadają, i to wszystkie tak samo. Próżnia to brak powietrza.' },
+      { t: 'Bardzo zimne miejsce', fb: 'Próżnia to brak powietrza, a nie zimno.' },
+      { t: 'Rura pełna wody', fb: 'Próżnia to miejsce, w którym nie ma powietrza ani niczego innego.' } ] },
+  ],
+};
+// pojęcia z modułu 3
+const GLOS_M3 = [
+  { id: 'oddzialywanie', term: 'Oddziaływania są wzajemne',
+    formal: 'Wszystkie oddziaływania są wzajemne: jeśli jedno ciało działa na drugie, to drugie działa na pierwsze.',
+    simple: 'Nie da się czegoś pchnąć i nie dostać pchnięcia z powrotem. Działanie zawsze idzie w obie strony.',
+    example: 'Klaszczesz w dłonie. Lewa dłoń uderza prawą, a prawa lewą. Czujesz to w obu dłoniach.' },
+  { id: 'zasada3', term: 'III zasada dynamiki Newtona',
+    formal: 'Jeżeli ciało A działa siłą na ciało B, to jednocześnie ciało B działa na ciało A siłą równą co do wartości, mającą ten sam kierunek, lecz przeciwny zwrot.',
+    simple: 'Gdy A pcha B, to B w tej samej chwili pcha A. Tak samo mocno, ale w przeciwną stronę.',
+    keys: { title: 'Trudne słowa',
+      items: [['jednocześnie', 'w tej samej chwili. Obie siły pojawiają się razem i razem znikają.'],
+        ['równą co do wartości', 'tak samo dużą, czyli tyle samo niutonów'],
+        ['ten sam kierunek', 'obie siły leżą na tej samej linii'],
+        ['przeciwny zwrot', 'działają w przeciwne strony: groty strzałek patrzą w przeciwne strony']] },
+    example: 'Newton pisał: „Jeżeli naciskasz palcem na kamień, to kamień naciska równie mocno na palec”.' },
+  { id: 'nierownowaza', term: 'Te siły się nie równoważą',
+    formal: 'Siły, o których mówi III zasada dynamiki, nie równoważą się, bo każda z nich działa na inne ciało.',
+    simple: 'Znosić mogą się tylko siły, które działają na to samo ciało. Tu jedna siła działa na A, a druga na B. Dlatego się nie znoszą.',
+    keys: { title: 'Jak czytać strzałki F₁ i F₂', pic: MAG_SVG,
+      items: [['F₁', 'siła, z jaką śruba przyciąga magnes. Działa na magnes.'], ['F₂', 'siła, z jaką magnes przyciąga śrubę. Działa na śrubę.'],
+        ['tej samej długości', 'siły są tak samo duże'], ['groty w przeciwne strony', 'siły mają przeciwne zwroty'],
+        ['każda na innym ciele', 'dlatego się nie znoszą']] },
+    example: 'Magnes przyciąga śrubę, a śruba magnes. Gdy je puścisz, ruszą do siebie jedno i drugie.' },
+  { id: 'skutki', term: 'Równe siły, różne skutki',
+    formal: 'Siły wzajemne są równe, ale ciała mogą uzyskać różne przyspieszenia. Ciało o mniejszej masie uzyskuje większe przyspieszenie (II zasada dynamiki: a = F : m).',
+    simple: 'Obie siły są tak samo duże. Ale lekkie ciało odjedzie szybko, a ciężkie wolno.',
+    keys: { title: 'Jak to policzyć', formula: 'a = F : m', read: '„przyspieszenie równa się siła podzielona przez masę”',
+      items: [['ta sama siła F', 'działa na oba ciała'], ['mała masa m', 'duże przyspieszenie a'], ['duża masa m', 'małe przyspieszenie a'],
+        ['przykład', 'siła 50 N. Sanie 50 kg: a = 50 : 50 = 1 m/s². Sanie 100 kg: a = 50 : 100 = 0,5 m/s², czyli o połowę mniej.']] },
+    example: 'Stoisz na deskorolce i rzucasz do przodu ciężką piłkę. Piłka leci szybko do przodu, a Ty powoli odjeżdżasz do tyłu. Siły są tak samo duże, ale Ty masz większą masę niż piłka.' },
+  { id: 'odrzut', term: 'Zjawisko odrzutu',
+    formal: 'Odrzut to zjawisko, w którym ciało wyrzuca coś (np. gaz albo korek) w jedną stronę, a samo zaczyna poruszać się w przeciwną stronę. To przykład III zasady dynamiki.',
+    simple: 'Coś wylatuje do tyłu, a Ty jedziesz do przodu. Wyrzucasz coś w jedną stronę, a ono odpycha Ciebie w drugą.',
+    example: 'Probówka z wodą na wózku. Para wypycha korek do tyłu, a wózek jedzie do przodu. Wózek jest dużo cięższy od korka, więc jedzie wolno, a korek leci szybko.' },
+  { id: 'silnik', term: 'Silnik odrzutowy',
+    formal: 'W silniku odrzutowym spala się paliwo i powstają gorące gazy. Silnik wyrzuca je do tyłu z dużą siłą, a gazy działają na silnik siłą skierowaną do przodu.',
+    simple: 'Silnik pcha gazy do tyłu, a gazy pchają silnik do przodu. Dlatego rakieta leci także w pustym kosmosie: odpycha się od własnych gazów.',
+    example: 'Samoloty odrzutowe i rakiety. Kiedyś większość samolotów miała śmigła, dziś najczęściej mają silniki odrzutowe.' },
+];
+const TQ_M3 = {
+  oddzialywanie: [
+    { text: 'Uderzasz pięścią w poduszkę. Co robi poduszka?', opts: [
+      { t: 'Działa siłą na pięść', ok: true },
+      { t: 'Nic, bo poduszka jest miękka', fb: 'Miękka czy twarda, każda rzecz działa z powrotem. Oddziaływania są wzajemne.' },
+      { t: 'Działa na pięść dopiero, gdy pięść się zatrzyma', fb: 'Poduszka działa na pięść od razu, w tej samej chwili, w której pięść działa na poduszkę.' },
+      { t: 'Nic, bo poduszka nie żyje i nie może pchać', fb: 'Rzeczy też działają siłą. Stół podtrzymuje książkę, a poduszka hamuje pięść.' } ] },
+    { text: 'Które zdanie jest prawdziwe?', opts: [
+      { t: 'Gdy jedno ciało działa na drugie, to drugie działa na pierwsze', ok: true },
+      { t: 'Siłą działa tylko ten, kto pcha', fb: 'Ten, kogo pchamy, też działa siłą z powrotem. Oddziaływania są wzajemne.' },
+      { t: 'Siłą działają tylko ciała, które się ruszają', fb: 'Stojąca ściana też działa siłą, gdy się o nią opierasz.' },
+      { t: 'Siłą działają tylko magnesy', fb: 'Siłą działa każde ciało, które oddziałuje z innym: Ty, ściana, Ziemia, magnes.' } ] },
+  ],
+  zasada3: [
+    { text: 'Uzupełnij: „Jeżeli ciało A działa siłą na ciało B, to jednocześnie ciało B działa na ciało A siłą równą co do wartości, mającą ten sam kierunek, lecz ___ zwrot.”', opts: [
+      { t: 'przeciwny', ok: true },
+      { t: 'ten sam', fb: 'Gdyby obie siły działały w tę samą stronę, nie byłoby odpychania. Siły mają przeciwne zwroty.' },
+      { t: 'dowolny', fb: 'Zwrot nie jest dowolny. Siła wraca zawsze w przeciwną stronę.' },
+      { t: 'większy', fb: 'Zwrot to strona, w którą działa siła. Nie bywa większy ani mniejszy. Tu jest przeciwny.' } ] },
+    { text: 'Ola pcha szafę siłą 80 N. Z jaką siłą szafa pcha Olę?', opts: [
+      { t: '80 N, w przeciwną stronę', ok: true },
+      { t: '0 N, bo szafa stoi', fb: 'Szafa stoi, ale i tak pcha Olę z powrotem. Inaczej Ola nie czułaby nacisku na dłoniach.' },
+      { t: 'Więcej niż 80 N, bo szafa jest cięższa', fb: 'Siły wzajemne są zawsze tak samo duże, nawet gdy ciała mają różne masy.' },
+      { t: '80 N, w tę samą stronę', fb: 'Wartość dobra, ale zwrot zły. Szafa pcha Olę w przeciwną stronę.' } ] },
+  ],
+  nierownowaza: [
+    { text: 'Dlaczego siły z III zasady dynamiki się nie równoważą?', opts: [
+      { t: 'Bo każda działa na inne ciało', ok: true },
+      { t: 'Bo jedna jest większa od drugiej', fb: 'Obie siły są zawsze tak samo duże. Nie znoszą się, bo działają na różne ciała.' },
+      { t: 'Bo działają w tę samą stronę', fb: 'Działają w przeciwne strony. Ale każda na inne ciało, więc się nie znoszą.' },
+      { t: 'One się równoważą', fb: 'Nie! Znosić mogą się tylko siły działające na to samo ciało. Te działają na dwa różne ciała.' } ] },
+    { text: 'Magnes przyciąga śrubę, a śruba przyciąga magnes. Na co działa siła, z jaką śruba przyciąga magnes?', opts: [
+      { t: 'Na magnes', ok: true },
+      { t: 'Na śrubę', fb: 'Śruba przyciąga magnes, więc ta siła działa na magnes. Na śrubę działa ta druga siła.' },
+      { t: 'Na magnes i śrubę naraz', fb: 'Każda z tych dwóch sił działa tylko na jedno ciało. Ta działa na magnes.' },
+      { t: 'Na stół', fb: 'Chodzi tylko o magnes i śrubę. Śruba przyciąga magnes, więc siła działa na magnes.' } ] },
+  ],
+  skutki: [
+    { text: 'Tata (80 kg) i Ola (40 kg) stoją na łyżwach. Odpychają się. Kto odjedzie szybciej?', opts: [
+      { t: 'Ola, bo ma mniejszą masę', ok: true },
+      { t: 'Tata, bo jest silniejszy', fb: 'Siły są tak samo duże. Szybciej odjedzie ten, kto ma mniejszą masę.' },
+      { t: 'Oboje tak samo, bo siły są równe', fb: 'Siły są równe, ale masy nie. Mniejsza masa dostaje większe przyspieszenie.' },
+      { t: 'Odjedzie tylko Ola', fb: 'Odjadą oboje, bo na każde z nich działa siła. Ola szybciej.' } ] },
+    { text: 'Pływaczka odpycha się od ściany basenu. Ściana pcha ją tak samo mocno. Dlaczego nie widać, żeby basen się ruszył?', opts: [
+      { t: 'Ściana dostaje pchnięcie, ale jest częścią Ziemi. Ziemia jest tak ciężka, że jej ruch jest za mały, żeby go zobaczyć.', ok: true },
+      { t: 'Ściana nie działa na pływaczkę żadną siłą', fb: 'Działa! To właśnie ściana wypycha pływaczkę do przodu.' },
+      { t: 'Siły się znoszą', fb: 'Te siły działają na różne ciała, więc się nie znoszą.' },
+      { t: 'Woda zatrzymuje basen', fb: 'Chodzi o masę. Żeby ruszyć ścianę, trzeba ruszyć całą Ziemię, a ona jest ogromnie ciężka.' } ] },
+  ],
+  odrzut: [
+    { text: 'Na czym polega zjawisko odrzutu?', opts: [
+      { t: 'Ciało wyrzuca coś w jedną stronę, a samo rusza w przeciwną', ok: true },
+      { t: 'Ciało odbija się od ściany', fb: 'Odbicie od ściany to coś innego. W odrzucie ciało wyrzuca coś z siebie i przez to rusza w przeciwną stronę.' },
+      { t: 'Ciało wyrzuca coś i leci w tę samą stronę', fb: 'Odwrotnie. Co wylatuje do tyłu, pcha ciało do przodu.' },
+      { t: 'Ciało zatrzymuje się, bo ktoś je odrzucił', fb: 'Odrzut to ruch w przeciwną stronę do tego, co ciało wyrzuca.' } ] },
+    { text: 'Z wózka wystrzeliwuje korek w lewo. Co robi wózek?', opts: [
+      { t: 'Jedzie w prawo, wolniej niż leci korek', ok: true },
+      { t: 'Stoi, bo nikt go nie pchnął', fb: 'Korek go pchnął! Wypychany korek działa na probówkę i wózek w przeciwną stronę.' },
+      { t: 'Jedzie w lewo za korkiem', fb: 'Odwrotnie. Korek leci w lewo, więc wózek jedzie w prawo.' },
+      { t: 'Jedzie w prawo tak samo szybko jak korek', fb: 'Wózek ma dużo większą masę niż korek, więc jedzie dużo wolniej.' } ] },
+  ],
+  silnik: [
+    { text: 'Co pcha rakietę do przodu w pustym kosmosie?', opts: [
+      { t: 'Gazy wyrzucane z silnika do tyłu', ok: true },
+      { t: 'Powietrze za rakietą', fb: 'W kosmosie nie ma powietrza. Rakieta odpycha się od własnych gazów.' },
+      { t: 'Nic, w kosmosie rakieta nie może przyspieszać', fb: 'Może! Silnik pcha gazy do tyłu, a gazy pchają rakietę do przodu.' },
+      { t: 'Przyciąganie gwiazd', fb: 'Rakietę rozpędza jej silnik: pcha gazy do tyłu, a gazy pchają ją do przodu.' } ] },
+    { text: 'Silnik samolotu wyrzuca gazy do tyłu. W którą stronę gazy pchają silnik?', opts: [
+      { t: 'Do przodu', ok: true },
+      { t: 'Do tyłu', fb: 'Do tyłu lecą gazy. Na silnik działa siła w przeciwną stronę, czyli do przodu.' },
+      { t: 'W górę', fb: 'Siła wraca na tej samej linii, ale w przeciwną stronę. Gazy lecą do tyłu, więc silnik jest pchany do przodu.' },
+      { t: 'Gazy nie pchają silnika', fb: 'Pchają! Silnik działa na gazy, więc gazy działają na silnik. To III zasada.' } ] },
+  ],
+};
+// pojęcia z modułu 2
+const GLOS_M2 = [
+  { id: 'przyspieszenie', term: 'Przyspieszenie',
+    formal: 'Przyspieszenie mówi, o ile zmienia się prędkość ciała w jednostce czasu: a = Δv : t. Jednostką przyspieszenia jest 1 m/s² (metr na sekundę do kwadratu).',
+    simple: 'Przyspieszenie mówi, o ile rośnie prędkość w każdej sekundzie. a = 3 m/s² znaczy: co sekundę prędkość rośnie o 3 m/s.',
+    keys: { title: 'Jak czytać ten wzór', formula: 'a = Δv : t', read: '„a równa się delta v podzielone przez t”',
+      items: [['a', 'przyspieszenie'], ['Δv', 'o ile zmieniła się prędkość. Znaczek Δ (delta) znaczy „zmiana”.'], ['t', 'czas, w którym prędkość się zmieniła'],
+        [':', 'dzielenie'], ['m/s²', 'jednostka przyspieszenia: o ile m/s rośnie prędkość w każdej sekundzie']] },
+    example: 'Rower rusza. Po 1 s jedzie 2 m/s, po 2 s 4 m/s, po 3 s 6 m/s. W ciągu 3 s prędkość wzrosła o 6 m/s. a = 6 m/s : 3 s = 2 m/s². Czyli co sekundę o 2 m/s szybciej.' },
+  { id: 'przyspieszony', term: 'Ruch jednostajnie przyspieszony',
+    formal: 'Ruch jednostajnie przyspieszony prostoliniowy to ruch po linii prostej, w którym prędkość rośnie o tyle samo w jednakowych odstępach czasu. Przyspieszenie jest stałe.',
+    simple: 'Ciało jedzie prosto i co sekundę przyspiesza o tyle samo.',
+    example: 'Kulka toczy się w dół po gładkiej, równej rynnie. Co sekundę jedzie o tyle samo szybciej.' },
+  { id: 'niezrownowazona', term: 'Siła niezrównoważona',
+    formal: 'Siła jest niezrównoważona, gdy siła wypadkowa działająca na ciało nie jest równa zero.',
+    simple: 'Siły się nie znoszą. Coś „zostaje” i to coś zmienia prędkość ciała.',
+    example: 'Pchasz skrzynię siłą 120 N, a tarcie hamuje ją siłą 70 N. Zostaje 50 N. Ta siła rozpędza skrzynię.' },
+  { id: 'zasada2', term: 'II zasada dynamiki Newtona',
+    formal: 'Jeżeli na ciało działa stała siła niezrównoważona, to ciało porusza się ruchem jednostajnie przyspieszonym. Przyspieszenie jest wprost proporcjonalne do siły i odwrotnie proporcjonalne do masy ciała: a = F : m.',
+    simple: 'Gdy siły się nie znoszą, ciało przyspiesza. 2 razy większa siła: 2 razy większe przyspieszenie. 2 razy większa masa: przyspieszenie o połowę mniejsze.',
+    keys: { title: 'Trudne słowa',
+      items: [['stała siła', 'siła, która cały czas jest tak samo duża'],
+        ['wprost proporcjonalne do siły', 'ile razy większa siła, tyle razy większe przyspieszenie'],
+        ['odwrotnie proporcjonalne do masy', 'ile razy większa masa, tyle razy mniejsze przyspieszenie']] },
+    example: 'Pchasz tak samo mocno pusty wózek i pełny. Pusty rozpędza się szybciej, bo ma mniejszą masę.' },
+  { id: 'wzor', term: 'Wzór: a = F : m',
+    formal: 'Przyspieszenie ciała to siła wypadkowa podzielona przez masę ciała: a = F : m. Z tego wzoru wynika też: F = m · a.',
+    simple: 'Szukasz przyspieszenia? Podziel siłę przez masę. Szukasz siły? Pomnóż masę przez przyspieszenie.',
+    keys: { title: 'Jak czytać ten wzór', formula: 'a = F : m', read: '„przyspieszenie równa się siła podzielona przez masę”', tri: true,
+      items: [['a', 'przyspieszenie, w m/s²'], ['F', 'siła (ta, która „zostaje”, czyli wypadkowa), w niutonach (N)'], ['m', 'masa, w kilogramach (kg)'],
+        [':', 'dzielenie'], ['·', 'mnożenie']] },
+    example: 'Siła 200 N, masa 50 kg. Szukam a: a = 200 : 50 = 4 m/s². W drugą stronę: masa 50 kg, przyspieszenie 4 m/s². Szukam F: F = 50 · 4 = 200 N.' },
+  { id: 'niuton', term: 'Niuton (1 N)',
+    formal: '1 N to wartość siły, która ciału o masie 1 kg nadaje przyspieszenie 1 m/s². Zapisujemy: 1 N = 1 kg · m/s².',
+    simple: 'Niuton to taka siła, która rozpędza 1 kg tak, że co sekundę jedzie on o 1 m/s szybciej.',
+    keys: { title: 'Jak czytać ten zapis', formula: '1 N = 1 kg · m/s²', read: '„jeden niuton to jeden kilogram razy metr na sekundę do kwadratu”',
+      items: [['Co to jest?', 'To nie jest zadanie do policzenia. To „przepis” na jednostkę: z czego składa się niuton.'],
+        ['Skąd się bierze?', 'Ze wzoru F = m · a. Masę (kg) mnożymy przez przyspieszenie (m/s²). Wychodzą kg · m/s², czyli niutony.']] },
+    example: 'Ziemia przyciąga tabliczkę czekolady (100 g) siłą około 1 N.' },
+  { id: 'kierunek', term: 'Kierunek przyspieszenia',
+    formal: 'Przyspieszenie ma taki sam kierunek i zwrot jak siła wypadkowa działająca na ciało.',
+    simple: 'Ciało przyspiesza w tę stronę, w którą pcha siła wypadkowa. Gdy siła działa przeciwnie do ruchu, ciało zwalnia.',
+    example: 'Rowerzysta hamuje. Siła hamowania działa do tyłu, więc rower zwalnia.' },
+];
+const TQ_M2 = {
+  przyspieszenie: [
+    { text: 'Przyspieszenie samochodu wynosi 3 m/s². Co to znaczy?', opts: [
+      { t: 'Co sekundę jego prędkość rośnie o 3 m/s', ok: true },
+      { t: 'Jedzie z prędkością 3 m/s', fb: 'To byłaby prędkość. Przyspieszenie mówi, o ile prędkość rośnie w każdej sekundzie.' },
+      { t: 'Co sekundę przejeżdża 3 metry', fb: 'Tak opisujemy prędkość 3 m/s. Przyspieszenie mówi, jak zmienia się prędkość.' },
+      { t: 'Za 3 sekundy się zatrzyma', fb: 'Przyspieszenie 3 m/s² znaczy, że prędkość rośnie, a nie maleje do zera.' } ] },
+    { text: 'W jakich jednostkach mierzymy przyspieszenie?', opts: [
+      { t: 'm/s² (metr na sekundę do kwadratu)', ok: true },
+      { t: 'm/s (metr na sekundę)', fb: 'W m/s mierzymy prędkość. Przyspieszenie mierzymy w m/s².' },
+      { t: 'N (niuton)', fb: 'W niutonach mierzymy siłę. Przyspieszenie mierzymy w m/s².' },
+      { t: 'kg (kilogram)', fb: 'W kilogramach mierzymy masę. Przyspieszenie mierzymy w m/s².' } ] },
+  ],
+  przyspieszony: [
+    { text: 'Który ruch jest jednostajnie przyspieszony?', opts: [
+      { t: 'Kulka w rynnie: po 1 s ma 2 m/s, po 2 s 4 m/s, po 3 s 6 m/s', ok: true },
+      { t: 'Pociąg jedzie po prostym torze cały czas 80 km/h', fb: 'Prędkość się nie zmienia. To ruch jednostajny, nie przyspieszony.' },
+      { t: 'Rowerzysta hamuje przed światłami', fb: 'Rowerzysta zwalnia, a w ruchu przyspieszonym prędkość rośnie.' },
+      { t: 'Auto: po 1 s ma 2 m/s, po 2 s 3 m/s, po 3 s 7 m/s', fb: 'Prędkość rośnie, ale za każdym razem o inną wartość. W ruchu jednostajnie przyspieszonym rośnie co sekundę o tyle samo.' } ] },
+    { text: 'W ruchu jednostajnie przyspieszonym prędkość co sekundę…', opts: [
+      { t: '…rośnie o tyle samo.', ok: true },
+      { t: '…jest taka sama.', fb: 'Gdy prędkość się nie zmienia, to ruch jednostajny.' },
+      { t: '…maleje o tyle samo.', fb: 'Gdy prędkość maleje, ciało zwalnia. To ruch opóźniony.' },
+      { t: '…rośnie coraz bardziej.', fb: 'W ruchu jednostajnie przyspieszonym prędkość rośnie co sekundę o tyle samo, a nie coraz bardziej.' } ] },
+  ],
+  niezrownowazona: [
+    { text: 'Na skrzynię działają dwie siły: 80 N w prawo i 80 N w lewo. Czy to siła niezrównoważona?', opts: [
+      { t: 'Nie. Siły się znoszą, wypadkowa to 0 N.', ok: true },
+      { t: 'Tak, bo działają dwie siły.', fb: 'Liczy się to, co zostaje. 80 N w prawo i 80 N w lewo się znoszą.' },
+      { t: 'Tak, wypadkowa to 160 N.', fb: 'Siły w przeciwne strony odejmujemy, a nie dodajemy. 80 N − 80 N = 0 N.' },
+      { t: 'Nie wiadomo, bo nie znamy masy skrzyni.', fb: 'Masa nie jest potrzebna. Wystarczy porównać siły: 80 N − 80 N = 0 N.' } ] },
+    { text: 'Kiedy ciało zmienia swoją prędkość?', opts: [
+      { t: 'Gdy działa na nie siła niezrównoważona', ok: true },
+      { t: 'Zawsze, gdy działa na nie jakaś siła', fb: 'Nie zawsze. Jeśli siły się znoszą, prędkość się nie zmienia. To I zasada.' },
+      { t: 'Gdy siły się równoważą', fb: 'Gdy siły się równoważą, prędkość się NIE zmienia. To I zasada z modułu 1.' },
+      { t: 'Tylko wtedy, gdy ciało stoi', fb: 'Prędkość może się zmieniać także wtedy, gdy ciało jedzie. Na przykład gdy hamuje.' } ] },
+  ],
+  zasada2: [
+    { text: 'Uzupełnij: „Jeżeli na ciało działa stała siła niezrównoważona, to ciało porusza się ruchem ___.”', opts: [
+      { t: 'jednostajnie przyspieszonym', ok: true },
+      { t: 'jednostajnym prostoliniowym', fb: 'Tak jest, gdy siły się znoszą. To I zasada. Tu siła się nie znosi, więc prędkość rośnie.' },
+      { t: 'coraz wolniejszym, aż stanie', fb: 'Siła, która pcha w stronę ruchu, rozpędza ciało, a nie hamuje.' },
+      { t: 'po okręgu', fb: 'Ruch po okręgu wymaga siły, która ciągle zmienia kierunek. Tu siła jest stała.' } ] },
+    { text: 'Na dwa wózki działa taka sama siła. Wózek A ma masę 10 kg, wózek B ma 20 kg. Który ma większe przyspieszenie?', opts: [
+      { t: 'Wózek A, bo ma mniejszą masę', ok: true },
+      { t: 'Wózek B, bo ma większą masę', fb: 'Odwrotnie. Większa masa to mniejsze przyspieszenie przy tej samej sile.' },
+      { t: 'Oba takie samo, bo siła jest taka sama', fb: 'Siła jest taka sama, ale masy są różne. a = F : m, więc przyspieszenie też jest różne.' },
+      { t: 'Żaden nie przyspiesza', fb: 'Siła się nie znosi, więc oba wózki przyspieszają. Pytanie, który bardziej.' } ] },
+  ],
+  wzor: [
+    { text: 'Jak obliczyć przyspieszenie, gdy znasz siłę F i masę m?', opts: [
+      { t: 'a = F : m', ok: true },
+      { t: 'a = F · m', fb: 'Gdyby mnożyć, cięższe ciało przyspieszałoby bardziej. A jest odwrotnie. Siłę dzielimy przez masę.' },
+      { t: 'a = m : F', fb: 'Dzielenie w złą stronę. Najpierw siła, potem dzielimy przez masę: a = F : m.' },
+      { t: 'a = F + m', fb: 'Siły i masy nie dodajemy. Siłę dzielimy przez masę.' } ] },
+    { text: 'Siła 300 N działa na sanie o masie 100 kg. Jakie jest ich przyspieszenie?', opts: [
+      { t: '3 m/s²', ok: true },
+      { t: '30 000 m/s²', fb: 'To wynik mnożenia. Siłę dzielimy przez masę: 300 : 100 = 3.' },
+      { t: '0,33 m/s²', fb: 'Dzielenie w złą stronę. Siłę dzielimy przez masę: 300 : 100 = 3.' },
+      { t: '300 m/s²', fb: 'Trzeba jeszcze podzielić przez masę: 300 : 100 = 3.' } ] },
+  ],
+  niuton: [
+    { text: '1 N to siła, która ciału o masie 1 kg nadaje przyspieszenie…', opts: [
+      { t: '1 m/s²', ok: true },
+      { t: '10 m/s²', fb: 'Niuton jest tak dobrany, że 1 kg dostaje przyspieszenie 1 m/s².' },
+      { t: 'prędkość 1 m/s', fb: 'Chodzi o przyspieszenie, nie prędkość. 1 N daje 1 kg przyspieszenie 1 m/s².' },
+      { t: 'masę 1 kg', fb: 'Siła nie nadaje masy. Siła zmienia prędkość, czyli nadaje przyspieszenie.' } ] },
+    { text: 'Który zapis jest poprawny?', opts: [
+      { t: '1 N = 1 kg · m/s²', ok: true },
+      { t: '1 N = 1 kg · m/s', fb: 'Brakuje „do kwadratu”. Ze wzoru F = m · a: kilogram razy m/s².' },
+      { t: '1 N = 1 m/s²', fb: 'Brakuje kilograma. Ze wzoru F = m · a: kilogram razy m/s².' },
+      { t: '1 N = 1 kg', fb: 'Niuton i kilogram to różne wielkości. Ze wzoru F = m · a: kilogram razy m/s².' } ] },
+  ],
+  kierunek: [
+    { text: 'Rowerzysta jedzie w prawo. Siła wypadkowa działa w lewo. Co się dzieje?', opts: [
+      { t: 'Rowerzysta zwalnia', ok: true },
+      { t: 'Rowerzysta przyspiesza w prawo', fb: 'Siła w lewo nie może rozpędzać w prawo. Działa przeciwnie do ruchu, więc hamuje.' },
+      { t: 'Rower od razu jedzie w lewo', fb: 'Najpierw zwalnia. Dopiero gdyby się zatrzymał, siła zaczęłaby go rozpędzać w lewo.' },
+      { t: 'Jedzie cały czas tak samo szybko', fb: 'Tak by było, gdyby siły się znosiły. Tu działa siła wypadkowa, więc prędkość się zmienia.' } ] },
+    { text: 'Przyspieszenie ma zawsze taki sam kierunek i zwrot jak…', opts: [
+      { t: '…siła wypadkowa.', ok: true },
+      { t: '…prędkość.', fb: 'Nie zawsze. Przy hamowaniu ciało jedzie do przodu, a siła i przyspieszenie są skierowane do tyłu.' },
+      { t: '…ciężar.', fb: 'Ciężar to tylko jedna z sił. Liczy się siła wypadkowa.' },
+      { t: '…tarcie.', fb: 'Tarcie to tylko jedna z sił. Liczy się siła wypadkowa.' } ] },
+  ],
+};
+// pojęcia z modułu 1
+const GLOS_M1 = [
+  { id: 'sila', term: 'Siła',
+    formal: 'Siła opisuje działanie jednego ciała na drugie. Siła jest wielkością wektorową: ma wartość, kierunek, zwrot i punkt przyłożenia. Jednostką siły jest niuton (1 N).',
+    simple: 'Siła to pchnięcie albo pociągnięcie. Rysujemy ją jako strzałkę (wektor). Strzałka zaczyna się tam, gdzie pchamy. Im dłuższa strzałka, tym mocniej pchamy. Grot strzałki pokazuje, w którą stronę.',
+    example: 'Pchasz wózek w sklepie, czyli działasz na niego siłą.' },
+  { id: 'wypadkowa', term: 'Siła wypadkowa',
+    formal: 'Siła wypadkowa to jedna siła, która daje taki sam skutek jak kilka sił działających razem.',
+    simple: 'Gdy kilka sił działa naraz, sprawdzamy, co z nich „zostaje”. Siły w tę samą stronę dodajemy, a w przeciwne strony odejmujemy.',
+    example: 'Pchasz skrzynię w prawo siłą 120 N, a tarcie hamuje ją w lewo siłą 70 N. Zostaje 50 N w prawo. To jest siła wypadkowa.' },
+  { id: 'rownowaga', term: 'Siły się równoważą',
+    formal: 'Siły się równoważą, gdy ich siła wypadkowa jest równa zero.',
+    simple: 'Siły są tak samo duże, ale działają w przeciwne strony. Znoszą się, jakby żadnej nie było.',
+    example: 'Przeciąganie liny, gdy obie drużyny są tak samo silne. Lina się nie przesuwa.' },
+  { id: 'jednostajny', term: 'Ruch jednostajny prostoliniowy',
+    formal: 'Ruch jednostajny prostoliniowy to ruch po linii prostej ze stałą prędkością.',
+    simple: 'Ciało jedzie prosto i cały czas tak samo szybko. Nie przyspiesza, nie zwalnia i nie skręca.',
+    example: 'Pociąg jedzie po prostym torze cały czas z prędkością 80 km/h.' },
+  { id: 'tarcie', term: 'Tarcie',
+    formal: 'Siła tarcia działa między stykającymi się powierzchniami i przeciwdziała ruchowi ciała.',
+    simple: 'Tarcie to siła, która hamuje. Działa zawsze w stronę przeciwną do ruchu. Na szorstkiej podłodze jest duże, na lodzie małe, a w kosmosie go nie ma.',
+    example: 'Hulajnoga sama zwalnia i staje, jeśli przestaniesz się odpychać.' },
+  { id: 'zasada1', term: 'I zasada dynamiki Newtona (zasada bezwładności)',
+    formal: 'Jeżeli na ciało nie działa żadna siła lub działające siły się równoważą, to ciało pozostaje w spoczynku lub porusza się ruchem jednostajnym prostoliniowym.',
+    simple: 'Jeśli nic ciała nie pcha i nic go nie hamuje (albo siły się znoszą), to: ciało, które stoi, dalej stoi. Ciało, które jedzie, jedzie dalej prosto i tak samo szybko.',
+    example: 'Sonda w kosmosie z wyłączonymi silnikami leci dalej prosto i tak samo szybko, bo nic jej nie hamuje.' },
+  { id: 'bezwladnosc', term: 'Bezwładność',
+    formal: 'Bezwładność to właściwość ciał. Polega na tym, że ciało samo nie zmienia swojej prędkości. Do zmiany prędkości potrzebna jest siła.',
+    simple: 'Każde ciało jest trochę „uparte”. Jak stoi, to chce dalej stać. Jak jedzie, to chce dalej jechać tak samo szybko i w tę samą stronę. Uwaga: bezwładność to cecha ciała, a nie prawo. Prawo, które ją opisuje, to I zasada dynamiki Newtona. Dlatego nazywa się ją też zasadą bezwładności.',
+    example: 'Autobus nagle hamuje, a Ty lecisz do przodu. Twoje ciało „chce” jechać dalej.' },
+  { id: 'masa', term: 'Masa jako miara bezwładności',
+    formal: 'Masa jest miarą bezwładności ciała. Im większa masa, tym większa bezwładność. Jednostką masy jest kilogram (1 kg).',
+    simple: 'Im większa masa, tym ciało bardziej „uparte”: trudniej je rozpędzić i trudniej zatrzymać.',
+    example: 'Pełny wózek z zakupami trudniej ruszyć i zatrzymać niż pusty.' },
+];
+const TQ_M1 = {
+  sila: [
+    { text: 'Co trzeba podać, żeby dokładnie opisać siłę?', opts: [
+      { t: 'Wartość, kierunek, zwrot i punkt przyłożenia', ok: true },
+      { t: 'Tylko wartość (ile niutonów)', fb: 'Sama wartość nie wystarczy. Siła to wektor: trzeba też wiedzieć, w którą stronę działa i gdzie jest przyłożona.' },
+      { t: 'Masę i prędkość', fb: 'To cechy ciała, a nie siły. Siłę opisujemy przez wartość, kierunek, zwrot i punkt przyłożenia.' },
+      { t: 'Tylko kierunek', fb: 'Kierunek to za mało. Trzeba też wiedzieć, jak mocno (wartość), w którą stronę (zwrot) i gdzie siła działa (punkt przyłożenia).' } ] },
+    { text: 'W jakich jednostkach mierzymy siłę?', opts: [
+      { t: 'W niutonach (N)', ok: true },
+      { t: 'W kilogramach (kg)', fb: 'W kilogramach mierzymy masę. Siłę mierzymy w niutonach.' },
+      { t: 'W metrach na sekundę (m/s)', fb: 'To jednostka prędkości. Siłę mierzymy w niutonach.' },
+      { t: 'W dżulach (J)', fb: 'W dżulach mierzymy energię. Poznasz ją w następnym dziale. Siłę mierzymy w niutonach.' } ] },
+  ],
+  wypadkowa: [
+    { text: 'Na skrzynię działają dwie siły: 100 N w prawo i 30 N w lewo. Jaka jest siła wypadkowa?', opts: [
+      { t: '70 N w prawo', ok: true },
+      { t: '130 N w prawo', fb: 'Siły działają w przeciwne strony, więc je odejmujemy, a nie dodajemy.' },
+      { t: '70 N w lewo', fb: 'Wartość dobra, ale strona zła. Wygrywa większa siła, czyli ta w prawo.' },
+      { t: '0 N', fb: 'Siły znoszą się tylko wtedy, gdy są tak samo duże. 100 N i 30 N to nie to samo.' } ] },
+    { text: 'Dwie osoby ciągną sanki w tę samą stronę: jedna siłą 40 N, druga siłą 60 N. Jaka jest siła wypadkowa?', opts: [
+      { t: '100 N w stronę, w którą ciągną', ok: true },
+      { t: '20 N', fb: 'Siły działają w tę samą stronę, więc je dodajemy, a nie odejmujemy.' },
+      { t: '60 N, bo liczy się tylko większa siła', fb: 'Liczą się obie siły. Gdy działają w tę samą stronę, dodajemy je.' },
+      { t: '50 N, czyli średnia', fb: 'Średniej nie liczymy. Siły w tę samą stronę dodajemy.' } ] },
+  ],
+  rownowaga: [
+    { text: 'Kiedy siły się równoważą?', opts: [
+      { t: 'Gdy siła wypadkowa jest równa zero', ok: true },
+      { t: 'Gdy na ciało działa tylko jedna siła', fb: 'Jedna siła nie ma się z czym znieść. Wtedy wypadkowa to właśnie ta jedna siła.' },
+      { t: 'Gdy ciało się porusza', fb: 'Siły mogą się równoważyć i wtedy, gdy ciało stoi, i wtedy, gdy jedzie tak samo szybko. Liczy się to, czy wypadkowa jest równa zero.' },
+      { t: 'Gdy wszystkie siły działają w tę samą stronę', fb: 'Siły w tę samą stronę się dodają, a nie znoszą.' } ] },
+    { text: 'Książka leży na stole. Ziemia ciągnie ją w dół siłą 5 N. Z jaką siłą stół pcha książkę w górę?', opts: [
+      { t: '5 N', ok: true },
+      { t: '0 N, bo stół nic nie robi', fb: 'Gdyby stół nie pchał w górę, książka spadłaby przez stół. Stół pcha w górę tak samo mocno, jak Ziemia ciągnie w dół.' },
+      { t: '10 N', fb: 'Wtedy książka poleciałaby w górę. Leży spokojnie, więc siły się znoszą.' },
+      { t: 'Mniej niż 5 N', fb: 'Wtedy książka zapadałaby się w stół. Leży spokojnie, więc siły się znoszą.' } ] },
+  ],
+  jednostajny: [
+    { text: 'Który ruch jest jednostajny prostoliniowy?', opts: [
+      { t: 'Pociąg jedzie po prostym torze cały czas 80 km/h', ok: true },
+      { t: 'Samochód rusza spod świateł', fb: 'Samochód przyspiesza, więc jego prędkość się zmienia.' },
+      { t: 'Rowerzysta jedzie po rondzie cały czas tak samo szybko', fb: 'Prędkość się nie zmienia, ale rowerzysta skręca. Ruch nie jest prostoliniowy.' },
+      { t: 'Piłka toczy się i powoli zatrzymuje', fb: 'Piłka zwalnia, więc jej prędkość się zmienia.' } ] },
+    { text: 'Uzupełnij: ruch jednostajny prostoliniowy to ruch po linii prostej ze ___ prędkością.', opts: [
+      { t: 'stałą', ok: true },
+      { t: 'rosnącą', fb: 'Gdy prędkość rośnie, to ruch przyspieszony.' },
+      { t: 'malejącą', fb: 'Gdy prędkość maleje, ciało zwalnia. To nie jest ruch jednostajny.' },
+      { t: 'dużą', fb: 'Prędkość może być mała albo duża. Ważne, żeby się nie zmieniała.' } ] },
+  ],
+  tarcie: [
+    { text: 'W którą stronę działa siła tarcia?', opts: [
+      { t: 'Przeciwnie do ruchu', ok: true },
+      { t: 'W stronę ruchu', fb: 'Tarcie hamuje, więc działa w stronę przeciwną do ruchu.' },
+      { t: 'Zawsze w dół', fb: 'W dół działa ciężar. Tarcie działa wzdłuż podłoża, przeciwnie do ruchu.' },
+      { t: 'Zawsze w górę', fb: 'Tarcie działa wzdłuż podłoża, przeciwnie do ruchu.' } ] },
+    { text: 'Gdzie tarcie jest najmniejsze?', opts: [
+      { t: 'Na gładkim lodzie', ok: true },
+      { t: 'Na asfalcie', fb: 'Na asfalcie tarcie jest duże. Przypomnij sobie hangar i lodowisko z laboratorium.' },
+      { t: 'Na dywanie', fb: 'Na dywanie tarcie jest duże. Przypomnij sobie lodowisko z laboratorium.' },
+      { t: 'Na piasku', fb: 'Na piasku tarcie jest duże. Przypomnij sobie lodowisko z laboratorium.' } ] },
+  ],
+  zasada1: [
+    { text: 'Uzupełnij I zasadę dynamiki: „Jeżeli na ciało nie działa żadna siła lub działające siły się ___, to ciało pozostaje w spoczynku lub porusza się ruchem jednostajnym prostoliniowym.”', opts: [
+      { t: 'równoważą', ok: true },
+      { t: 'zwiększają', fb: 'Gdyby siła rosła, prędkość ciała by się zmieniała. Chodzi o siły, które się znoszą, czyli równoważą.' },
+      { t: 'zmniejszają', fb: 'Nie chodzi o to, czy siły maleją, tylko czy się znoszą, czyli równoważą.' },
+      { t: 'dodają', fb: 'Gdy siły się dodają, wypadkowa rośnie i ciało zmienia prędkość. Chodzi o siły, które się równoważą.' } ] },
+    { text: 'Według I zasady dynamiki ciało, na które nie działa żadna siła…', opts: [
+      { t: '…stoi albo jedzie prosto, cały czas tak samo szybko.', ok: true },
+      { t: '…zawsze stoi.', fb: 'Stoi tylko wtedy, gdy wcześniej stało. Jeśli jechało, jedzie dalej tak samo szybko.' },
+      { t: '…zawsze zwalnia.', fb: 'Do zwalniania potrzebna jest siła, np. tarcie. Tu żadnej siły nie ma.' },
+      { t: '…zawsze przyspiesza.', fb: 'Do przyspieszania potrzebna jest siła. Tu żadnej siły nie ma.' } ] },
+  ],
+  bezwladnosc: [
+    { text: 'Czym jest bezwładność?', opts: [
+      { t: 'Właściwością ciał: ciało samo nie zmienia swojej prędkości', ok: true },
+      { t: 'Siłą, która pcha ciała do przodu', fb: 'Bezwładność to nie siła! To cecha ciała, jego „upór”.' },
+      { t: 'Tym, że ciało stoi w miejscu', fb: 'Bezwładność ma też ciało, które jedzie. Ono chce jechać dalej tak samo szybko.' },
+      { t: 'Prawem, które mówi, kiedy ciało stoi albo jedzie ruchem jednostajnym', fb: 'To prawo to I zasada dynamiki Newtona. Bezwładność to cecha ciała, którą to prawo opisuje.' } ] },
+    { text: 'Strzepujesz wodę z mokrych rąk. Ręce nagle się zatrzymują, a krople lecą dalej. Dlaczego?', opts: [
+      { t: 'Krople chcą dalej lecieć tak samo szybko. To bezwładność.', ok: true },
+      { t: 'Ręce odpychają krople.', fb: 'Ręce się zatrzymują, a krople nie, bo nic ich nie zatrzymuje. To bezwładność, a nie odpychanie.' },
+      { t: 'Krople są lżejsze od powietrza.', fb: 'Woda jest dużo cięższa od powietrza. Krople lecą dalej z powodu bezwładności.' },
+      { t: 'Woda nie ma masy.', fb: 'Woda ma masę, więc ma też bezwładność. Właśnie dlatego krople lecą dalej.' } ] },
+  ],
+  masa: [
+    { text: 'Która z tych rzeczy ma największą bezwładność?', opts: [
+      { t: 'Ciężarówka, 10 000 kg', ok: true },
+      { t: 'Samochód osobowy, 1200 kg', fb: 'Bezwładność zależy od masy. Największą masę ma ciężarówka.' },
+      { t: 'Rower, 15 kg', fb: 'Bezwładność zależy od masy. Rower ma małą masę.' },
+      { t: 'Piłka, 0,4 kg', fb: 'Bezwładność zależy od masy. Piłka ma najmniejszą masę z tych rzeczy.' } ] },
+    { text: 'Uzupełnij: im ___ masa ciała, tym trudniej zmienić jego prędkość.', opts: [
+      { t: 'większa', ok: true },
+      { t: 'mniejsza', fb: 'Odwrotnie. Małą masę łatwo rozpędzić i łatwo zatrzymać.' },
+      { t: 'szybsza', fb: 'Masa nie bywa szybka ani wolna. Chodzi o to, czy jest duża, czy mała.' },
+      { t: 'zmienna', fb: 'Chodzi o to, czy masa jest duża, czy mała. Im większa, tym trudniej zmienić prędkość.' } ] },
+  ],
+};
+// poprzednie moduły: ich pojęcia „do powtórki” wracają na początek etapu Pojęcia (w S.terms z przedrostkiem „m2_”, „m1_”)
+// wszystkie moduły działu: z nich Grawitor bierze pytania (pre = przedrostek pojęcia w S.terms, temat z podręcznika)
+const PREV = [{ n: 1, pre: 'm1_', temat: 24, glos: GLOS_M1, tq: TQ_M1 }, { n: 2, pre: 'm2_', temat: 25, glos: GLOS_M2, tq: TQ_M2 }, { n: 3, pre: 'm3_', temat: 27, glos: GLOS_M3, tq: TQ_M3 },
+  { n: 4, pre: 'm4_', temat: 26, glos: GLOS_M4, tq: TQ_M4 }, { n: 5, pre: 'm5_', temat: 28, glos: GLOS_M5, tq: TQ_M5 }];
+
+// ---------- sztuczki: bohater w dymku pyta, okno pokazuje wzór, rysunek albo trudne słowa krok po kroku (animacje GSAP) ----------
+// trójkąt F / m · a z palcem, który zakrywa szukaną literę
+const TRI_TIP = '<svg viewBox="0 0 120 150" aria-hidden="true"><path class="tl" d="M60 4 L116 100 L4 100 Z" fill="none" stroke="currentColor" stroke-width="3"/>' +
+  '<line class="tl" x1="30" y1="56" x2="90" y2="56" stroke="currentColor" stroke-width="3"/><line class="tl" x1="60" y1="56" x2="60" y2="100" stroke="currentColor" stroke-width="3"/>' +
+  '<g font-size="24" font-weight="800" text-anchor="middle" fill="currentColor"><text class="lF" x="60" y="46">F</text><text class="lm" x="38" y="88">m</text><text class="la" x="82" y="88">a</text></g>' +
+  '<g class="finger"><rect x="-10" y="0" width="20" height="58" rx="10" fill="#f2c9a1" stroke="#15102a" stroke-width="2"/><rect x="-6" y="3" width="12" height="11" rx="4" fill="#fbe3cf"/></g></svg>';
+const tipAsk = k => k.ask || (k.tri ? 'Zdradzić Ci sztuczkę, jak łatwo zapamiętać ten wzór?' : k.formula ? 'Pokazać Ci po kolei, jak czytać ten wzór?' :
+  k.pic ? 'Pokazać Ci na rysunku, jak to działa?' : 'Trudne słowa? Wytłumaczę je po kolei.');
+const tipEl = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+function tipButton(k) {
+  const b = tipEl('button', 'tip-ask'); b.type = 'button';
+  b.innerHTML = (heroReady() ? ava(hero.id, 56) : '') + '<span class="bubble"><b></b><span></span></span>';
+  b.querySelector('b').textContent = heroReady() ? hero.name : 'Podpowiedź';
+  b.querySelector('.bubble > span').textContent = tipAsk(k);
+  b.addEventListener('click', () => tipOpen(k));
+  const a = b.querySelector('svg'); // bohater macha, żeby było go widać
+  if (a && !RM) gsap.fromTo(a, { rotation: -10 }, { rotation: 10, duration: .45, repeat: 7, yoyo: true, ease: 'sine.inOut', transformOrigin: '50% 90%', delay: 1.2, clearProps: 'transform' });
+  return b;
+}
+// kroki: [wzór albo rysunek] → [sztuczka z trójkątem] → po jednym trudnym słowie / literze na krok
+function tipSteps(k, st) {
+  const top = tipEl('div'), rows = tipEl('dl', 'tip-rows'); st.append(top, rows);
+  const steps = []; let f = null;
+  if (k.formula || k.pic) steps.push(() => {
+    if (k.formula) {
+      f = tipEl('div', 'tip-f');
+      [...k.formula].forEach(ch => f.append(tipEl('span', ch === ' ' ? 'sp' : 'ch', ch)));
+      top.append(f);
+      if (!RM) gsap.from(f.querySelectorAll('.ch'), { y: -60, opacity: 0, rotation: () => gsap.utils.random(-50, 50), duration: .7, stagger: .09, ease: 'back.out(2.2)' });
+      if (k.read) { const r = tipEl('p', 'tip-read', 'Czytamy: ' + k.read); top.append(r); if (!RM) gsap.from(r, { opacity: 0, y: 12, duration: .5, delay: .9 }); }
+    } else {
+      const p = tipEl('div', 'tip-pic'); p.innerHTML = k.pic; top.append(p);
+      if (!RM) gsap.from(p.querySelectorAll('svg > *'), { opacity: 0, scale: .5, transformOrigin: '50% 50%', duration: .5, stagger: .18, ease: 'back.out(2)' });
+    }
+  });
+  if (k.tri) {
+    let fing, cap;
+    const caption = html => { cap.innerHTML = html; if (!RM) gsap.from(cap, { opacity: 0, x: 24, duration: .45 }); };
+    const cover = (sel, x, y, html) => {
+      top.querySelectorAll('.tip-trick text').forEach(t => gsap.to(t, { opacity: t.matches(sel) ? .1 : 1, duration: RM ? 0 : .3, delay: RM ? 0 : .45 }));
+      gsap.to(fing, { x, y, duration: RM ? 0 : .7, ease: 'power3.inOut' });
+      caption(html);
+    };
+    steps.push(() => {
+      const box = tipEl('div', 'tip-trick'); box.innerHTML = TRI_TIP; cap = tipEl('p'); box.append(cap); top.append(box);
+      fing = box.querySelector('.finger'); gsap.set(fing, { x: 60, y: 175 });
+      if (!RM) {
+        box.querySelectorAll('.tl').forEach((l, i) => { const n = l.getTotalLength(); gsap.fromTo(l, { strokeDasharray: n, strokeDashoffset: n }, { strokeDashoffset: 0, duration: .8, delay: i * .45, ease: 'power2.inOut' }); });
+        gsap.from(box.querySelectorAll('text'), { scale: 0, transformOrigin: '50% 50%', duration: .5, stagger: .25, delay: 1.3, ease: 'back.out(3)' });
+      }
+      caption('<b>Sztuczka z trójkątem.</b> Na górze F, na dole m i a. Narysuj go w zeszycie.');
+    });
+    steps.push(() => cover('.la', 82, 64, 'Szukasz <b>a</b>? Zakryj a palcem. Zostaje F nad m, czyli dzielisz: <b>a = F : m</b>'));
+    steps.push(() => cover('.lF', 60, 22, 'Szukasz <b>F</b>? Zakryj F. Zostają m i a obok siebie, czyli mnożysz: <b>F = m · a</b>'));
+    steps.push(() => cover('.lm', 38, 64, 'Szukasz <b>m</b>? Zakryj m. Zostaje F nad a, czyli dzielisz: <b>m = F : a</b>'));
+  }
+  k.items.forEach(([key, val]) => steps.push(() => {
+    const tr = top.querySelector('.tip-trick'); if (tr) tr.remove(); // po sztuczce zostaje sam wzór
+    rows.querySelectorAll('.on').forEach(r => r.classList.remove('on'));
+    const r = tipEl('div', 'tip-row on'); r.append(tipEl('dt', '', key), tipEl('dd', '', val)); rows.append(r);
+    if (!RM) gsap.from(r, { x: -40, opacity: 0, duration: .45, ease: 'power3.out' });
+    r.scrollIntoView({ block: 'nearest', behavior: RM ? 'auto' : 'smooth' });
+    // zapala się to, o czym mowa: litery we wzorze albo podpis na rysunku
+    top.querySelectorAll('.hl').forEach(s => s.classList.remove('hl'));
+    const i = f ? k.formula.indexOf(key) : -1;
+    const hit = f ? (i >= 0 ? [...f.children].slice(i, i + key.length) : []) : [...top.querySelectorAll('svg text')].filter(t => t.textContent === key);
+    hit.forEach(s => { s.classList.add('hl'); if (!RM) gsap.fromTo(s, { scale: 1 }, { scale: 1.5, yoyo: true, repeat: 1, duration: .25, transformOrigin: '50% 50%' }); });
+  }));
+  return steps;
+}
+const tip = { k: null, steps: [], i: -1 };
+function tipOpen(k) {
+  tip.k = k; tip.i = -1;
+  const st = $('#tipStage'); gsap.killTweensOf(st.querySelectorAll('*')); st.innerHTML = '';
+  $('#tipTitle').textContent = k.title;
+  $('#tipAva').innerHTML = heroReady() ? ava(hero.id, 56) : '';
+  tip.steps = tipSteps(k, st);
+  $('#tipDots').innerHTML = tip.steps.map(() => '<i></i>').join('');
+  $('#tipDlg').hidden = false; document.body.classList.add('tip-open');
+  if (!RM) gsap.fromTo('#tipDlg .tip-box', { y: 40, scale: .92, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: .45, ease: 'back.out(1.6)', clearProps: 'transform,opacity' });
+  tipNext(); $('#tipNext').focus();
+}
+function tipNext() {
+  if (tip.i >= tip.steps.length - 1) return tipClose();
+  tip.i++; tip.steps[tip.i]();
+  [...$('#tipDots').children].forEach((d, i) => { d.className = i < tip.i ? 'ok' : i === tip.i ? 'cur' : ''; });
+  $('#tipNext').textContent = tip.i === tip.steps.length - 1 ? 'Rozumiem!' : 'Dalej';
+}
+function tipClose() { $('#tipDlg').hidden = true; document.body.classList.remove('tip-open'); }
+$('#tipNext').addEventListener('click', tipNext);
+$('#tipAgain').addEventListener('click', () => tipOpen(tip.k));
+$('#tipDlg').addEventListener('click', e => { if (e.target === e.currentTarget) tipClose(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#tipDlg').hidden) tipClose(); });
+function defCard(g, open, status) {
+  const d = document.createElement('details'); d.className = 'def'; if (open) d.open = true;
+  d.innerHTML = '<summary><b></b><span>rozwiń</span></summary><div class="def-body">' +
+    '<div class="def-row formal"><i>Definicja (do zeszytu)</i><p></p></div>' +
+    '<div class="def-row simple"><i>Po prostu</i><p></p></div>' +
+    '<div class="def-row"><i>Przykład</i><p></p></div></div>';
+  d.querySelector('summary b').textContent = g.term;
+  const ps = d.querySelectorAll('.def-body p');
+  ps[0].textContent = g.formal; ps[1].textContent = g.simple; ps[2].textContent = g.example;
+  if (g.keys) { const r = document.createElement('div'); r.className = 'def-row'; r.append(tipButton(g.keys)); ps[0].parentNode.after(r); }
+  if (status === 'weak') { const s = d.querySelector('summary span'); s.textContent = 'do powtórki'; s.className = 'st-weak'; }
+  return d;
+}
+function glosGroups() {
+  const all = prevTerms();
+  return PREV.map(p =>
+    ({ n: p.n, glos: p.glos, status: g => S.terms[p.pre + g.id] || (all[g.id] && all[g.id].temat === p.temat && all[g.id].status) }));
+}
+// moduły w Słowniczku: najpierw bieżący, potem wcześniejsze; kolor sekcji = kolor świata modułu
+const MOD_INFO = {
+  1: { name: 'I zasada dynamiki Newtona', src: 'temat 24, s. 162–168' },
+  2: { name: 'II zasada dynamiki Newtona', src: 'temat 25, s. 169–173' },
+  3: { name: 'III zasada dynamiki Newtona', src: 'temat 27, s. 179–182' },
+  4: { name: 'Swobodne spadanie', src: 'temat 26, s. 174–178' },
+  5: { name: 'Opory ruchu', src: 'temat 28, s. 183–188' } };
+const glosOpen = new Set([MOD]); // rozwinięte moduły; po wyczyszczeniu wyszukiwania wracają te same
+const plPojec = n => n === 1 ? 'pojęcie' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'pojęcia' : 'pojęć';
+const norm = s => s.toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const glosQ = () => norm($('#glosSearch').value.trim());
+function renderGlossary() {
+  const box = $('#glosList'); box.innerHTML = '';
+  glosGroups().forEach(gr => {
+    const d = document.createElement('details'), info = MOD_INFO[gr.n];
+    d.className = 'glos-mod'; d.dataset.n = gr.n; d.open = glosOpen.has(gr.n);
+    d.style.setProperty('--mod', THEMES[gr.n].accent);
+    d.innerHTML = '<summary><img alt=""><span class="gm-t"><small></small><b></b></span><span class="gm-c"></span></summary><div class="defs"></div>';
+    d.querySelector('img').src = 'img/ikona-m' + gr.n + '.jpg';
+    d.querySelector('small').textContent = 'Moduł ' + gr.n + (gr.n === MOD ? ' · ten moduł' : '') + ' · ' + info.src;
+    d.querySelector('b').textContent = info.name;
+    const weak = gr.glos.filter(g => gr.status(g) === 'weak').length;
+    d.dataset.c = gr.glos.length + ' ' + plPojec(gr.glos.length) + (weak ? ' · ' + weak + ' do powtórki' : '');
+    const list = d.querySelector('.defs');
+    gr.glos.forEach(g => {
+      const c = defCard(g, false, gr.status(g));
+      c.dataset.t = norm(g.term); c.dataset.q = norm([g.term, g.formal, g.simple, g.example].join(' '));
+      list.append(c);
+    });
+    d.addEventListener('toggle', () => { if (!glosQ()) d.open ? glosOpen.add(gr.n) : glosOpen.delete(gr.n); });
+    box.append(d);
+  });
+  glosFilter();
+}
+// szukanie we wszystkich modułach naraz: nazwa pojęcia, definicja, „po prostu” i przykład; bez polskich znaków też działa
+function glosFilter() {
+  const q = glosQ(); let hits = 0;
+  document.querySelectorAll('#glosList .glos-mod').forEach(m => {
+    let n = 0;
+    m.querySelectorAll('.def').forEach(c => {
+      const ok = !q || c.dataset.q.includes(q);
+      c.hidden = !ok; c.classList.toggle('hit', !!q && c.dataset.t.includes(q)); if (ok) n++;
+    });
+    hits += n; m.hidden = !!q && !n;
+    m.open = q ? n > 0 : glosOpen.has(+m.dataset.n);
+    m.querySelector('.gm-c').textContent = q ? 'znaleziono: ' + n : m.dataset.c;
+  });
+  $('#glosNone').hidden = !q || hits > 0;
+}
+$('#glosSearch').addEventListener('input', glosFilter);
+function toggleGlos(open) {
+  $('#glossary').hidden = !open; $('#glosBtn').setAttribute('aria-expanded', open);
+  document.body.classList.toggle('glos-open', open);
+  if (!open) return;
+  if (!RM) gsap.fromTo('#glossary .glos-box', { y: 40, scale: .94, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: .4, ease: 'back.out(1.6)', clearProps: 'transform,opacity' });
+  if (matchMedia('(pointer: fine)').matches) $('#glosSearch').focus({ preventScroll: true });
+}
+$('#glosBtn').addEventListener('click', () => toggleGlos($('#glossary').hidden));
+$('#glosClose').addEventListener('click', () => toggleGlos(false));
+$('#glossary').addEventListener('click', e => { if (e.target === e.currentTarget) toggleGlos(false); });
+// Esc zamyka Słowniczek, ale gdy otwarta jest sztuczka, najpierw tylko ją (stąd faza przechwytywania)
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#glossary').hidden && !document.body.classList.contains('tip-open')) toggleGlos(false); }, true);
+
+// ---------- bohater ----------
+// teksty bohatera bez form zależnych od płci; imię zawsze w mianowniku
+// portrety 96×96: skafander + hełm, twarz przycięta do wizjera; „var(--accent)” = światło bieżącego świata
+const VISOR = '<circle cx="48" cy="40" r="23"/>';
+const suit = color =>
+  `<path d="M22 96 V78 q0-14 14-14 h24 q14 0 14 14 V96 Z" fill="${color}"/>` +
+  '<rect x="30" y="60" width="36" height="10" rx="5" fill="#b9c3d6"/>' +
+  '<rect x="40" y="76" width="16" height="12" rx="3" fill="#15102a"/><circle cx="45" cy="82" r="2.2" fill="var(--accent)"/><circle cx="51" cy="82" r="2.2" fill="#fff" opacity=".8"/>' +
+  '<circle cx="29" cy="80" r="4" fill="var(--accent)"/><path d="M66 80 q9 2 9 13" stroke="#b9c3d6" stroke-width="4" fill="none" stroke-linecap="round"/>';
+const helmet = (uid, inside) =>
+  `<defs><clipPath id="${uid}">${VISOR}</clipPath></defs>` +
+  '<circle cx="48" cy="38" r="31" fill="#eef2f8"/><circle cx="48" cy="40" r="23" fill="#15102a"/>' +
+  `<g clip-path="url(#${uid})">${inside}</g>` +
+  '<circle cx="48" cy="40" r="23" fill="none" stroke="var(--accent)" stroke-width="2.5"/>' +
+  '<path d="M31 32 q5-12 19-14" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".55"/><circle cx="36" cy="51" r="1.6" fill="#fff" opacity=".5"/>';
+const face = (skin, mouth = '#8a3b2a') =>
+  `<rect x="42" y="50" width="12" height="14" fill="${skin}"/><circle cx="48" cy="42" r="13" fill="${skin}"/>` +
+  '<ellipse cx="43.5" cy="42" rx="1.9" ry="2.4" fill="#15102a"/><ellipse cx="52.5" cy="42" rx="1.9" ry="2.4" fill="#15102a"/>' +
+  '<circle cx="44.2" cy="41.2" r=".7" fill="#fff"/><circle cx="53.2" cy="41.2" r=".7" fill="#fff"/>' +
+  `<path d="M44 47 q4 3.5 8 0" stroke="${mouth}" stroke-width="1.6" fill="none" stroke-linecap="round"/>` +
+  '<circle cx="39.5" cy="46" r="2.3" fill="#ff8aa0" opacity=".4"/><circle cx="56.5" cy="46" r="2.3" fill="#ff8aa0" opacity=".4"/>';
+const HEROES = [
+  { id: 'astronautka', label: 'Astronautka', draw: uid => suit('#ff9a3c') + helmet(uid,
+      '<path d="M35 44 q-3 8 0 16" stroke="#a0522d" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M61 44 q3 8 0 16" stroke="#a0522d" stroke-width="5" fill="none" stroke-linecap="round"/>' +
+      '<circle cx="35" cy="59" r="2.6" fill="var(--accent)"/><circle cx="61" cy="59" r="2.6" fill="var(--accent)"/>' +
+      face('#f2c9a1') +
+      '<path d="M35 41 q1-15 13-15 q12 0 13 15 q-4-7-12-6 q-9-1-14 6 z" fill="#a0522d"/>' +
+      '<path d="M40.5 37.5 q3-2 6 0 M49.5 37.5 q3-2 6 0" stroke="#7a3a1e" stroke-width="1.4" fill="none" stroke-linecap="round"/>' +
+      '<circle cx="42" cy="45" r=".6" fill="#b06a46"/><circle cx="44.5" cy="46" r=".6" fill="#b06a46"/><circle cx="52" cy="45" r=".6" fill="#b06a46"/><circle cx="54.5" cy="46" r=".6" fill="#b06a46"/>') },
+  { id: 'astronauta', label: 'Astronauta', draw: uid => suit('#3cc4ff') + helmet(uid,
+      face('#8b5a2b', '#4a2714') +
+      '<path d="M34 42 q0-16 14-16 q14 0 14 16 q-3-6-8-5 q-2-4-6-3 q-4-1-6 3 q-5-1-8 5 z" fill="#2a1a12"/><circle cx="40" cy="30" r="3" fill="#2a1a12"/><circle cx="56" cy="30" r="3" fill="#2a1a12"/>' +
+      '<path d="M40 37.5 q3.5-2.5 7 0 M49 37.5 q3.5-2.5 7 0" stroke="#2a1a12" stroke-width="1.8" fill="none" stroke-linecap="round"/>' +
+      '<circle cx="43.5" cy="42" r="4.2" fill="none" stroke="#fff" stroke-width="1.3"/><circle cx="52.5" cy="42" r="4.2" fill="none" stroke="#fff" stroke-width="1.3"/><path d="M47.7 42 h.6" stroke="#fff" stroke-width="1.3"/>') },
+  { id: 'robot', label: 'Robot pokładowy', draw: () =>
+      '<line x1="48" y1="14" x2="48" y2="6" stroke="#b9c3d6" stroke-width="3"/><circle cx="48" cy="6" r="4" fill="var(--accent)"/>' +
+      '<rect x="12" y="66" width="10" height="22" rx="5" fill="#8f9bb3"/><rect x="74" y="66" width="10" height="22" rx="5" fill="#8f9bb3"/>' +
+      '<path d="M14 88 l-3 6 M20 88 l3 6 M76 88 l-3 6 M82 88 l3 6" stroke="#8f9bb3" stroke-width="4" stroke-linecap="round"/>' +
+      '<rect x="42" y="54" width="12" height="8" fill="#6f7a92"/>' +
+      '<path d="M24 96 V72 q0-10 10-10 h28 q10 0 10 10 V96 Z" fill="#9aa6bf"/>' +
+      '<circle cx="48" cy="78" r="8" fill="#15102a"/><path d="M48 78 l5-4" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/><circle cx="48" cy="78" r="1.5" fill="var(--accent)"/>' +
+      '<circle cx="31" cy="70" r="2" fill="#6f7a92"/><circle cx="65" cy="70" r="2" fill="#6f7a92"/><rect x="36" y="90" width="24" height="3" rx="1.5" fill="#6f7a92"/>' +
+      '<rect x="22" y="14" width="52" height="40" rx="10" fill="#b9c3d6"/><rect x="26" y="18" width="44" height="32" rx="8" fill="#8f9bb3"/><rect x="29" y="21" width="38" height="26" rx="6" fill="#15102a"/>' +
+      '<circle cx="40" cy="32" r="5" fill="var(--accent)"/><circle cx="56" cy="32" r="5" fill="var(--accent)"/><circle cx="41.5" cy="30.5" r="1.5" fill="#fff"/><circle cx="57.5" cy="30.5" r="1.5" fill="#fff"/>' +
+      '<rect x="38" y="41" width="20" height="3" rx="1.5" fill="var(--accent)" opacity=".85"/>' +
+      '<circle cx="22" cy="34" r="4" fill="#6f7a92"/><circle cx="74" cy="34" r="4" fill="#6f7a92"/><path d="M20 34 h4 M22 32 v4 M72 34 h4 M74 32 v4" stroke="#15102a" stroke-width="1"/>' },
+  { id: 'kot', label: 'Kosmiczny kot', draw: uid => suit('#9d8cff') + helmet(uid,
+      '<path d="M34 36 L35 16 L46 29 Z M62 36 L61 16 L50 29 Z" fill="#e8964a"/><path d="M37 32 L37.5 22 L43 28.5 Z M59 32 L58.5 22 L53 28.5 Z" fill="#f6c9a8"/>' +
+      '<circle cx="48" cy="42" r="14" fill="#e8964a"/><path d="M42 30 l2 6 M48 29 v6 M54 30 l-2 6" stroke="#c4712c" stroke-width="2" stroke-linecap="round"/>' +
+      '<ellipse cx="48" cy="47.5" rx="7" ry="5" fill="#f6d7b8"/>' +
+      '<ellipse cx="43" cy="41" rx="2.7" ry="3.4" fill="#5ad67d"/><ellipse cx="53" cy="41" rx="2.7" ry="3.4" fill="#5ad67d"/><ellipse cx="43" cy="41" rx="1" ry="3" fill="#15102a"/><ellipse cx="53" cy="41" rx="1" ry="3" fill="#15102a"/>' +
+      '<path d="M46.5 45.5 h3 l-1.5 2z" fill="#ff7d8a"/><path d="M46 48 q2 2 4 0" stroke="#8a3b2a" stroke-width="1.3" fill="none" stroke-linecap="round"/>' +
+      '<path d="M30 44 h10 M30 48 l10-2 M66 44 h-10 M66 48 l-10-2" stroke="#15102a" stroke-width="1" stroke-linecap="round"/>') },
+];
+let avaSeq = 0; // każdy portret ma własny clipPath wizjera
+const ava = (id, size) => `<svg class="ava" width="${size}" height="${size}" viewBox="0 0 96 96" aria-hidden="true">${HEROES.find(h => h.id === id).draw('visor' + (++avaSeq))}</svg>`;
+const hero = (() => {
+  try { const h = JSON.parse(localStorage.getItem('orion-bohater') || 'null'); if (h && HEROES.some(x => x.id === h.id)) return { id: h.id, name: String(h.name || '').slice(0, 14) }; } catch {}
+  return { id: null, name: '' };
+})();
+const heroReady = () => !!(hero.id && hero.name);
+function saveHero() { try { localStorage.setItem('orion-bohater', JSON.stringify(hero)); } catch {} Konto.bohater(hero); }
+function say(el, text) {
+  el.hidden = !heroReady(); if (el.hidden) return;
+  el.innerHTML = ava(hero.id, 60) + '<div class="bubble"><b></b><p></p></div>';
+  el.querySelector('b').textContent = hero.name; el.querySelector('p').textContent = text;
+}
+function heroRefresh() {
+  document.querySelectorAll('#heroPick .hero-opt').forEach(b => b.setAttribute('aria-pressed', b.dataset.hero === hero.id));
+  const tag = $('#hudHero'); tag.hidden = !heroReady();
+  if (heroReady()) { tag.innerHTML = ava(hero.id, 36) + '<span></span>'; tag.querySelector('span').textContent = hero.name; }
+  say($('#say-start'), 'Cześć! Lecę z Tobą. Razem naprawimy Oriona.');
+  $('#startBtn').disabled = !heroReady(); $('#resumeBtn').disabled = !heroReady();
+}
+HEROES.forEach(h => {
+  const b = document.createElement('button'); b.className = 'hero-opt'; b.dataset.hero = h.id;
+  b.innerHTML = ava(h.id, 104) + '<b></b>'; b.querySelector('b').textContent = h.label;
+  b.addEventListener('click', () => {
+    hero.id = h.id; saveHero(); heroRefresh();
+    const [x, y] = center(b); burst(x, y, false);
+    if (!RM) gsap.fromTo(b, { scale: .92 }, { scale: 1, duration: .4, ease: 'back.out(3)', clearProps: 'transform' });
+  });
+  $('#heroPick').append(b);
+});
+$('#heroName').value = hero.name;
+$('#heroName').addEventListener('input', e => { hero.name = e.target.value.trim().slice(0, 14); saveHero(); heroRefresh(); });
+heroRefresh();
+// zalogowany gracz z wybranym bohaterem: karta „Twój bohater” z naszywkami zamiast wyboru; „Zmień” wraca do wyboru, „Gotowe” do karty
+const PATCHES = [{ n: 1, name: 'I zasada dynamiki' }, { n: 2, name: 'II zasada dynamiki' }, { n: 3, name: 'Akcja i reakcja' }, { n: 4, name: 'Swobodne spadanie' }, { n: 5, name: 'Opory ruchu' }];
+let heroEdit = !(Konto.gracz && heroReady());
+function myHeroRender() {
+  const card = !!Konto.gracz && heroReady() && !heroEdit;
+  $('#myHero').hidden = !card; $('#heroSetup').hidden = card;
+  $('#heroDone').hidden = !Konto.gracz; $('#heroDone').disabled = !heroReady();
+  if (!card) return;
+  $('#mhAva').innerHTML = ava(hero.id, 136);
+  $('#mhName').textContent = hero.name;
+  $('#mhRole').textContent = HEROES.find(h => h.id === hero.id).label + ' na statku Orion';
+  const box = $('#mhPatches'); box.innerHTML = '';
+  PATCHES.forEach(p => {
+    let best = null; try { best = JSON.parse(localStorage.getItem('orion-m' + p.n) || 'null'); } catch {}
+    const got = !!(best && best.stars >= 2); // naszywka jak w raporcie modułu: od 2 gwiazdek
+    const el = document.createElement('div'); el.className = 'mh-patch' + (got ? ' got' : ''); el.setAttribute('role', 'listitem');
+    el.innerHTML = got ? '<img alt="">' : '<i aria-hidden="true"></i>';
+    if (got) el.querySelector('img').src = 'img/naszywka-m' + p.n + '.jpg'; else el.querySelector('i').textContent = p.n;
+    el.append(got ? p.name : 'Przejdź moduł ' + p.n + ', żeby zdobyć naszywkę');
+    box.append(el);
+  });
+}
+$('#heroPick').addEventListener('click', myHeroRender);
+$('#heroName').addEventListener('input', myHeroRender);
+$('#heroChange').addEventListener('click', () => { heroEdit = true; myHeroRender(); });
+$('#heroDone').addEventListener('click', () => { heroEdit = false; myHeroRender(); });
+myHeroRender();
+
+// ---------- stan gry ----------
+// firstTry: dobre odpowiedzi w rundach (z 10), extraQ: pytania w dogrywce, terms: pojęcia z przedrostkiem modułu (m1_…m5_)
+const S = { xp: 0, firstTry: 0, asked: 0, shots: 0, hits: 0, extraQ: 0, extra: false, terms: {} };
+
+// XP: licznik dobiega do nowej wartości, a skrzynka XP w HUD podskakuje
+function setXP(d) {
+  const o = { v: S.xp }; S.xp += d;
+  if (RM) { $('#xp').textContent = S.xp; return; }
+  gsap.to(o, { v: S.xp, duration: .9, ease: 'power2.out', onUpdate: () => $('#xp').textContent = Math.round(o.v) });
+  gsap.fromTo('#xpBox', { scale: 1 }, { scale: 1.35, yoyo: true, repeat: 1, duration: .22, delay: .4, transformOrigin: 'left center', clearProps: 'transform' });
+}
+function paintStars(el, n) { [...el.children].forEach((c, i) => c.classList.toggle('on', i < n)); }
+// gwiazdki: ★ Grawitor pokonany, ★★ co najmniej 7 z 10 dobrych odpowiedzi w rundach, ★★★ bez dogrywki
+const bossStars = () => 1 + (S.firstTry >= 7 ? 1 : 0) + (S.extra ? 0 : 1);
+let starsNow = 0;
+function refreshStars() { paintStars($('#hudStars'), starsNow); }
+
+// ---------- pętla animacji (jedna naraz) ----------
+let raf = null, loopFn = null, loopT = 0;
+function runLoop(fn) {
+  stopLoop();
+  let last = null; loopFn = fn; loopT = 0;
+  const step = now => {
+    if (last === null) last = now;
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    loopT += dt; fn(loopT, dt);
+    raf = requestAnimationFrame(step);
+  };
+  raf = requestAnimationFrame(step);
+}
+function stopLoop() { if (raf) cancelAnimationFrame(raf); raf = null; loopFn = null; }
+
+function fit(c, ratio, minH = 200, maxH = 380) {
+  const w = c.clientWidth || 600;
+  // data-fit="css": wysokość z arkusza stylów (scena rośnie z oknem); inaczej z proporcji szerokości
+  const css = c.dataset.fit === 'css';
+  const h = css ? (c.clientHeight || 300) : Math.max(minH, Math.min(maxH, Math.round(w * ratio)));
+  const dpr = window.devicePixelRatio || 1;
+  if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) {
+    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); if (!css) c.style.height = h + 'px';
+  }
+  const ctx = c.getContext('2d');
+  // data-design: scena narysowana pod tę wysokość rośnie razem z płótnem (k = skala rysunku)
+  const d = +c.dataset.design || 0;
+  const k = d ? Math.max(1, Math.min(h / d, w / (d * 2.2))) : 1;
+  ctx.setTransform(dpr * k, 0, 0, dpr * k, 0, 0);
+  ctx.clearRect(0, 0, w / k, h / k); // tła scen są półprzezroczyste, więc każda klatka zaczyna od czystego płótna
+  return { ctx, w: w / k, h: h / k, k };
+}
+
+function arrow(ctx, x1, y1, x2, y2, color, label, lpos) {
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  if (len < 3) return;
+  const a = Math.atan2(y2 - y1, x2 - x1), hl = Math.min(12, len * 0.6);
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2 - Math.cos(a) * hl * 0.8, y2 - Math.sin(a) * hl * 0.8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - Math.cos(a - 0.45) * hl, y2 - Math.sin(a - 0.45) * hl);
+  ctx.lineTo(x2 - Math.cos(a + 0.45) * hl, y2 - Math.sin(a + 0.45) * hl);
+  ctx.closePath(); ctx.fill();
+  if (label) {
+    ctx.font = '700 13px ' + col('f-mono');
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const p = lpos || { x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 14 };
+    ctx.fillText(label, p.x, p.y);
+  }
+}
+function txt(ctx, s, x, y, color, size = 13, align = 'left', weight = 500) {
+  ctx.font = `${weight} ${size}px ${col('f-mono')}`; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillText(s, x, y);
+}
+let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const STARS = Array.from({ length: 110 }, () => ({ x: rnd(), y: rnd(), r: rnd() * 1.4 + 0.3, z: rnd() * 0.6 + 0.2 }));
+function starfield(ctx, w, h, shift = 0) {
+  ctx.fillStyle = col('scene'); ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = col('ink');
+  for (const s of STARS) {
+    let x = (s.x * w - shift * s.z) % w; if (x < 0) x += w;
+    ctx.globalAlpha = 0.35 + s.z; ctx.beginPath(); ctx.arc(x, s.y * h, s.r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function prevTerms() { try { return JSON.parse(localStorage.getItem('orion-pojecia') || '{}'); } catch { return {}; } }
+// ---------- nawigacja ----------
+const ORDER = ['r1', 'r2', 'r3', 'r4', 'r5', 'extra', 'end'];
+function setStep(key) {
+  const idx = ORDER.indexOf(key);
+  document.querySelectorAll('#steps li').forEach(li => {
+    const i = ORDER.indexOf(li.dataset.s);
+    li.classList.toggle('cur', i === idx); li.classList.toggle('done', idx > -1 && i < idx);
+  });
+}
+function show(id) {
+  ['start', 'boss', 'end'].forEach(s => { $('#scr-' + s).hidden = s !== id; });
+  toggleGlos(false);
+  window.scrollTo({ top: 0, behavior: 'auto' });
+  if (!RM) gsap.from(`#scr-${id} > *`, { y: 24, opacity: 0, duration: .5, stagger: .05, ease: 'power3.out', clearProps: 'opacity,transform' });
+}
+
+// ---------- BOSS: Grawitor na polu asteroid ----------
+// 5 rund, po jednej na moduł: Grawitor zadaje 2 pytania o pojęcia modułu (TQ modułów; najpierw pojęcia „do powtórki”).
+// Dobra odpowiedź = pocisk w rodzaju modułu. Po rundzie strzelanie z widoku bohatera: ręce, spluwa, celownik.
+// Grawitor ma 9 serc, a w rundach da się zdobyć 10 pocisków, więc pada najwcześniej w 5. rundzie. Jeśli przetrwa,
+// zaczyna się dogrywka: pytanie z całego działu → pocisk → strzał, aż padnie. W dogrywce rusza się wolniej.
+const HP_MAX = 9, PER_ROUND = 2, ROUNDS = 5, DROP = .14;
+const byN = n => PREV.find(p => p.n === n);
+const pl = (n, a, b, c) => n === 1 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? b : c;
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const clone = o => JSON.parse(JSON.stringify(o));
+// pocisk każdego modułu działa jak prawo z tego modułu
+const AMMO = {
+  1: { name: 'Pocisk bezwładności', color: '#f2c14e', T: .5,
+    info: 'Leci prosto i cały czas tak samo szybko, bo nic go nie hamuje ani nie popycha. To I zasada dynamiki.' },
+  2: { name: 'Działo siły', color: '#ff5a1f', charge: true,
+    info: 'Przytrzymaj dłużej przed strzałem. Większa siła daje większe przyspieszenie, więc pocisk leci szybciej. To II zasada dynamiki.' },
+  3: { name: 'Rakieta odrzutowa', color: '#a99bff', T: .7, blast: .4, kick: true,
+    info: 'Rakieta wyrzuca gazy do tyłu, a gazy pchają ją do przodu. Spluwa też szarpie do tyłu! To III zasada dynamiki. Wybuch jest duży.' },
+  4: { name: 'Bomba grawitacyjna', color: '#58e0a0', T: .9, arc: true,
+    info: 'Leci łukiem, bo ściąga ją w dół siła ciężkości. Celuj nad Grawitora. Kropki pokazują, gdzie spadnie.' },
+  5: { name: 'Lodowy pocisk', color: '#a8e9ff', T: .55, freeze: true,
+    info: 'Zamraża Grawitora. Na lodzie prawie nie ma tarcia, więc Grawitor sunie prosto i nie może skręcić.' },
+};
+const LINES = {
+  intro: 'Stój! Jestem Grawitor, strażnik pola asteroid. Orion przeleci tylko wtedy, gdy mnie pokonasz. Zadam Ci pytania z całej dynamiki. Za każdą dobrą odpowiedź dostaniesz pocisk. I tak nie trafisz!',
+  round: {
+    1: 'Runda pierwsza: I zasada dynamiki. Co robi ciało, gdy siły się równoważą? Ha!',
+    2: 'Runda druga: II zasada dynamiki. Siła, masa, przyspieszenie. Umiesz to policzyć?',
+    3: 'Runda trzecia: akcja i reakcja. Popchniesz mnie, to ja popchnę Ciebie!',
+    4: 'Runda czwarta: swobodne spadanie. Moje skały spadają szybko. A Ty?',
+    5: 'Ostatnia runda: opory ruchu. Mnie nic nie zatrzyma!',
+  },
+  next: ['Następne pytanie!', 'Tego na pewno nie wiesz!', 'A teraz trudniejsze!'],
+  good: ['Grrr… Dobrze. Bierz ten pocisk.', 'Hmm. To akurat wiesz.', 'Zgadza się. Nie cieszę się z tego.'],
+  bad: ['Ha! Nie tym razem!', 'Hahaha! Ten pocisk zostaje u mnie!', 'Źle! Moje skały się śmieją!'],
+  shoot: ['No, strzelaj! I tak nie trafisz!', 'Celuj, jeśli umiesz!', 'Spróbuj mnie trafić!'],
+  hit: ['Au!', 'Ała! Moje skały!', 'To bolało!', 'Grrr!'],
+  miss: ['Pudło!', 'Ha! Obok!', 'Za wolno!'],
+  empty: 'Bez pocisków? Hahaha! Lecimy dalej.',
+  extra: n => `Jeszcze stoję! Ale ledwo… Brakuje Ci jeszcze ${n} ${pl(n, 'pocisku', 'pocisków', 'pocisków')}. Zwolnię trochę. I tak nie dasz rady!`,
+  extraQ: ['Dogrywka! Pytanie z całego działu.', 'Następne pytanie z dogrywki!', 'Ha! Zobaczymy, czy to wiesz!'],
+  won: 'Nieee! Rozpadam się na kawałki! Dobrze już, leć do domu, Orionie…',
+};
+const BOSS_AVA = '<svg viewBox="0 0 96 96" aria-hidden="true"><path d="M14 52 L10 34 L22 16 L44 8 L66 12 L84 26 L88 48 L80 70 L60 86 L34 86 L18 72 Z" fill="#4a2a2e"/>' +
+  '<path d="M30 24 l8 10 -4 8 M64 18 l-4 12 8 6 M72 58 l-10 6" stroke="#ff7a2e" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+  '<ellipse cx="36" cy="46" rx="8" ry="6" fill="#ffcf4a"/><ellipse cx="62" cy="46" rx="8" ry="6" fill="#ffcf4a"/><circle cx="38" cy="47" r="3" fill="#120608"/><circle cx="60" cy="47" r="3" fill="#120608"/>' +
+  '<path d="M26 36 l14 5 M72 36 l-14 5" stroke="#120608" stroke-width="3.5" stroke-linecap="round"/><path d="M34 64 q14 8 28 0" stroke="#ff4d2e" stroke-width="4" fill="none" stroke-linecap="round"/></svg>';
+
+let B = null; // stan walki: faza, runda, pytania rundy, amunicja, serca Grawitora (trafia do zapisu gry)
+const newB = () => ({ phase: 'intro', round: 0, qi: 0, list: [], cur: null, ammo: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }, hp: HP_MAX, asked: [], wrong: [], extra: false });
+const qKey = q => q.m + ':' + q.id + ':' + q.v;
+const ammoTotal = () => Object.values(B.ammo).reduce((a, b) => a + b, 0);
+const termOf = q => byN(q.m).glos.find(g => g.id === q.id);
+// pytania rundy: 2 różne pojęcia modułu, najpierw te „do powtórki”; v = które z dwóch pytań o pojęcie
+function pickRound(m) {
+  const p = byN(m), all = prevTerms(), ids = Object.keys(p.tq);
+  const weak = shuffle(ids.filter(id => all[id] && all[id].temat === p.temat && all[id].status === 'weak'));
+  const rest = shuffle(ids.filter(id => !weak.includes(id)));
+  return [...weak, ...rest].slice(0, PER_ROUND).map(id => ({ m, id, v: Math.random() < .5 ? 0 : 1 }));
+}
+// dogrywka: najpierw drugie pytanie o pojęcia, przy których był błąd, potem cały dział; bez powtórek, póki się da
+function pickExtra() {
+  const pool = [...B.wrong.map(w => ({ ...w, v: 1 - w.v })),
+    ...shuffle(PREV.flatMap(p => Object.keys(p.tq).flatMap(id => [0, 1].map(v => ({ m: p.n, id, v })))))];
+  return pool.find(q => !B.asked.includes(qKey(q))) || pick(pool);
+}
+
+function bossSay(text) {
+  const el = $('#bSay');
+  el.innerHTML = BOSS_AVA + '<div class="bubble"><b>Grawitor</b><p></p></div>';
+  el.querySelector('p').textContent = text;
+  if (!RM) gsap.fromTo(el.querySelector('.bubble'), { scale: .9, opacity: .4 }, { scale: 1, opacity: 1, duration: .35, ease: 'back.out(2)', transformOrigin: 'left center', clearProps: 'transform,opacity' });
+}
+// panel po prawej: talk = sama rozmowa, q = pytanie, shoot = opis pocisku
+function bossUI(mode) {
+  $('#scr-boss').classList.toggle('shoot', mode === 'shoot');
+  $('#bQ').hidden = mode !== 'q'; $('#bShoot').hidden = mode !== 'shoot'; $('#bFb').hidden = true;
+  $('#bCheck').hidden = mode !== 'q'; $('#bNext').hidden = true; $('#say-boss').hidden = true;
+}
+let nextFn = null, nTimer = 0;
+function nextBtn(label, fn, wait = 0) {
+  const nb = $('#bNext'); nb.hidden = false; nextFn = fn; clearInterval(nTimer);
+  if (!wait) { nb.disabled = false; nb.textContent = label; return; }
+  let left = devWait(wait); nb.disabled = true; nb.textContent = `Przeczytaj wyjaśnienie… ${left}`;
+  nTimer = setInterval(() => { left--; if (left <= 0) { clearInterval(nTimer); nb.disabled = false; nb.textContent = label; } else nb.textContent = `Przeczytaj wyjaśnienie… ${left}`; }, 1000);
+}
+$('#bNext').addEventListener('click', () => { const f = nextFn; nextFn = null; $('#bNext').hidden = true; if (f) f(); });
+
+function renderHP() {
+  const box = $('#hp');
+  if (box.children.length !== HP_MAX) box.innerHTML = '<i></i>'.repeat(HP_MAX);
+  [...box.children].forEach((c, i) => c.classList.toggle('off', i >= B.hp));
+  box.setAttribute('aria-label', `Życie Grawitora: ${B.hp} z ${HP_MAX}`);
+  renderNeed();
+}
+// licznik dogrywki: ile pocisków trzeba jeszcze zdobyć (pociski w spluwie i w locie liczą się jako trafienia)
+function renderNeed() {
+  const el = $('#need'), n = Math.max(0, B.hp - ammoTotal() - A.shots.length);
+  el.hidden = !B.extra || B.hp <= 0;
+  el.textContent = n ? `Brakuje jeszcze ${n} ${pl(n, 'pocisku', 'pocisków', 'pocisków')}` : 'Pocisków wystarczy. Celuj!';
+}
+function renderAmmo() {
+  const box = $('#ammo'); box.innerHTML = '';
+  for (let m = 1; m <= 5; m++) {
+    const b = document.createElement('button'), am = AMMO[m];
+    b.style.setProperty('--c', am.color); b.innerHTML = '<i></i><span></span>';
+    b.querySelector('span').textContent = '×' + B.ammo[m];
+    b.title = am.name; b.setAttribute('aria-label', `${am.name}: ${B.ammo[m]}`);
+    b.disabled = !B.ammo[m]; b.setAttribute('aria-pressed', String(A.mode === 'aim' && A.sel === m));
+    b.addEventListener('click', () => selectAmmo(m));
+    box.append(b);
+  }
+  renderNeed();
+}
+function selectAmmo(m) { if (!B.ammo[m] || A.mode !== 'aim') return; A.sel = m; A.charge = 0; renderAmmo(); shootInfo(); }
+function shootInfo() {
+  const am = AMMO[A.sel], n = ammoTotal();
+  $('#bShoot').style.setProperty('--c', am.color);
+  $('#amName').textContent = am.name; $('#amInfo').textContent = am.info;
+  $('#amLeft').textContent = n ? `Pocisków: ${n}. Celuj w Grawitora i strzelaj.` : '';
+}
+function pulseAmmo(m) { const b = $('#ammo').children[m - 1]; if (b && !RM) gsap.fromTo(b, { scale: 1.7 }, { scale: 1, duration: .6, ease: 'back.out(3)', clearProps: 'transform' }); }
+
+// ---------- przebieg walki ----------
+function bossStart() { resetAll(); B = newB(); enterBoss(); }
+// wejście na ekran walki w fazie zapisanej w B (start, wznowienie gry, tryb twórcy)
+function enterBoss() {
+  show('boss'); setWorld(0);
+  arenaReset(); renderHP(); renderAmmo();
+  runLoop(arenaFrame);
+  ({ intro, q: askQ, shoot: shootPhase, won }[B.phase] || intro)();
+}
+function intro() {
+  B.phase = 'intro'; snap('boss', { B: clone(B) });
+  setStep('r1'); $('#bRound').textContent = 'Pole asteroid'; $('#bCount').textContent = '';
+  bossUI('talk'); bossSay(LINES.intro);
+  say($('#say-boss'), 'Damy radę! Odpowiadamy, zbieramy pociski i strzelamy.');
+  nextBtn('Do walki!', () => startRound(1));
+}
+function startRound(r) { Object.assign(B, { round: r, qi: 0, list: pickRound(r), phase: 'q' }); askQ(); }
+
+let bq = null, bTimer = 0; // bieżące pytanie
+function askQ() {
+  B.phase = 'q'; A.mode = 'idle';
+  const q = B.extra ? B.cur : B.list[B.qi];
+  snap('boss', { B: clone(B) });
+  const item = byN(q.m).tq[q.id][q.v];
+  bq = { q, item, sel: null, ready: false, done: false };
+  setStep(B.extra ? 'extra' : 'r' + B.round);
+  $('#bRound').textContent = B.extra ? 'Dogrywka' : `Runda ${B.round} z ${ROUNDS}: ${MOD_INFO[B.round].name}`;
+  $('#bCount').textContent = B.extra ? `Pytanie z modułu ${q.m}` : `Pytanie ${B.qi + 1} z ${PER_ROUND}`;
+  bossUI('q'); renderAmmo();
+  bossSay(B.extra ? pick(LINES.extraQ) : B.qi === 0 ? LINES.round[B.round] : pick(LINES.next));
+  $('#bText').textContent = item.text;
+  const g = $('#bOpts'); g.innerHTML = '';
+  shuffle(item.opts.map((o, i) => ({ o, i }))).forEach(({ o, i }) => {
+    const b = document.createElement('button'); b.className = 'opt'; b.textContent = o.t; b.dataset.i = i; if (dev.on && o.ok) b.dataset.ok = '1';
+    b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', () => {
+      if (bq.done) return;
+      g.querySelectorAll('.opt').forEach(x => x.setAttribute('aria-pressed', 'false'));
+      b.setAttribute('aria-pressed', 'true'); bq.sel = i; bCheckState();
+    });
+    g.append(b);
+  });
+  // czas na przeczytanie
+  clearInterval(bTimer);
+  let left = devWait(2); const btn = $('#bCheck'); btn.disabled = true; btn.textContent = `Przeczytaj uważnie… ${left}`;
+  bTimer = setInterval(() => {
+    left--; if (left <= 0) { clearInterval(bTimer); bq.ready = true; btn.textContent = 'Sprawdź'; bCheckState(); }
+    else btn.textContent = `Przeczytaj uważnie… ${left}`;
+  }, 1000);
+}
+const bCheckState = () => { $('#bCheck').disabled = !(bq.ready && bq.sel !== null); };
+$('#bCheck').addEventListener('click', () => {
+  if (!bq || bq.done) return; bq.done = true;
+  const { q, item } = bq, o = item.opts[bq.sel], ok = !!o.ok;
+  document.querySelectorAll('#bOpts .opt').forEach(b => {
+    b.disabled = true; const oi = +b.dataset.i;
+    if (item.opts[oi].ok) b.classList.add('good');
+    if (oi === bq.sel && !ok) b.classList.add('bad');
+  });
+  S.asked++; B.asked.push(qKey(q)); if (B.extra) S.extraQ++;
+  const tid = byN(q.m).pre + q.id, gained = B.extra ? 4 : 10;
+  if (ok) {
+    B.ammo[q.m]++; if (!B.extra) S.firstTry++;
+    S.terms[tid] = S.terms[tid] === 'weak' ? 'retry' : (S.terms[tid] || 'ok');
+    setXP(gained);
+  } else {
+    S.terms[tid] = 'weak';
+    if (!B.wrong.some(w => w.m === q.m && w.id === q.id)) B.wrong.push(q);
+  }
+  const fb = $('#bFb'); fb.hidden = false; fb.className = 'fb ' + (ok ? 'good' : 'bad'); fb.innerHTML = '';
+  const add = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; e.textContent = text; fb.append(e); return e; };
+  add('div', 'tag', ok ? 'Dobrze! Masz pocisk.' : 'Jeszcze nie.');
+  if (ok) { add('p', '', `${AMMO[q.m].name} ląduje w spluwie.`); add('p', 'xp-pop', `+${gained} XP`); }
+  else {
+    if (o.fb) add('p', '', o.fb);
+    const r = add('p', '', ''); r.innerHTML = '<b>Dobra odpowiedź:</b> '; r.append(item.opts.find(x => x.ok).t);
+  }
+  add('p', 'src', `Pojęcie: ${termOf(q).term} (moduł ${q.m}). Znajdziesz je w Słowniczku.`);
+  bossSay(pick(ok ? LINES.good : LINES.bad));
+  if (ok) { cheer($('#bOpts .opt.good') || $('#bCheck')); renderAmmo(); pulseAmmo(q.m); }
+  else oops($('#bOpts .opt.bad') || $('#bCheck'));
+  $('#bCheck').hidden = true;
+  nextBtn(ok ? 'Dalej' : 'Rozumiem, dalej', afterQ, ok ? 0 : 3);
+  fb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+function afterQ() {
+  if (B.extra) { if (ammoTotal()) return shootPhase(); B.cur = pickExtra(); return askQ(); }
+  B.qi++;
+  if (B.qi < B.list.length) return askQ();
+  shootPhase();
+}
+const nextLabel = () => B.extra ? 'Następne pytanie' : B.round < ROUNDS ? `Dalej: runda ${B.round + 1}` : 'Dalej';
+function shootPhase() {
+  B.phase = 'shoot'; snap('boss', { B: clone(B) });
+  setStep(B.extra ? 'extra' : 'r' + B.round);
+  $('#bRound').textContent = B.extra ? 'Dogrywka: strzelanie' : `Runda ${B.round} z ${ROUNDS}: strzelanie`;
+  $('#bCount').textContent = '';
+  if (!ammoTotal()) { A.mode = 'idle'; bossUI('talk'); renderAmmo(); bossSay(LINES.empty); nextBtn(nextLabel(), endShoot); return; }
+  A.mode = 'aim'; bossUI('shoot');
+  A.sel = B.ammo[B.round] ? B.round : [1, 2, 3, 4, 5].find(m => B.ammo[m]);
+  renderAmmo(); shootInfo(); bossSay(pick(LINES.shoot));
+}
+function shootDone() { A.mode = 'idle'; renderAmmo(); $('#amLeft').textContent = ''; nextBtn(nextLabel(), endShoot); }
+function endShoot() {
+  if (B.hp <= 0) return won();
+  if (B.extra) { B.cur = pickExtra(); return askQ(); }
+  if (B.round < ROUNDS) return startRound(B.round + 1);
+  // po 5 rundach Grawitor dalej stoi: dogrywka
+  Object.assign(B, { extra: true, cur: pickExtra(), phase: 'q' }); S.extra = true;
+  setStep('extra'); $('#bRound').textContent = 'Dogrywka'; $('#bCount').textContent = '';
+  bossUI('talk'); renderHP();
+  bossSay(LINES.extra(B.hp));
+  say($('#say-boss'), 'Grawitor zwalnia. Spokojnie, celujemy dokładnie!');
+  nextBtn('Do dogrywki!', askQ);
+}
+function won() {
+  B.phase = 'won'; A.mode = 'idle'; if (!A.dead) A.dead = .001;
+  setStep(B.extra ? 'extra' : 'r5'); $('#bRound').textContent = 'Grawitor pokonany!'; $('#bCount').textContent = '';
+  bossUI('talk'); renderHP(); renderAmmo();
+  bossSay(LINES.won); say($('#say-boss'), 'Udało się! Droga do domu wolna!');
+  setXP(30);
+  const r = cv.getBoundingClientRect(), x = r.left + A.x * r.width, y = r.top + A.y * r.height;
+  shock(x, y, 1.6, 1.8); burst(x, y, true); spill(x, y);
+  nextBtn('Zobacz raport', endScreen);
+}
+
+// ---------- arena: Grawitor, pociski, ręce ze spluwą (canvas, widok z oczu bohatera) ----------
+// pozycje w ułamkach szerokości i wysokości sceny, więc zmiana rozmiaru okna niczego nie psuje
+const cv = $('#bossCanvas');
+const A = { mode: 'idle', x: .5, y: .34, vx: .07, vy: .02, turn: 2, frozen: 0, hurt: 0, laugh: 0, flash: 0, shake: 0, quake: 0, dead: 0, wonT: 0,
+  aim: { x: .5, y: .4 }, down: false, sel: 1, charging: false, charge: 0, kick: 0, cool: 0, shots: [], parts: [], pops: [], w: 600, h: 400 };
+function arenaReset() {
+  Object.assign(A, { mode: 'idle', x: .5, y: .34, frozen: 0, hurt: 0, laugh: 0, flash: 0, shake: 0, quake: 0, dead: 0, wonT: 0,
+    down: false, charging: false, charge: 0, kick: 0, cool: 0, shots: [], parts: [], pops: [] });
+}
+const ROCKS = Array.from({ length: 9 }, () => ({ x: rnd(), y: rnd() * .75, r: .02 + rnd() * .045, v: .006 + rnd() * .014, a: rnd() * 6, pts: Array.from({ length: 7 }, () => .7 + rnd() * .3) }));
+const BODY = Array.from({ length: 14 }, () => .86 + rnd() * .18);
+// pęknięcia z lawą: z każdym trafieniem widać o jedno więcej (9 = tyle, ile serc)
+const CRACKS = [[[-.5, -.3], [-.25, -.1], [-.32, .2]], [[.2, -.62], [.12, -.3], [.35, -.1]], [[.55, .1], [.3, .25], [.42, .5]], [[-.62, .3], [-.35, .45]],
+  [[-.1, .58], [.06, .76]], [[.62, -.35], [.4, -.45]], [[-.22, -.72], [-.05, -.5]], [[0, .18], [.2, .38], [.1, .6]], [[-.74, -.05], [-.5, .06]]];
+const bossR = (w, h) => Math.min(w * .12, h * .19);
+const gunScale = (w, h) => Math.min(w, h * 1.6) / 1000;
+const gunAngle = (w, h) => { const s = gunScale(w, h); return Math.max(-.6, Math.min(.6, Math.atan2(A.aim.x * w - w / 2, h + 40 * s - A.aim.y * h))); };
+function muzzle(w, h) { const s = gunScale(w, h), a = gunAngle(w, h), L = (250 - A.kick * 30) * s; return { x: w / 2 + Math.sin(a) * L, y: h + 40 * s - Math.cos(a) * L }; }
+// tor pocisku: rakieta przyspiesza (u²), bomba leci łukiem; sc = mniejszy w głębi
+function shotPos(s, u) {
+  const e = s.type === 3 ? u * u : u;
+  let x = s.x0 + (s.tx - s.x0) * e, y = s.y0 + (s.ty - s.y0) * e;
+  if (s.type === 4) y -= .34 * 4 * u * (1 - u);
+  return { x, y, sc: 1 - .6 * u };
+}
+
+function fire() {
+  if (A.mode !== 'aim' || A.cool > 0 || !B.ammo[A.sel]) return;
+  const w = A.w, h = A.h, am = AMMO[A.sel], m = muzzle(w, h);
+  B.ammo[A.sel]--; S.shots++;
+  A.shots.push({ type: A.sel, x0: m.x / w, y0: m.y / h, tx: A.aim.x, ty: Math.min(.95, A.aim.y + (am.arc ? DROP : 0)), t: 0,
+    T: am.charge ? 1.05 - .7 * A.charge : am.T, size: am.charge ? .6 + A.charge * .9 : 1 });
+  A.cool = .3; A.charge = 0; A.charging = false;
+  A.kick = am.kick ? 1 : .4; if (am.kick) A.quake = .7;
+  if (!B.ammo[A.sel]) A.sel = [1, 2, 3, 4, 5].find(k => B.ammo[k]) || A.sel;
+  renderAmmo(); shootInfo();
+}
+function boom(x, y, color, n, sp) {
+  if (RM) return;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, v = (60 + Math.random() * 260) * sp;
+    A.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: .5 + Math.random() * .6, color: Math.random() < .3 ? '#ffffff' : color, size: 2 + Math.random() * 4 });
+  }
+}
+const pop = (text, x, y, color) => A.pops.push({ text, x, y, t: 0, color });
+// pocisk doleciał: trafienie, gdy punkt upadku jest w Grawitorze (rakieta ma większy wybuch)
+function resolve(s, w, h) {
+  const am = AMMO[s.type], R = bossR(w, h), lx = s.tx * w, ly = s.ty * h;
+  if (A.dead) { boom(lx, ly, am.color, 12, .5); return; }
+  const hit = Math.hypot(lx - A.x * w, ly - A.y * h) < R * (.85 + (am.blast || 0));
+  boom(lx, ly, am.color, hit ? 46 : 16, hit ? 1 : .5);
+  if (hit) {
+    B.hp--; S.hits++; A.hurt = .55; A.flash = 1; A.shake = 1;
+    if (am.freeze) { A.frozen = 4; const sp = Math.hypot(A.vx, A.vy) || 1, k = .045 / sp; A.vx = (A.vx || .03) * k; A.vy *= k; }
+    pop('Trafienie!', lx, ly - 34, '#ffffff'); setXP(5); renderHP();
+    if (!RM) gsap.fromTo('#hp', { scale: 1.2 }, { scale: 1, duration: .4, ease: 'back.out(3)', clearProps: 'transform' });
+    const r = cv.getBoundingClientRect(); burst(r.left + lx, r.top + ly, false);
+    if (B.hp <= 0) { A.mode = 'idle'; A.dead = .001; A.wonT = 1.1; boom(A.x * w, A.y * h, '#ff4d2e', 120, 1.6); bossSay('Nieee…'); renderAmmo(); return; }
+    bossSay(pick(LINES.hit));
+  } else { A.laugh = 1; pop('Pudło!', lx, ly - 28, '#ff9a8a'); bossSay(pick(LINES.miss)); }
+  if (!ammoTotal() && !A.shots.length) shootDone(); else renderNeed();
+}
+
+function arenaStep(dt, w, h) {
+  const R = bossR(w, h);
+  if (!A.dead) {
+    const sp = B && B.extra ? .05 : .085; // w dogrywce wolniej
+    if (A.frozen > 0) A.frozen -= dt;
+    else if ((A.turn -= dt) <= 0) { const a = Math.random() * Math.PI * 2; A.vx = Math.cos(a) * sp; A.vy = Math.sin(a) * sp * .7; A.turn = 1.6 + Math.random() * 1.8; }
+    A.x += A.vx * dt; A.y += A.vy * dt * (w / h);
+    const mx = Math.min(.4, R / w + .06), mt = R / h + .1, mb = Math.max(mt, .5);
+    if (A.x < mx || A.x > 1 - mx) { A.vx = -A.vx; A.x = Math.max(mx, Math.min(1 - mx, A.x)); }
+    if (A.y < mt || A.y > mb) { A.vy = -A.vy; A.y = Math.max(mt, Math.min(mb, A.y)); }
+  } else A.dead += dt;
+  if (A.wonT > 0 && (A.wonT -= dt) <= 0) won();
+  A.hurt = Math.max(0, A.hurt - dt); A.laugh = Math.max(0, A.laugh - dt); A.flash = Math.max(0, A.flash - dt * 3);
+  A.shake = Math.max(0, A.shake - dt * 2); A.quake = Math.max(0, A.quake - dt * 2.5);
+  A.kick = Math.max(0, A.kick - dt * 5); A.cool = Math.max(0, A.cool - dt);
+  if (A.charging) A.charge = Math.min(1, A.charge + dt / 1.2);
+  for (const r of ROCKS) { r.x -= r.v * dt; r.a += dt * .3; if (r.x < -.1) r.x = 1.1; }
+  for (let i = A.shots.length - 1; i >= 0; i--) { const s = A.shots[i]; s.t += dt; if (s.t >= s.T) { A.shots.splice(i, 1); resolve(s, w, h); } }
+  for (let i = A.parts.length - 1; i >= 0; i--) { const p = A.parts[i]; p.life += dt; if (p.life > p.max) { A.parts.splice(i, 1); continue; } p.vy += 220 * dt; p.x += p.vx * dt; p.y += p.vy * dt; }
+  for (let i = A.pops.length - 1; i >= 0; i--) if ((A.pops[i].t += dt) > 1.2) A.pops.splice(i, 1);
+}
+function arenaFrame(t, dt) {
+  const { ctx, w, h } = fit(cv); A.w = w; A.h = h;
+  arenaStep(dt, w, h);
+  ctx.save();
+  if (A.quake) ctx.translate((Math.random() - .5) * A.quake * 14, (Math.random() - .5) * A.quake * 14);
+  ctx.fillStyle = 'rgba(18,6,8,.42)'; ctx.fillRect(-20, -20, w + 40, h + 40);
+  for (const r of ROCKS) {
+    rockPath(ctx, r.x * w, r.y * h, r.r * w, r.pts, r.a);
+    ctx.fillStyle = '#2b1a1f'; ctx.fill(); ctx.strokeStyle = 'rgba(255,77,46,.28)'; ctx.lineWidth = 2; ctx.stroke();
+  }
+  drawBoss(ctx, w, h, t);
+  drawShots(ctx, w, h);
+  for (const p of A.parts) { ctx.globalAlpha = 1 - p.life / p.max; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); }
+  ctx.globalAlpha = 1;
+  for (const p of A.pops) {
+    ctx.globalAlpha = Math.max(0, 1 - p.t / 1.2); ctx.fillStyle = p.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `900 ${Math.round(Math.max(18, w * .03))}px ${col('f-display')}`; ctx.fillText(p.text, p.x, p.y - p.t * 40);
+  }
+  ctx.globalAlpha = 1;
+  drawAim(ctx, w, h);
+  drawGun(ctx, w, h, t);
+  ctx.restore();
+}
+function rockPath(ctx, x, y, r, pts, rot = 0) {
+  ctx.beginPath();
+  pts.forEach((k, i) => { const a = rot + i / pts.length * Math.PI * 2, px = x + Math.cos(a) * r * k, py = y + Math.sin(a) * r * k; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+  ctx.closePath();
+}
+function drawBoss(ctx, w, h, t) {
+  const R0 = bossR(w, h), fade = A.dead ? Math.max(0, 1 - A.dead * 1.4) : 1;
+  if (!fade) return;
+  const R = R0 * (A.dead ? 1 + A.dead * .6 : 1);
+  const sh = A.shake * R * .08, x = A.x * w + (Math.random() - .5) * sh, y = A.y * h + Math.sin(t * 1.6) * R * .05 + (Math.random() - .5) * sh;
+  const ice = A.frozen > 0;
+  ctx.save(); ctx.translate(x, y); ctx.globalAlpha = fade;
+  // poświata
+  const gl = ctx.createRadialGradient(0, 0, R * .5, 0, 0, R * 1.6);
+  gl.addColorStop(0, ice ? 'rgba(168,233,255,.4)' : 'rgba(255,77,46,.38)'); gl.addColorStop(1, 'rgba(255,77,46,0)');
+  ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(0, 0, R * 1.6, 0, Math.PI * 2); ctx.fill();
+  // okruchy na orbicie
+  for (let i = 0; i < 3; i++) {
+    const a = t * .8 + i * 2.1, px = Math.cos(a) * R * 1.35, py = Math.sin(a) * R * .45;
+    rockPath(ctx, px, py, R * .12, BODY.slice(i, i + 6), a); ctx.fillStyle = '#3a2226'; ctx.fill();
+  }
+  // ciało ze skały
+  rockPath(ctx, 0, 0, R, BODY);
+  const g = ctx.createRadialGradient(-R * .3, -R * .4, R * .1, 0, 0, R * 1.1);
+  g.addColorStop(0, ice ? '#9fc6d8' : '#7a4a4c'); g.addColorStop(1, ice ? '#2b4a5c' : '#2a1216');
+  ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = R * .04; ctx.stroke();
+  // pęknięcia z lawą: im mniej serc, tym więcej
+  const n = HP_MAX - (B ? Math.max(0, B.hp) : HP_MAX);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.shadowColor = '#ff7a2e'; ctx.shadowBlur = R * .25;
+  ctx.strokeStyle = `rgba(255,${120 + Math.round(60 * Math.sin(t * 4))},46,.95)`; ctx.lineWidth = R * .05;
+  CRACKS.slice(0, n).forEach(c => { ctx.beginPath(); c.forEach(([cx, cy], i) => i ? ctx.lineTo(cx * R, cy * R) : ctx.moveTo(cx * R, cy * R)); ctx.stroke(); });
+  ctx.shadowBlur = 0;
+  // oczy patrzą na celownik
+  const ex = Math.max(-1, Math.min(1, (A.aim.x * w - x) / (R * 3))), ey = Math.max(-1, Math.min(1, (A.aim.y * h - y) / (R * 3)));
+  for (const s of [-1, 1]) {
+    const cx = s * R * .32, cy = -R * .16;
+    ctx.fillStyle = A.hurt ? '#ffffff' : ice ? '#d7f6ff' : '#ffcf4a';
+    ctx.beginPath(); ctx.ellipse(cx, cy, R * .17, A.hurt ? R * .04 : R * .13, 0, 0, Math.PI * 2); ctx.fill();
+    if (!A.hurt) { ctx.fillStyle = '#120608'; ctx.beginPath(); ctx.arc(cx + ex * R * .07, cy + ey * R * .05, R * .06, 0, Math.PI * 2); ctx.fill(); }
+    ctx.strokeStyle = '#120608'; ctx.lineWidth = R * .06; ctx.beginPath(); ctx.moveTo(cx - s * R * .2, cy - R * .24); ctx.lineTo(cx + s * R * .14, cy - R * .14); ctx.stroke();
+  }
+  // usta: auć (kółko), śmiech (szeroki uśmiech), zwykle krzywy uśmieszek
+  ctx.strokeStyle = '#ff4d2e'; ctx.fillStyle = '#120608'; ctx.lineWidth = R * .07;
+  if (A.hurt) { ctx.beginPath(); ctx.arc(0, R * .34, R * .12, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+  else if (A.laugh) {
+    const b = Math.abs(Math.sin(t * 18)) * R * .04;
+    ctx.beginPath(); ctx.moveTo(-R * .34, R * .24); ctx.quadraticCurveTo(0, R * .62 + b, R * .34, R * .24); ctx.closePath(); ctx.fill(); ctx.stroke();
+  } else { ctx.beginPath(); ctx.moveTo(-R * .28, R * .3); ctx.quadraticCurveTo(0, R * .44, R * .3, R * .24); ctx.stroke(); }
+  // zamrożony: szron i kryształki
+  if (ice) {
+    rockPath(ctx, 0, 0, R, BODY); ctx.fillStyle = 'rgba(168,233,255,.22)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = R * .025;
+    for (let i = 0; i < 6; i++) { const a = i * 1.05 + .3, r1 = R * .7, r2 = R * 1.02; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1); ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2); ctx.stroke(); }
+  }
+  if (A.flash) { rockPath(ctx, 0, 0, R, BODY); ctx.fillStyle = `rgba(255,255,255,${A.flash * .7})`; ctx.fill(); }
+  ctx.restore();
+}
+function drawShots(ctx, w, h) {
+  const s0 = gunScale(w, h);
+  for (const s of A.shots) {
+    const am = AMMO[s.type], u = s.t / s.T, p = shotPos(s, u), x = p.x * w, y = p.y * h, r = Math.max(5, 22 * s0) * p.sc * s.size;
+    // smuga z kilku wcześniejszych położeń
+    for (let k = 1; k <= 5; k++) {
+      const q = shotPos(s, Math.max(0, u - k * .035));
+      ctx.globalAlpha = .35 * (1 - k / 6); ctx.fillStyle = am.color; ctx.beginPath(); ctx.arc(q.x * w, q.y * h, r * (1 - k * .12), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1; ctx.shadowColor = am.color; ctx.shadowBlur = r * 1.5;
+    if (s.type === 3) {
+      const q = shotPos(s, Math.max(0, u - .02)), a = Math.atan2(y - q.y * h, x - q.x * w);
+      ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+      ctx.fillStyle = '#ffb347'; ctx.beginPath(); ctx.moveTo(-r * 1.2, 0); ctx.lineTo(-r * 2.6, -r * .45); ctx.lineTo(-r * 2.2, 0); ctx.lineTo(-r * 2.6, r * .45); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = am.color; ctx.beginPath(); ctx.ellipse(0, 0, r * 1.4, r * .6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    } else if (s.type === 4) {
+      ctx.fillStyle = '#1d2a26'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = am.color; ctx.lineWidth = r * .25; ctx.stroke();
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x + r * .6, y - r * .9, r * .3, 0, Math.PI * 2); ctx.fill();
+    } else if (s.type === 5) {
+      ctx.save(); ctx.translate(x, y); ctx.rotate(s.t * 8); ctx.fillStyle = am.color;
+      ctx.beginPath(); ctx.moveTo(0, -r * 1.3); ctx.lineTo(r * .8, 0); ctx.lineTo(0, r * 1.3); ctx.lineTo(-r * .8, 0); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.fillStyle = am.color; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y, r * .45, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+  }
+}
+function drawAim(ctx, w, h) {
+  if (A.mode !== 'aim') return;
+  const am = AMMO[A.sel], x = A.aim.x * w, y = A.aim.y * h;
+  // bomba: kropki pokazują łuk i miejsce upadku
+  if (am.arc) {
+    const m = muzzle(w, h), s = { type: 4, x0: m.x / w, y0: m.y / h, tx: A.aim.x, ty: Math.min(.95, A.aim.y + DROP) };
+    ctx.fillStyle = am.color;
+    for (let u = .08; u < 1; u += .06) { const p = shotPos(s, u); ctx.globalAlpha = .25 + .5 * u; ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 3, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1; ctx.strokeStyle = am.color; ctx.lineWidth = 3;
+    const ly = s.ty * h; ctx.beginPath(); ctx.moveTo(x - 10, ly - 10); ctx.lineTo(x + 10, ly + 10); ctx.moveTo(x + 10, ly - 10); ctx.lineTo(x - 10, ly + 10); ctx.stroke();
+  }
+  ctx.strokeStyle = am.color; ctx.lineWidth = 3; ctx.shadowColor = am.color; ctx.shadowBlur = 8;
+  ctx.beginPath(); ctx.arc(x, y, 22, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x - 34, y); ctx.lineTo(x - 14, y); ctx.moveTo(x + 14, y); ctx.lineTo(x + 34, y); ctx.moveTo(x, y - 34); ctx.lineTo(x, y - 14); ctx.moveTo(x, y + 14); ctx.lineTo(x, y + 34); ctx.stroke();
+  if (A.charging) { ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(x, y, 30, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * A.charge); ctx.stroke(); }
+  ctx.shadowBlur = 0;
+}
+// ręce w rękawach skafandra trzymają spluwę; spluwa obraca się za celownikiem i odskakuje po strzale
+function drawGun(ctx, w, h, t) {
+  const s = gunScale(w, h), a = gunAngle(w, h), am = AMMO[A.sel] || AMMO[1], kick = A.kick * 30 * s;
+  const px = w / 2, py = h + 40 * s + kick;
+  const at = (lx, ly) => ({ x: px + Math.cos(a) * lx - Math.sin(a) * ly, y: py + Math.sin(a) * lx + Math.cos(a) * ly });
+  const gl = at(-34 * s, -70 * s), gr = at(30 * s, -112 * s);
+  // rękawy wchodzą od dołu ekranu; przy mankiecie pasek w kolorze świata
+  for (const [x0, y0, g] of [[w / 2 - 250 * s, h + 160 * s, gl], [w / 2 + 250 * s, h + 160 * s, gr]]) {
+    ctx.lineCap = 'round'; ctx.strokeStyle = '#d9deea'; ctx.lineWidth = 70 * s;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(g.x, g.y); ctx.stroke();
+    ctx.lineCap = 'butt'; ctx.strokeStyle = THEME.accent; ctx.lineWidth = 72 * s;
+    const k0 = .74, k1 = .8;
+    ctx.beginPath(); ctx.moveTo(x0 + (g.x - x0) * k0, y0 + (g.y - y0) * k0); ctx.lineTo(x0 + (g.x - x0) * k1, y0 + (g.y - y0) * k1); ctx.stroke();
+  }
+  ctx.lineCap = 'round';
+  ctx.save(); ctx.translate(px, py); ctx.rotate(a);
+  const body = ctx.createLinearGradient(-50 * s, 0, 50 * s, 0); body.addColorStop(0, '#24203a'); body.addColorStop(.5, '#4f4a6e'); body.addColorStop(1, '#24203a');
+  ctx.fillStyle = body; ctx.beginPath(); ctx.roundRect(-48 * s, -205 * s, 96 * s, 170 * s, 26 * s); ctx.fill();
+  ctx.fillStyle = '#8a8fb0'; ctx.beginPath(); ctx.roundRect(-22 * s, -252 * s, 44 * s, 70 * s, 12 * s); ctx.fill();
+  ctx.fillStyle = am.color; ctx.fillRect(-22 * s, -236 * s, 44 * s, 6 * s); ctx.fillRect(-22 * s, -220 * s, 44 * s, 6 * s);
+  ctx.shadowColor = am.color; ctx.shadowBlur = 20 * s;
+  ctx.fillStyle = am.color; ctx.globalAlpha = .75 + .25 * Math.sin(t * 5);
+  ctx.beginPath(); ctx.roundRect(-26 * s, -175 * s, 52 * s, 64 * s, 14 * s); ctx.fill();
+  ctx.globalAlpha = 1;
+  // błysk u wylotu: przy ładowaniu działa siły rośnie, po strzale gaśnie
+  const flare = A.charging ? 8 + A.charge * 34 : A.kick > .3 ? 30 * A.kick : 0;
+  if (flare) { ctx.beginPath(); ctx.arc(0, -258 * s, flare * s * 1.4, 0, Math.PI * 2); ctx.fill(); }
+  ctx.shadowBlur = 0; ctx.restore();
+  // rękawice na rękojeści
+  for (const g of [gl, gr]) {
+    ctx.fillStyle = '#f4f6fb'; ctx.strokeStyle = '#9aa3b8'; ctx.lineWidth = 4 * s;
+    ctx.beginPath(); ctx.arc(g.x, g.y, 30 * s, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+}
+
+// celowanie: myszka (ruch = celownik, klik = strzał) i palec (dotknięcie = strzał w to miejsce).
+// Działo siły ładuje się, póki przycisk albo palec jest wciśnięty.
+const toAim = e => { const r = cv.getBoundingClientRect(); A.aim.x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); A.aim.y = Math.max(0, Math.min(.92, (e.clientY - r.top) / r.height)); };
+cv.addEventListener('pointermove', toAim); // także poza strzelaniem: oczy Grawitora śledzą celownik
+cv.addEventListener('pointerdown', e => {
+  if (A.mode !== 'aim') return;
+  e.preventDefault(); toAim(e); A.down = true;
+  try { cv.setPointerCapture(e.pointerId); } catch {}
+  if (AMMO[A.sel].charge && B.ammo[A.sel]) { A.charging = true; A.charge = 0; }
+});
+cv.addEventListener('pointerup', e => { if (!A.down) return; A.down = false; toAim(e); fire(); });
+cv.addEventListener('pointercancel', () => { A.down = false; A.charging = false; A.charge = 0; });
+// klawisze 1–5 wybierają pocisk
+document.addEventListener('keydown', e => {
+  if ($('#scr-boss').hidden || !B || A.mode !== 'aim' || (e.target.closest && e.target.closest('input'))) return;
+  const m = +e.key; if (m >= 1 && m <= 5) selectAmmo(m);
+});
+
+// ---------- RAPORT ----------
+function load() { try { return JSON.parse(localStorage.getItem('orion-m6') || 'null'); } catch { return null; } }
+function save(r) { try { localStorage.setItem('orion-m6', JSON.stringify(r)); } catch {} }
+// pojęcia z walki trafiają do wspólnej mapy pojęć: błąd = „do powtórki”, poprawka w dogrywce = „po powtórce”
+function saveTerms() {
+  try {
+    const all = prevTerms(), day = new Date().toISOString().slice(0, 10);
+    for (const id in S.terms) { const p = PREV.find(p => id.startsWith(p.pre)); if (p) all[id.slice(p.pre.length)] = { status: S.terms[id], date: day, temat: p.temat }; }
+    localStorage.setItem('orion-pojecia', JSON.stringify(all));
+  } catch {}
+  Konto.pojecia();
+}
+function endScreen() {
+  devMark({ etap: 'end', S: devS() });
+  stopLoop(); show('end'); setStep('end'); setWorld(0);
+  const n = bossStars(); starsNow = n; refreshStars();
+  $('#endTitle').textContent = n === 3 ? 'Grawitor pokonany bez dogrywki!' : 'Grawitor pokonany!';
+  $('#endXp').textContent = `${S.xp} XP za walkę z bossem`;
+  say($('#say-end'), n === 3 ? 'Brawo! Cały dział „Dynamika” za nami. Orion leci do domu!' : n === 2 ? 'Udało się! Kilka pojęć warto jeszcze powtórzyć.' : 'Grawitor pokonany, ale część pojęć trzeba powtórzyć. Zajrzyj do Słowniczka.');
+  // raport bohatera: bez form zależnych od płci
+  const h = HEROES.find(x => x.id === hero.id) || HEROES[0];
+  $('#report').innerHTML = ava(h.id, 140) +
+    `<h2>Raport: ${esc(hero.name || h.label)}</h2><p class="role">${h.label} na statku Orion</p>` +
+    '<ul>' +
+    `<li>Rundy: ${S.firstTry} z ${ROUNDS * PER_ROUND} odpowiedzi dobrze.</li>` +
+    `<li>Strzały: ${S.hits} ${pl(S.hits, 'trafienie', 'trafienia', 'trafień')} na ${S.shots} ${pl(S.shots, 'strzał', 'strzały', 'strzałów')}.</li>` +
+    `<li>Dogrywka: ${S.extra ? `${S.extraQ} ${pl(S.extraQ, 'dodatkowe pytanie', 'dodatkowe pytania', 'dodatkowych pytań')}` : 'niepotrzebna!'}</li>` +
+    '<li>Grawitor pokonany. Droga do domu wolna!</li>' +
+    '</ul>' +
+    `<p class="src">${n === 3 ? 'Wróć tu za tydzień i zagraj jeszcze raz. Wtedy cały dział zostanie na dłużej.' : 'Powtórz pojęcia ze Słowniczka i zagraj jeszcze raz jutro. Pójdzie łatwiej.'} Materiał: Spotkania z fizyką 7, dział „Dynamika”, tematy 24–28, s. 162–190.</p>`;
+  // pojęcia: jak poszło w każdym module
+  const ul = $('#endTerms'); ul.innerHTML = '';
+  PREV.slice().sort((a, b) => a.n - b.n).forEach(p => {
+    const v = Object.keys(S.terms).filter(id => id.startsWith(p.pre)).map(id => S.terms[id]);
+    const cnt = st => v.filter(x => x === st).length, ok = cnt('ok'), retry = cnt('retry'), weak = cnt('weak');
+    const li = document.createElement('li'), b = document.createElement('b'), s = document.createElement('span');
+    b.textContent = `${p.n}. ${MOD_INFO[p.n].name}`;
+    s.className = !v.length ? '' : weak ? 'st-weak' : retry ? 'st-retry' : 'st-ok';
+    s.textContent = !v.length ? 'bez pytań' : `${ok} z ${v.length} od razu` + (retry ? `, ${retry} po powtórce` : '') + (weak ? `, ${weak} do powtórki` : '');
+    li.append(b, s); ul.append(li);
+  });
+  const mis = $('#endMis'); mis.innerHTML = '';
+  const weak = Object.keys(S.terms).filter(id => S.terms[id] === 'weak');
+  if (!weak.length) { const li = document.createElement('li'); li.textContent = 'Nic! Na koniec wszystkie pojęcia były dobrze.'; mis.append(li); }
+  weak.forEach(id => {
+    const p = PREV.find(p => id.startsWith(p.pre)), g = p.glos.find(g => g.id === id.slice(p.pre.length));
+    const li = document.createElement('li'); li.innerHTML = '<b></b> '; li.querySelector('b').textContent = g.term; li.append(`(moduł ${p.n}). Znajdziesz je w Słowniczku.`); mis.append(li);
+  });
+  // fala uderzeniowa od środka, potem gwiazdki zapalają się po kolei
+  shock(innerWidth / 2, innerHeight / 2, 1.4, 1.8); burst(innerWidth / 2, innerHeight / 2, true);
+  [...$('#endStars').children].forEach((s, i) => {
+    s.classList.remove('on');
+    if (i >= n) return;
+    const light = () => { s.classList.add('on'); const [x, y] = center(s); burst(x, y, false); };
+    if (RM) light();
+    else gsap.fromTo(s, { scale: 0 }, { scale: 1, duration: .6, delay: .6 + i * .45, ease: 'back.out(2.5)', onStart: light, transformOrigin: 'center', clearProps: 'transform' });
+  });
+  // naszywka za bossa: przypięta od 2 gwiazdek, wcześniej szara; bez obrazka w img/ się nie pokazuje
+  const earned = n >= 2, im = $('#patch img');
+  $('#patch').hidden = im.complete && !im.naturalWidth;
+  $('#patch').classList.toggle('locked', !earned);
+  $('#patchLbl').textContent = earned ? 'Nowa naszywka' : 'Naszywka do zdobycia';
+  $('#patchTxt').textContent = earned ? 'Za pokonanie Grawitora. Przypięta do skafandra!' : 'Zdobądź co najmniej 2 gwiazdki, a naszywka będzie Twoja.';
+  if (earned && !RM) gsap.fromTo('#patch img', { scale: 0, rotation: -200 }, { scale: 1, rotation: 0, duration: 1.1, delay: .8 + n * .45, ease: 'back.out(1.8)', clearProps: 'transform' });
+  if (!dev.on) saveTerms();
+  const best = load();
+  if (!dev.on) if (!best || n > best.stars || (n === best.stars && S.xp > best.xp)) save({ stars: n, xp: S.xp, date: new Date().toISOString().slice(0, 10) });
+  Konto.wynik(MOD, n, S.xp, JSON.parse(JSON.stringify(S)));
+}
+function resetAll() {
+  Object.assign(S, { xp: 0, firstTry: 0, asked: 0, shots: 0, hits: 0, extraQ: 0, extra: false, terms: {} });
+  B = null; stopLoop(); clearInterval(bTimer); clearInterval(nTimer);
+  renderGlossary();
+  $('#xp').textContent = '0'; starsNow = 0; refreshStars();
+}
+$('#startBtn').addEventListener('click', bossStart);
+$('#againBtn').addEventListener('click', () => { resetAll(); show('start'); setStep(''); setWorld(0); showBest(); showResume(); });
+function showPrev() {
+  const get = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
+  const st = m => m ? '★'.repeat(m.stars) + '☆'.repeat(3 - m.stars) : 'jeszcze nie zagrany';
+  const mods = ['m1', 'm2', 'm3', 'm4', 'm5'];
+  mods.forEach(m => { $('#' + m + 'stars').textContent = st(get('orion-' + m)); });
+  $('#prevNote').textContent = mods.every(m => get('orion-' + m)) ? '' : 'Nie wszystkie moduły są jeszcze zagrane. Możesz walczyć od razu, ale łatwiej będzie po wszystkich pięciu.';
+}
+showPrev();
+function showBest() { const b = load(); $('#best').textContent = b ? `Najlepszy wynik: ${'★'.repeat(b.stars)}${'☆'.repeat(3 - b.stars)}, ${b.xp} XP (${b.date})` : ''; }
+showBest();
+renderGlossary();
+
+// ---------- wznawianie przerwanej gry ----------
+// migawka { etap: 'boss', S, B } powstaje na powitaniu, przy każdym pytaniu i na początku strzelania (snap)
+function snap(etap, extra) { const z = { etap, S: JSON.parse(JSON.stringify(S)), ...extra }; devMark(z); Konto.zapisz(MOD, z); }
+function resumeText(z) {
+  const b = z.B || {};
+  const t = b.phase === 'intro' ? 'powitanie Grawitora' : b.extra ? 'dogrywka' : b.phase === 'shoot' ? `runda ${b.round}, strzelanie` : `runda ${b.round}, pytanie ${(b.qi || 0) + 1} z ${PER_ROUND}`;
+  return `Przerwana walka: ${t}. Grawitor ma ${b.hp != null ? b.hp : HP_MAX} z ${HP_MAX} serc. Masz ${(z.S && z.S.xp) || 0} XP.`;
+}
+function showResume() {
+  const z = Konto.wczytaj(MOD);
+  $('#resumeBtn').hidden = $('#resumeInfo').hidden = !z;
+  $('#startBtn').classList.toggle('ghost', !!z);
+  if (z) $('#resumeInfo').textContent = resumeText(z);
+}
+function resumeGame(z) {
+  resetAll();
+  try {
+    Object.assign(S, JSON.parse(JSON.stringify(z.S || {})));
+    $('#xp').textContent = S.xp; refreshStars(); renderGlossary();
+    if (z.etap === 'start') { devMark(z); stopLoop(); show('start'); setStep(''); setWorld(0); showBest(); showResume(); return; }
+    if (z.etap === 'end') return endScreen();
+    if (z.B) { B = clone(z.B); return enterBoss(); }
+  } catch (e) { console.warn('Nie udało się wznowić gry:', e); resetAll(); }
+  bossStart();
+}
+$('#resumeBtn').addEventListener('click', () => { const z = Konto.wczytaj(MOD); if (z) resumeGame(z); });
+showResume();
+
+// podgląd z konsoli, gdy karta jest w tle i requestAnimationFrame stoi: orion.tick(0.5) posuwa grę o pół sekundy
+window.orion = { WD, S, A, get B() { return B; }, fire, tick(dt = 1 / 60) {
+  const g = gsap.globalTimeline; g.time(g.time() + dt);
+  if (loopFn) { loopT += dt; loopFn(loopT, dt); }
+  worldFrame(dt);
+} };
+// ---------- tryb twórcy (panel z tworca.js, tylko konto twórcy) ----------
+// historia migawek (snap, raport) do „Wstecz”; skoki używają tych samych wejść co wznawianie gry
+function devMark(z) {
+  if (!dev.on) return;
+  const c = JSON.stringify(z);
+  if (dev.hist.length && JSON.stringify(dev.hist[dev.hist.length - 1]) === c) return;
+  dev.hist.push(JSON.parse(c)); if (dev.hist.length > 40) dev.hist.shift();
+}
+const devS = () => JSON.parse(JSON.stringify(S));
+function devB(o) {
+  resetAll(); B = Object.assign(newB(), o);
+  if (B.extra) { S.extra = true; if (B.phase === 'q') B.cur = pickExtra(); }
+  enterBoss();
+}
+function devPlaces() {
+  const P = [], add = (grp, label, go) => P.push({ grp, label, go });
+  const none = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  add('Ekrany', 'Start', () => resumeGame({ etap: 'start', S: devS() }));
+  add('Ekrany', 'Grawitor: powitanie', () => devB({}));
+  for (let r = 1; r <= ROUNDS; r++) add('Rundy', `Runda ${r}: ${MOD_INFO[r].name}`, () => devB({ phase: 'q', round: r, list: pickRound(r), hp: HP_MAX - (r - 1) * 2 }));
+  add('Strzelanie', 'Wszystkie rodzaje pocisków (po 2)', () => devB({ phase: 'shoot', round: 5, ammo: { 1: 2, 2: 2, 3: 2, 4: 2, 5: 2 } }));
+  for (let m = 1; m <= 5; m++) add('Strzelanie', `${AMMO[m].name} (×3)`, () => devB({ phase: 'shoot', round: m, ammo: { ...none, [m]: 3 } }));
+  add('Strzelanie', 'Bez pocisków', () => devB({ phase: 'shoot', round: 2 }));
+  add('Dogrywka', 'Dogrywka: pytanie (brakuje 3)', () => devB({ phase: 'q', round: 5, hp: 3, extra: true }));
+  add('Dogrywka', 'Ostatni strzał', () => devB({ phase: 'shoot', round: 5, hp: 1, extra: true, ammo: { ...none, 1: 1 } }));
+  [3, 2, 1].forEach(n => add('Raport', `${'★'.repeat(n)}${'☆'.repeat(3 - n)}`, () => {
+    Object.assign(S, { firstTry: n >= 2 ? 9 : 5, extra: n < 3, extraQ: n < 3 ? 3 : 0, hits: 9, shots: 12 }); endScreen();
+  }));
+  return P;
+}
+window.orion.dev = {
+  enable() { dev.on = true; },
+  set(o) { dev.fast = !!o.fast; dev.ans = !!o.ans; document.body.classList.toggle('dev-ans', dev.ans); },
+  places: devPlaces,
+  canBack: () => dev.hist.length > 1,
+  back() { dev.hist.pop(); const z = dev.hist.pop(); if (z) resumeGame(z); },
+};
+})();
+</script>
+<script src="tworca.js?v=2"></script>
+</body>
+</html>

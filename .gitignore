@@ -4,6 +4,9 @@ grafika/
 # skany podręcznika — tylko lokalnie (prawa autorskie, F-14)
 zdjecia/
 
+# szkice z sesji projektowania (podgląd w przeglądarce)
+.superpowers/
+
 # sekrety bota Discord - tylko lokalnie
 .env
 .env.txt

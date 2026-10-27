@@ -3,7 +3,7 @@
 // Moduł gry wystawia window.orion.dev: { enable(), set(opcje), places() → [{ grp, label, go }], back(), canBack() }.
 (() => {
 'use strict';
-const MODS = [[1, 'dynamika-poziom1.html', 'I zasada dynamiki Newtona'], [2, 'dynamika-poziom2.html', 'II zasada dynamiki Newtona'], [3, 'dynamika-poziom3.html', 'III zasada dynamiki Newtona'], [4, 'dynamika-poziom4.html', 'Swobodne spadanie'], [5, 'dynamika-poziom5.html', 'Opory ruchu']];
+const MODS = [[1, 'dynamika-poziom1.html', 'I zasada dynamiki Newtona'], [2, 'dynamika-poziom2.html', 'II zasada dynamiki Newtona'], [3, 'dynamika-poziom3.html', 'III zasada dynamiki Newtona'], [4, 'dynamika-poziom4.html', 'Swobodne spadanie'], [5, 'dynamika-poziom5.html', 'Opory ruchu'], [6, 'dynamika-poziom6.html', 'Boss: powtórzenie działu']];
 const OPT_KEY = 'tworca-opcje'; // bez przedrostka orion-, żeby nie znikało przy logowaniu (LS.clearGame)
 let built = false;
 
