@@ -1,0 +1,38 @@
+[
+  {
+    "numer": 1,
+    "tytul": "Orion ma awarię!",
+    "plik_wiedzy": "wiedza/poziom-1.md",
+    "channel_id": ""
+  },
+  {
+    "numer": 2,
+    "tytul": "Silniki do kalibracji!",
+    "plik_wiedzy": "wiedza/poziom-2.md",
+    "channel_id": ""
+  },
+  {
+    "numer": 3,
+    "tytul": "Jak pchać w pustce?",
+    "plik_wiedzy": "wiedza/poziom-3.md",
+    "channel_id": ""
+  },
+  {
+    "numer": 4,
+    "tytul": "Co spadnie pierwsze?",
+    "plik_wiedzy": "wiedza/poziom-4.md",
+    "channel_id": ""
+  },
+  {
+    "numer": 5,
+    "tytul": "Co hamuje ruch?",
+    "plik_wiedzy": "wiedza/poziom-5.md",
+    "channel_id": ""
+  },
+  {
+    "numer": 6,
+    "tytul": "Ostatnia bitwa",
+    "plik_wiedzy": "wiedza/poziom-6.md",
+    "channel_id": ""
+  }
+]
