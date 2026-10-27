@@ -1671,7 +1671,7 @@ $('#heroName').value = hero.name;
 $('#heroName').addEventListener('input', e => { hero.name = e.target.value.trim().slice(0, 14); saveHero(); heroRefresh(); });
 heroRefresh();
 // zalogowany gracz z wybranym bohaterem: karta „Twój bohater” z naszywkami zamiast wyboru; „Zmień” wraca do wyboru, „Gotowe” do karty
-const PATCHES = [{ n: 1, name: 'I zasada dynamiki' }, { n: 2, name: 'II zasada dynamiki' }, { n: 3, name: 'Akcja i reakcja' }, { n: 4, name: 'Swobodne spadanie' }, { n: 5, name: 'Opory ruchu' }];
+const PATCHES = [{ n: 1, name: 'I zasada dynamiki' }, { n: 2, name: 'II zasada dynamiki' }, { n: 3, name: 'Akcja i reakcja' }, { n: 4, name: 'Swobodne spadanie' }, { n: 5, name: 'Opory ruchu' }, { n: 6, name: 'Pogromca bossa' }];
 let heroEdit = !(Konto.gracz && heroReady());
 function myHeroRender() {
   const card = !!Konto.gracz && heroReady() && !heroEdit;
@@ -1688,7 +1688,7 @@ function myHeroRender() {
     const el = document.createElement('div'); el.className = 'mh-patch' + (got ? ' got' : ''); el.setAttribute('role', 'listitem');
     el.innerHTML = got ? '<img alt="">' : '<i aria-hidden="true"></i>';
     if (got) el.querySelector('img').src = 'img/naszywka-m' + p.n + '.jpg'; else el.querySelector('i').textContent = p.n;
-    el.append(got ? p.name : 'Przejdź moduł ' + p.n + ', żeby zdobyć naszywkę');
+    el.append(got ? p.name : p.n === 6 ? 'Pokonaj bossa, żeby zdobyć naszywkę' : 'Przejdź moduł ' + p.n + ', żeby zdobyć naszywkę');
     box.append(el);
   });
 }
