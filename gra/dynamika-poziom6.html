@@ -2209,7 +2209,10 @@ function arenaFrame(t, dt) {
   ctx.globalAlpha = 1;
   for (const p of A.pops) {
     ctx.globalAlpha = Math.max(0, 1 - p.t / 1.2); ctx.fillStyle = p.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = `900 ${Math.round(Math.max(18, w * .03))}px ${col('f-display')}`; ctx.fillText(p.text, p.x, p.y - p.t * 40);
+    ctx.font = `900 ${Math.round(Math.max(18, w * .03))}px ${col('f-display')}`;
+    const px = Math.max(w * .2, Math.min(w * .8, p.x)), py = p.y - p.t * 40; // napis cały w arenie
+    ctx.strokeStyle = 'rgba(20,10,30,.9)'; ctx.lineWidth = 7; ctx.lineJoin = 'round'; ctx.strokeText(p.text, px, py);
+    ctx.fillText(p.text, px, py);
   }
   ctx.globalAlpha = 1;
   drawAim(ctx, w, h);
@@ -2321,6 +2324,16 @@ function drawAim(ctx, w, h) {
   ctx.beginPath(); ctx.moveTo(x - 34, y); ctx.lineTo(x - 14, y); ctx.moveTo(x + 14, y); ctx.lineTo(x + 34, y); ctx.moveTo(x, y - 34); ctx.lineTo(x, y - 14); ctx.moveTo(x, y + 14); ctx.lineTo(x, y + 34); ctx.stroke();
   if (A.charging) { ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(x, y, 30, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * A.charge); ctx.stroke(); }
   ctx.shadowBlur = 0;
+  // podpowiedź sterowania pod paskiem życia: przy pierwszych strzałach i przy dziale siły
+  if (S.shots < 2 || am.charge) {
+    const touch = matchMedia('(pointer: coarse)').matches;
+    const tip = am.charge ? (touch ? 'Przytrzymaj palec na Grawitorze, potem puść' : 'Przytrzymaj przycisk myszy, potem puść')
+      : touch ? 'Dotknij Grawitora, żeby strzelić' : 'Celuj myszką w Grawitora i kliknij';
+    ctx.font = `800 ${Math.round(Math.max(14, Math.min(18, w * .02)))}px ${col('f-body')}`;
+    const tw = ctx.measureText(tip).width, ty = 84;
+    ctx.fillStyle = 'rgba(20,10,30,.82)'; ctx.beginPath(); ctx.roundRect(w / 2 - tw / 2 - 16, ty - 17, tw + 32, 34, 17); ctx.fill();
+    ctx.fillStyle = am.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(tip, w / 2, ty + 1);
+  }
 }
 // ręce w rękawach skafandra trzymają spluwę; spluwa obraca się za celownikiem i odskakuje po strzale
 function drawGun(ctx, w, h, t) {
@@ -2361,13 +2374,24 @@ function drawGun(ctx, w, h, t) {
 // Działo siły ładuje się, póki przycisk albo palec jest wciśnięty.
 const toAim = e => { const r = cv.getBoundingClientRect(); A.aim.x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); A.aim.y = Math.max(0, Math.min(.92, (e.clientY - r.top) / r.height)); };
 cv.addEventListener('pointermove', toAim); // także poza strzelaniem: oczy Grawitora śledzą celownik
+// strzał od razu po wciśnięciu; działo siły strzela po puszczeniu (im dłużej wciśnięte, tym mocniej)
 cv.addEventListener('pointerdown', e => {
-  if (A.mode !== 'aim') return;
-  e.preventDefault(); toAim(e); A.down = true;
+  toAim(e);
+  if (A.mode !== 'aim') { notYet(); return; }
+  e.preventDefault(); A.down = true;
   try { cv.setPointerCapture(e.pointerId); } catch {}
   if (AMMO[A.sel].charge && B.ammo[A.sel]) { A.charging = true; A.charge = 0; }
+  else { A.down = false; fire(); }
 });
 cv.addEventListener('pointerup', e => { if (!A.down) return; A.down = false; toAim(e); fire(); });
+// klik w arenę, zanim jest czym strzelać: podpowiedź, co zrobić najpierw
+function notYet() {
+  if (!B || A.dead) return;
+  const msg = B.phase === 'q' && !$('#bQ').hidden && !$('#bCheck').hidden ? 'Najpierw odpowiedz na pytanie!' : 'Najpierw przycisk po prawej!';
+  if (!A.pops.some(p => p.text === msg)) pop(msg, A.aim.x * A.w, A.aim.y * A.h, '#ffcf4a');
+  const box = !$('#bQ').hidden ? $('#bQ') : $('#bNext');
+  if (!RM && box && !box.hidden) gsap.fromTo(box, { scale: 1.04 }, { scale: 1, duration: .5, ease: 'back.out(3)', clearProps: 'transform' });
+}
 cv.addEventListener('pointercancel', () => { A.down = false; A.charging = false; A.charge = 0; });
 // klawisze 1–5 wybierają pocisk
 document.addEventListener('keydown', e => {
