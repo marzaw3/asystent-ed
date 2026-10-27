@@ -322,6 +322,12 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
 .atab .cell.done { box-shadow: inset 0 0 0 3px var(--accent); }
 /* tabela sił tarcia: dwie liczby w okienku, więc mniejsza czcionka */
 .atab .cell b { font-size: clamp(16px, 1.6vw, 22px); }
+/* naszywka za moduł: okrągły obraz; szara, dopóki nie ma 2 gwiazdek */
+.patch { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; }
+.patch img { width: clamp(96px, 12vw, 150px); height: auto; aspect-ratio: 1; border-radius: 50%; filter: drop-shadow(0 0 22px var(--accent)); }
+.patch b { display: block; font-family: var(--f-display); font-size: clamp(20px, 2vw, 28px); text-shadow: var(--shadow); }
+.patch p { color: var(--ash); }
+.patch.locked img { filter: grayscale(1) brightness(.6); }
 /* misja: pole na wynik obliczeń */
 .num-row { display: flex; align-items: center; gap: 10px; font-family: var(--f-display); font-size: clamp(22px, 2.4vw, 32px); text-shadow: var(--shadow); }
 .num-row input { font: inherit; width: 6.5em; padding: 8px 14px; border-radius: 14px; border: 0; color: var(--white); text-align: right;
@@ -640,6 +646,7 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
       <div class="report" id="report"></div>
      </div>
      <div class="col side">
+      <div class="patch" id="patch"><img src="img/naszywka-m5.jpg" alt="Naszywka „Opory ruchu”"><div><span class="label" id="patchLbl"></span><b>Opory ruchu</b><p id="patchTxt"></p></div></div>
       <div class="panel">
         <h3>Pojęcia</h3>
         <ul class="terms" id="endTerms"></ul>
@@ -2838,6 +2845,12 @@ function endScreen() {
     if (RM) light();
     else gsap.fromTo(s, { scale: 0 }, { scale: 1, duration: .6, delay: .6 + i * .45, ease: 'back.out(2.5)', onStart: light, transformOrigin: 'center', clearProps: 'transform' });
   });
+  // naszywka modułu: przypięta od 2 gwiazdek, wcześniej szara
+  const earned = n >= 2;
+  $('#patch').classList.toggle('locked', !earned);
+  $('#patchLbl').textContent = earned ? 'Nowa naszywka' : 'Naszywka do zdobycia';
+  $('#patchTxt').textContent = earned ? 'Za zaliczenie modułu 5. Przypięta do skafandra!' : 'Zdobądź co najmniej 2 gwiazdki, a naszywka będzie Twoja.';
+  if (earned && !RM) gsap.fromTo('#patch img', { scale: 0, rotation: -200 }, { scale: 1, rotation: 0, duration: 1.1, delay: .8 + n * .45, ease: 'back.out(1.8)', clearProps: 'transform' });
   const best = load();
   if (!dev.on) if (!best || n > best.stars || (n === best.stars && S.xp > best.xp)) save({ stars: n, xp: S.xp, date: new Date().toISOString().slice(0, 10) });
   Konto.wynik(MOD, n, S.xp, JSON.parse(JSON.stringify(S)));
