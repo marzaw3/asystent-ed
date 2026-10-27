@@ -2060,7 +2060,7 @@ $('#bCheck').addEventListener('click', () => {
     const r = add('p', '', ''); r.innerHTML = '<b>Dobra odpowiedź:</b> '; r.append(item.opts.find(x => x.ok).t);
   }
   add('p', 'src', `Pojęcie: ${termOf(q).term} (moduł ${q.m}). Znajdziesz je w Słowniczku.`);
-  bossSay(pick(ok ? LINES.good : LINES.bad));
+  bossSay(pick(ok ? LINES.good : LINES.bad)); if (!ok) A.laugh = 1.4;
   if (ok) { cheer($('#bOpts .opt.good') || $('#bCheck')); renderAmmo(); pulseAmmo(q.m); }
   else oops($('#bOpts .opt.bad') || $('#bCheck'));
   $('#bCheck').hidden = true;
@@ -2111,7 +2111,7 @@ function won() {
 // ---------- arena: Grawitor, pociski, ręce ze spluwą (canvas, widok z oczu bohatera) ----------
 // pozycje w ułamkach szerokości i wysokości sceny, więc zmiana rozmiaru okna niczego nie psuje
 const cv = $('#bossCanvas');
-const A = { mode: 'idle', x: .5, y: .34, vx: .07, vy: .02, turn: 2, frozen: 0, hurt: 0, laugh: 0, talk: 0, flash: 0, shake: 0, quake: 0, dead: 0, wonT: 0,
+const A = { mode: 'idle', x: .5, y: .34, vx: .07, vy: .02, turn: 2, frozen: 0, hurt: 0, laugh: 0, talk: 0, blink: 0, blinkT: 3, flash: 0, shake: 0, quake: 0, dead: 0, wonT: 0,
   aim: { x: .5, y: .4 }, down: false, sel: 1, charging: false, charge: 0, kick: 0, cool: 0, shots: [], parts: [], pops: [], w: 600, h: 400 };
 function arenaReset() {
   Object.assign(A, { mode: 'idle', x: .5, y: .34, frozen: 0, hurt: 0, laugh: 0, flash: 0, shake: 0, quake: 0, dead: 0, wonT: 0,
@@ -2134,8 +2134,10 @@ function tinted(im, color) {
   const x = c.getContext('2d'); x.drawImage(im, 0, 0); x.globalCompositeOperation = 'source-atop'; x.fillStyle = color; x.fillRect(0, 0, c.width, c.height);
   return c;
 }
-// boss = cały Grawitor (zapas), body = ciało bez pięści, fistL / fistR = pięści ruszane osobno
-[['boss', 'img/boss-grawitor.png'], ['body', 'img/boss-cialo.png'], ['fistL', 'img/boss-piesc-l.png'], ['fistR', 'img/boss-piesc-p.png'], ['gun', 'img/boss-spluwa.png']].forEach(([k, src]) => {
+// boss = cały Grawitor (zapas), body = ciało bez pięści, fistL / fistR = pięści ruszane osobno,
+// smiech / auc / mrug = ciało z inną miną (dopasowane do body: kula w tym samym miejscu i tej samej wielkości)
+[['boss', 'img/boss-grawitor.png'], ['body', 'img/boss-cialo.png'], ['fistL', 'img/boss-piesc-l.png'], ['fistR', 'img/boss-piesc-p.png'],
+  ['smiech', 'img/boss-cialo-smiech.png'], ['auc', 'img/boss-cialo-auc.png'], ['mrug', 'img/boss-cialo-mrug.png'], ['gun', 'img/boss-spluwa.png']].forEach(([k, src]) => {
   const im = new Image(); SPR[k] = im;
   if (k !== 'gun') im.onload = () => { TINT[k] = { white: tinted(im, '#ffffff'), ice: tinted(im, '#a8e9ff') }; };
   im.src = src;
@@ -2222,7 +2224,8 @@ function arenaStep(dt, w, h) {
     if (A.y < mt || A.y > mb) { A.vy = -A.vy; A.y = Math.max(mt, Math.min(mb, A.y)); }
   } else A.dead += dt;
   if (A.wonT > 0 && (A.wonT -= dt) <= 0) won();
-  A.hurt = Math.max(0, A.hurt - dt); A.laugh = Math.max(0, A.laugh - dt); A.talk = Math.max(0, A.talk - dt); A.flash = Math.max(0, A.flash - dt * 3);
+  A.hurt = Math.max(0, A.hurt - dt); A.laugh = Math.max(0, A.laugh - dt); A.talk = Math.max(0, A.talk - dt);
+  A.blink = Math.max(0, A.blink - dt); if ((A.blinkT -= dt) <= 0) { A.blink = .15; A.blinkT = 2.5 + Math.random() * 3; } A.flash = Math.max(0, A.flash - dt * 3);
   A.shake = Math.max(0, A.shake - dt * 2); A.quake = Math.max(0, A.quake - dt * 2.5);
   A.kick = Math.max(0, A.kick - dt * 5); A.cool = Math.max(0, A.cool - dt);
   if (A.charging) A.charge = Math.min(1, A.charge + dt / 1.2);
@@ -2283,7 +2286,7 @@ function drawBossSpr(ctx, w, h, t) {
     ctx.globalAlpha = fade;
   };
   if (!parts) part('boss', ix, iy, sw, sh);
-  else part('body', ix, iy, sw, sh);
+  else part(faceKey(), ix, iy, sw, sh);
   const n = HP_MAX - (B ? Math.max(0, B.hp) : HP_MAX);
   if (n) {
     ctx.save(); ctx.beginPath(); ctx.arc(0, 0, R * .97, 0, Math.PI * 2); ctx.clip();
@@ -2300,6 +2303,11 @@ function drawBossSpr(ctx, w, h, t) {
     ctx.restore();
   }
   ctx.restore();
+}
+// mina: „auć” po trafieniu i przy wybuchu, śmiech po pudle i złej odpowiedzi, co kilka sekund mrugnięcie (zamrożony nie mruga)
+function faceKey() {
+  const k = A.dead || A.hurt > 0 ? 'auc' : A.laugh > 0 ? 'smiech' : A.blink > 0 && A.frozen <= 0 ? 'mrug' : 'body';
+  return sprOk(k) ? k : 'body';
 }
 // ruch pięści (przesunięcie w ułamkach szerokości obrazka, obrót): unoszą się; gdy Grawitor mówi, prawa wygraża;
 // śmiech = walenie pięściami o siebie; trafienie = odlatują na boki; pocisk w drodze = zasłania się; zamrożony = stoją
