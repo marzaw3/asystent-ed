@@ -1,26 +1,42 @@
 """Bot Discord „Orion” - pomocnik z fizyki do gry Misja Orion."""
 
+import asyncio
 import json
 import re
 import sys
+import time
 import unicodedata
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 import discord
 from dotenv import dotenv_values
 
+from odpowiedzi import AskError, ask_claude, build_input, pick_levels, split_message
+from zasady import LimitSettings, Limits, should_handle
+
 BOT_DIR = Path(__file__).resolve().parent
 REPO_DIR = BOT_DIR.parent
 ENV_FILE = REPO_DIR / ".env"
 POZIOMY_FILE = BOT_DIR / "poziomy.json"
+USTAWIENIA_FILE = BOT_DIR / "ustawienia.json"
 STAN_DIR = BOT_DIR / "stan"
 KANALY_FILE = STAN_DIR / "kanaly.json"
+LIMITY_FILE = STAN_DIR / "limity.json"
 
 ONLINE_MESSAGE = "Orion online - pytaj o fizykę!"
 CATEGORY_NAME = "Misja Orion"
 ASK_CHANNEL_NAME = "zapytaj-oriona"
 AI_NOTE = "Odpowiada sztuczna inteligencja. Może się pomylić, więc sprawdzaj odpowiedzi w podręczniku."
+
+MAX_PARALLEL = 2   # naraz najwyżej 2 wywołania Claude
+MAX_WAITING = 10   # i najwyżej 10 pytań w kolejce
+BUSY_MESSAGE = "Dużo pytań naraz, spróbuj za minutę."
+ERROR_MESSAGE = "Orion ma teraz kłopot z odpowiedzią. Spróbuj za chwilę."
+
+# Odpowiedź AI nie może nikogo oznaczyć (np. @everyone) - poza autorem pytania.
+REPLY_MENTIONS = discord.AllowedMentions(everyone=False, users=False, roles=False, replied_user=True)
 
 
 @dataclass(frozen=True)
@@ -39,6 +55,10 @@ def fail(message: str) -> None:
 
 def warn(message: str) -> None:
     print(f"UWAGA: {message}", file=sys.stderr)
+
+
+def log(message: str) -> None:
+    print(f"{datetime.now():%Y-%m-%d %H:%M:%S} {message}")
 
 
 def read_id(values: dict, key: str, required: bool) -> int | None:
@@ -99,6 +119,27 @@ def load_levels() -> list[dict]:
     return levels
 
 
+def load_limit_settings() -> LimitSettings:
+    data = read_json(USTAWIENIA_FILE, None)
+    if not isinstance(data, dict):
+        fail(f"Nie znaleziono ustawień w pliku {USTAWIENIA_FILE.name}.")
+    try:
+        return LimitSettings.from_dict(data)
+    except ValueError as error:
+        fail(f"Błąd w pliku {USTAWIENIA_FILE.name}: {error}")
+
+
+def load_knowledge(levels: list[dict]) -> dict[int, str]:
+    """Treść plików wiedzy według numeru poziomu."""
+    knowledge = {}
+    for level in levels:
+        path = BOT_DIR / level["plik_wiedzy"]
+        if not path.is_file():
+            fail(f"Brakuje pliku wiedzy {level['plik_wiedzy']} dla poziomu {level['numer']}.")
+        knowledge[level["numer"]] = path.read_text(encoding="utf-8")
+    return knowledge
+
+
 # --- pomocnicze ---------------------------------------------------------------
 
 def slugify(text: str) -> str:
@@ -129,10 +170,22 @@ def parse_channel_id(value) -> int | None:
 # --- bot ----------------------------------------------------------------------
 
 class Orion(discord.Client):
-    def __init__(self, settings: Settings) -> None:
-        super().__init__(intents=discord.Intents.default())
+    def __init__(self, settings: Settings, limit_settings: LimitSettings) -> None:
+        intents = discord.Intents.default()
+        intents.message_content = True  # bot czyta treść pytań graczy
+        super().__init__(intents=intents)
         self.settings = settings
         self.started = False
+
+        self.limits = Limits(limit_settings, read_json(LIMITY_FILE, {}), lambda state: write_json(LIMITY_FILE, state))
+        self.limit_notices: dict[int, float] = {}  # kiedy gracz ostatnio dostał info o limicie
+        self.ai_slots = asyncio.Semaphore(MAX_PARALLEL)
+        self.pending = 0  # pytania w kolejce + w trakcie odpowiedzi
+
+        self.levels: list[dict] = []
+        self.knowledge: dict[int, str] = {}
+        self.ask_channel_id: int | None = None
+        self.question_channels: set[int] = set()
 
     async def on_ready(self) -> None:
         print(f"Zalogowano jako {self.user} (ID: {self.user.id}).")
@@ -143,7 +196,10 @@ class Orion(discord.Client):
         self.started = True
 
         await self.setup_channels()
+        self.load_question_channels()
         await self.send_online_message()
+
+    # --- kanały ---------------------------------------------------------------
 
     async def setup_channels(self) -> None:
         guild = self.get_guild(self.settings.guild_id)
@@ -226,6 +282,18 @@ class Orion(discord.Client):
             level["channel_id"] = str(channel.id)
             write_json(POZIOMY_FILE, levels)
 
+    def load_question_channels(self) -> None:
+        """Kanały, na których bot odpowiada: #zapytaj-oriona i kanały poziomów."""
+        self.levels = load_levels()
+        self.knowledge = load_knowledge(self.levels)
+        self.ask_channel_id = parse_channel_id(read_json(KANALY_FILE, {}).get(ASK_CHANNEL_NAME))
+        channels = {parse_channel_id(level.get("channel_id")) for level in self.levels}
+        channels.add(self.ask_channel_id)
+        channels.discard(None)
+        channels.discard(self.settings.command_channel_id)  # kanał poleceń - nie w tym kroku
+        self.question_channels = channels
+        print(f"Odpowiadam na pytania na {len(channels)} kanałach.")
+
     async def send_online_message(self) -> None:
         channel_id = self.settings.command_channel_id
         try:
@@ -239,6 +307,63 @@ class Orion(discord.Client):
         except discord.HTTPException as error:
             warn(f"Nie udało się wysłać wiadomości: {error}")
 
+    # --- pytania graczy -------------------------------------------------------
+
+    async def on_message(self, message: discord.Message) -> None:
+        if not should_handle(message.author.bot, message.channel.id, message.content, self.question_channels):
+            return
+
+        author_id = message.author.id
+        if self.pending >= MAX_PARALLEL + MAX_WAITING:
+            log(f"#{message.channel} | gracz {author_id} | kolejka pełna")
+            await message.reply(BUSY_MESSAGE, allowed_mentions=REPLY_MENTIONS)
+            return
+
+        decision = self.limits.check_and_count(author_id, datetime.now())
+        if not decision.allowed:
+            log(f"#{message.channel} | gracz {author_id} | limit")
+            await self.notify_limit(message, decision.message)
+            return
+
+        levels = pick_levels(self.levels, message.channel.id, self.ask_channel_id)
+        knowledge = "\n\n".join(self.knowledge[level["numer"]] for level in levels)
+        stdin_text = build_input(knowledge, message.content)
+
+        self.pending += 1
+        started = time.monotonic()
+        try:
+            async with message.channel.typing():
+                async with self.ai_slots:
+                    answer = await ask_claude(stdin_text)
+        except AskError as error:
+            warn(f"#{message.channel} | gracz {author_id} | {error}")
+            await message.reply(ERROR_MESSAGE, allowed_mentions=REPLY_MENTIONS)
+            return
+        finally:
+            self.pending -= 1
+
+        seconds = time.monotonic() - started
+        log(f"#{message.channel} | gracz {author_id} | pytanie {len(message.content.strip())} zn. | odpowiedź w {seconds:.1f} s")
+        await self.send_answer(message, answer)
+
+    async def notify_limit(self, message: discord.Message, text: str) -> None:
+        """Info o limicie najwyżej raz na przerwę - żeby seria wiadomości nie dostała serii odpowiedzi."""
+        now = time.monotonic()
+        last = self.limit_notices.get(message.author.id)
+        if last is not None and now - last < self.limits.settings.cooldown_seconds:
+            return
+        self.limit_notices[message.author.id] = now
+        await message.reply(text, allowed_mentions=REPLY_MENTIONS)
+
+    async def send_answer(self, message: discord.Message, answer: str) -> None:
+        try:
+            first, *rest = split_message(answer)
+            await message.reply(first, allowed_mentions=REPLY_MENTIONS)
+            for part in rest:
+                await message.channel.send(part, allowed_mentions=REPLY_MENTIONS)
+        except discord.HTTPException as error:
+            warn(f"Nie udało się wysłać odpowiedzi na #{message.channel}: {error}")
+
 
 def main() -> None:
     # Polskie znaki w komunikatach także wtedy, gdy konsola Windows nie używa UTF-8.
@@ -247,16 +372,23 @@ def main() -> None:
 
     settings = load_settings()
     # Błędy w plikach JSON zgłaszamy przed logowaniem, a nie w trakcie działania bota.
-    load_levels()
+    load_knowledge(load_levels())
+    limit_settings = load_limit_settings()
     if not isinstance(read_json(KANALY_FILE, {}), dict):
         fail(f"Plik {KANALY_FILE.name} powinien zawierać obiekt JSON, np. {{}}.")
-    bot = Orion(settings)
+    if not isinstance(read_json(LIMITY_FILE, {}), dict):
+        fail(f"Plik {LIMITY_FILE.name} jest uszkodzony - usuń go, a liczniki zaczną się od zera.")
+
+    bot = Orion(settings, limit_settings)
     try:
         bot.run(settings.token)
     except discord.LoginFailure:
         fail("Discord odrzucił token. Sprawdź DISCORD_TOKEN w pliku .env (może wygasł albo został zresetowany).")
     except discord.PrivilegedIntentsRequired:
-        fail("Bot potrzebuje uprawnień (intents), które nie są włączone w Discord Developer Portal.")
+        fail(
+            "Bot potrzebuje „Message Content Intent”. Włącz go w Discord Developer Portal: "
+            "Twoja aplikacja → Bot → Privileged Gateway Intents → Message Content Intent."
+        )
     except (discord.GatewayNotFound, OSError):
         fail("Nie udało się połączyć z Discordem. Sprawdź połączenie z internetem.")
 

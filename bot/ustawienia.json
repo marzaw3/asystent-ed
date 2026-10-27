@@ -1,0 +1,5 @@
+{
+  "przerwa_sekund_na_gracza": 30,
+  "limit_dzienny_na_gracza": 20,
+  "limit_dzienny_bota": 200
+}
