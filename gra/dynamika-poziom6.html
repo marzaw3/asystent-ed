@@ -1929,6 +1929,7 @@ function bossSay(text) {
   const el = $('#bSay');
   el.innerHTML = BOSS_AVA + '<div class="bubble"><b>Grawitor</b><p></p></div>';
   el.querySelector('p').textContent = text;
+  A.talk = Math.min(2.4, .8 + text.length * .02); // prawa pięść gestykuluje, póki mówi
   if (!RM) gsap.fromTo(el.querySelector('.bubble'), { scale: .9, opacity: .4 }, { scale: 1, opacity: 1, duration: .35, ease: 'back.out(2)', transformOrigin: 'left center', clearProps: 'transform,opacity' });
 }
 // panel po prawej: talk = sama rozmowa, q = pytanie, shoot = opis pocisku
@@ -2110,7 +2111,7 @@ function won() {
 // ---------- arena: Grawitor, pociski, ręce ze spluwą (canvas, widok z oczu bohatera) ----------
 // pozycje w ułamkach szerokości i wysokości sceny, więc zmiana rozmiaru okna niczego nie psuje
 const cv = $('#bossCanvas');
-const A = { mode: 'idle', x: .5, y: .34, vx: .07, vy: .02, turn: 2, frozen: 0, hurt: 0, laugh: 0, flash: 0, shake: 0, quake: 0, dead: 0, wonT: 0,
+const A = { mode: 'idle', x: .5, y: .34, vx: .07, vy: .02, turn: 2, frozen: 0, hurt: 0, laugh: 0, talk: 0, flash: 0, shake: 0, quake: 0, dead: 0, wonT: 0,
   aim: { x: .5, y: .4 }, down: false, sel: 1, charging: false, charge: 0, kick: 0, cool: 0, shots: [], parts: [], pops: [], w: 600, h: 400 };
 function arenaReset() {
   Object.assign(A, { mode: 'idle', x: .5, y: .34, frozen: 0, hurt: 0, laugh: 0, flash: 0, shake: 0, quake: 0, dead: 0, wonT: 0,
@@ -2127,19 +2128,22 @@ const hexA = (hex, a) => `rgba(${parseInt(hex.slice(1, 3), 16)},${parseInt(hex.s
 // obrazki Grawitora i spluwy (img/); dopóki się nie wczytają albo ich brak, zostaje rysunek z kodu
 const SPR = {};
 const sprOk = k => !!SPR[k] && SPR[k].complete && SPR[k].naturalWidth > 0;
-let bossTint = null; // kopie sylwetki Grawitora: biała (błysk po trafieniu) i lodowa (zamrożenie)
+const TINT = {}; // zabarwione kopie części Grawitora: biała (błysk po trafieniu) i lodowa (zamrożenie)
 function tinted(im, color) {
   const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
   const x = c.getContext('2d'); x.drawImage(im, 0, 0); x.globalCompositeOperation = 'source-atop'; x.fillStyle = color; x.fillRect(0, 0, c.width, c.height);
   return c;
 }
-[['boss', 'img/boss-grawitor.png'], ['gun', 'img/boss-spluwa.png']].forEach(([k, src]) => {
+// boss = cały Grawitor (zapas), body = ciało bez pięści, fistL / fistR = pięści ruszane osobno
+[['boss', 'img/boss-grawitor.png'], ['body', 'img/boss-cialo.png'], ['fistL', 'img/boss-piesc-l.png'], ['fistR', 'img/boss-piesc-p.png'], ['gun', 'img/boss-spluwa.png']].forEach(([k, src]) => {
   const im = new Image(); SPR[k] = im;
-  if (k === 'boss') im.onload = () => { bossTint = { white: tinted(im, '#ffffff'), ice: tinted(im, '#a8e9ff') }; };
+  if (k !== 'gun') im.onload = () => { TINT[k] = { white: tinted(im, '#ffffff'), ice: tinted(im, '#a8e9ff') }; };
   im.src = src;
 });
 // położenie w obrazkach (ułamki szerokości i wysokości): środek i promień kamiennego ciała; wylot i okienko energii spluwy
 const BOSS_SPR = { cx: .4995, cy: .486, r: .285 };
+// pięści w obrazku Grawitora (ułamki jego szerokości i wysokości): lewy górny róg, rozmiar; obracają się wokół środka
+const FISTS = { fistL: { x: 0, y: .3904, w: .2195, h: .3328, side: -1 }, fistR: { x: .7805, y: .3904, w: .2195, h: .3328, side: 1 } };
 const GUN_SPR = { my: .05, cy: .523 };
 // spluwa z obrazka: oś obrotu pod dolną krawędzią sceny, obrazek sięga od −0,96 do +0,04 swojej wysokości
 function gunGeom(w, h) {
@@ -2218,7 +2222,7 @@ function arenaStep(dt, w, h) {
     if (A.y < mt || A.y > mb) { A.vy = -A.vy; A.y = Math.max(mt, Math.min(mb, A.y)); }
   } else A.dead += dt;
   if (A.wonT > 0 && (A.wonT -= dt) <= 0) won();
-  A.hurt = Math.max(0, A.hurt - dt); A.laugh = Math.max(0, A.laugh - dt); A.flash = Math.max(0, A.flash - dt * 3);
+  A.hurt = Math.max(0, A.hurt - dt); A.laugh = Math.max(0, A.laugh - dt); A.talk = Math.max(0, A.talk - dt); A.flash = Math.max(0, A.flash - dt * 3);
   A.shake = Math.max(0, A.shake - dt * 2); A.quake = Math.max(0, A.quake - dt * 2.5);
   A.kick = Math.max(0, A.kick - dt * 5); A.cool = Math.max(0, A.cool - dt);
   if (A.charging) A.charge = Math.min(1, A.charge + dt / 1.2);
@@ -2268,8 +2272,18 @@ function drawBossSpr(ctx, w, h, t) {
   if (A.hurt) { const k = A.hurt / .55; sx += .1 * k; sy -= .1 * k; }
   if (A.laugh) { sy += Math.abs(Math.sin(t * 16)) * .05 * A.laugh; rot += Math.sin(t * 22) * .05 * A.laugh; }
   ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(sx, sy); ctx.globalAlpha = fade;
-  const ix = -BOSS_SPR.cx * sw, iy = -BOSS_SPR.cy * sh;
-  ctx.drawImage(im, ix, iy, sw, sh);
+  const ix = -BOSS_SPR.cx * sw, iy = -BOSS_SPR.cy * sh, parts = sprOk('body') && sprOk('fistL') && sprOk('fistR');
+  const ice = A.frozen > 0 ? .55 * Math.min(1, A.frozen) : 0;
+  // część obrazka + nalot lodu i błysk trafienia na niej
+  const part = (k, dx, dy, dw, dh) => {
+    ctx.drawImage(SPR[k], dx, dy, dw, dh);
+    const tn = TINT[k]; if (!tn) return;
+    if (ice) { ctx.globalAlpha = fade * ice; ctx.drawImage(tn.ice, dx, dy, dw, dh); }
+    if (A.flash) { ctx.globalAlpha = fade * A.flash * .75; ctx.drawImage(tn.white, dx, dy, dw, dh); }
+    ctx.globalAlpha = fade;
+  };
+  if (!parts) part('boss', ix, iy, sw, sh);
+  else part('body', ix, iy, sw, sh);
   const n = HP_MAX - (B ? Math.max(0, B.hp) : HP_MAX);
   if (n) {
     ctx.save(); ctx.beginPath(); ctx.arc(0, 0, R * .97, 0, Math.PI * 2); ctx.clip();
@@ -2278,9 +2292,32 @@ function drawBossSpr(ctx, w, h, t) {
     CRACKS.slice(0, n).forEach(c => { ctx.beginPath(); c.forEach(([cx, cy], i) => i ? ctx.lineTo(cx * R, cy * R) : ctx.moveTo(cx * R, cy * R)); ctx.stroke(); });
     ctx.restore();
   }
-  if (bossTint && A.frozen > 0) { ctx.globalAlpha = fade * .55 * Math.min(1, A.frozen); ctx.drawImage(bossTint.ice, ix, iy, sw, sh); }
-  if (bossTint && A.flash) { ctx.globalAlpha = fade * A.flash * .75; ctx.drawImage(bossTint.white, ix, iy, sw, sh); }
+  if (parts) for (const k of ['fistL', 'fistR']) {
+    const F = FISTS[k], m = fistMove(F.side, t), fw = F.w * sw, fh = F.h * sh;
+    const cx = ix + (F.x + F.w / 2) * sw + m.dx * sw, cy = iy + (F.y + F.h / 2) * sh + m.dy * sw;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(m.rot); ctx.globalAlpha = fade * m.alpha;
+    part(k, -fw / 2, -fh / 2, fw, fh);
+    ctx.restore();
+  }
   ctx.restore();
+}
+// ruch pięści (przesunięcie w ułamkach szerokości obrazka, obrót): unoszą się; gdy Grawitor mówi, prawa wygraża;
+// śmiech = walenie pięściami o siebie; trafienie = odlatują na boki; pocisk w drodze = zasłania się; zamrożony = stoją
+function fistMove(side, t) {
+  let dx = 0, dy = 0, rot = 0, alpha = 1;
+  if (A.dead) {
+    const d = A.dead; dx = side * d * .55; dy = -d * .25 + d * d * .7; rot = side * d * 6; alpha = Math.max(0, 1 - d * 1.2);
+    return { dx, dy, rot, alpha };
+  }
+  if (A.frozen <= 0) {
+    const ph = side > 0 ? 2 : 0;
+    dx += Math.sin(t * 1.6 + ph) * .008; dy += Math.sin(t * 2.2 + 1 + ph) * .011; rot += side * Math.sin(t * 1.3 + ph) * .08;
+    if (A.talk > 0 && side > 0) { const k = Math.min(1, A.talk); dy -= Math.abs(Math.sin(t * 9)) * .04 * k; rot += Math.sin(t * 9) * .25 * k; }
+    if (A.laugh > 0) { const k = A.laugh, p = Math.abs(Math.sin(t * 14)); dx -= side * p * .06 * k; dy += p * .015 * k; }
+    if (A.shots.length && A.mode === 'aim') { dx -= side * .035; dy -= .03; rot -= side * .2; }
+  }
+  if (A.hurt > 0) { const k = A.hurt / .55; dx += side * .07 * k; dy -= .04 * k; rot += side * .5 * k; }
+  return { dx, dy, rot, alpha };
 }
 function drawBoss(ctx, w, h, t) {
   if (sprOk('boss')) return drawBossSpr(ctx, w, h, t);
