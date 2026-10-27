@@ -10,3 +10,8 @@ zdjecia/
 # sekrety bota Discord - tylko lokalnie
 .env
 .env.txt
+
+# bot Discord „Orion”
+bot/.venv/
+bot/stan/
+__pycache__/
