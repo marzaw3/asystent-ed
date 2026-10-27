@@ -2112,10 +2112,10 @@ function won() {
 // pozycje w ułamkach szerokości i wysokości sceny, więc zmiana rozmiaru okna niczego nie psuje
 const cv = $('#bossCanvas');
 const A = { mode: 'idle', x: .5, y: .34, vx: .07, vy: .02, turn: 2, frozen: 0, hurt: 0, laugh: 0, talk: 0, blink: 0, blinkT: 3, flash: 0, shake: 0, quake: 0, dead: 0, wonT: 0,
-  aim: { x: .5, y: .4 }, down: false, sel: 1, charging: false, charge: 0, kick: 0, cool: 0, shots: [], parts: [], pops: [], w: 600, h: 400 };
+  aim: { x: .5, y: .4 }, down: false, sel: 1, charging: false, charge: 0, kick: 0, cool: 0, shots: [], flyby: [], parts: [], pops: [], tf: null, dodge: 0, w: 600, h: 400 };
 function arenaReset() {
   Object.assign(A, { mode: 'idle', x: .5, y: .34, frozen: 0, hurt: 0, laugh: 0, flash: 0, shake: 0, quake: 0, dead: 0, wonT: 0,
-    down: false, charging: false, charge: 0, kick: 0, cool: 0, shots: [], parts: [], pops: [] });
+    down: false, charging: false, charge: 0, kick: 0, cool: 0, shots: [], flyby: [], parts: [], pops: [], tf: null, dodge: 0 });
 }
 const ROCKS = Array.from({ length: 9 }, () => ({ x: rnd(), y: rnd() * .75, r: .02 + rnd() * .045, v: .006 + rnd() * .014, a: rnd() * 6, pts: Array.from({ length: 7 }, () => .7 + rnd() * .3) }));
 const BODY = Array.from({ length: 14 }, () => .86 + rnd() * .18);
@@ -2181,6 +2181,11 @@ function fire() {
     T: am.charge ? 1.05 - .7 * A.charge : am.T, size: am.charge ? .6 + A.charge * .9 : 1 });
   A.cool = .3; A.charge = 0; A.charging = false;
   A.kick = am.kick ? 1 : .4; if (am.kick) A.quake = .7;
+  // w rundach Grawitor czasem robi unik: widoczny skok w bok, w stronę środka (w dogrywce i zamrożony nie)
+  if (!B.extra && A.frozen <= 0 && !A.dead && Math.random() < .2) {
+    A.vx = (A.x < .5 ? 1 : -1) * .38; A.vy = (Math.random() - .5) * .08; A.turn = .45; A.dodge = .45;
+    A.shots[A.shots.length - 1].dodged = true;
+  }
   if (!B.ammo[A.sel]) A.sel = [1, 2, 3, 4, 5].find(k => B.ammo[k]) || A.sel;
   renderAmmo(); shootInfo();
 }
@@ -2196,9 +2201,10 @@ const pop = (text, x, y, color) => A.pops.push({ text, x, y, t: 0, color });
 function resolve(s, w, h) {
   const am = AMMO[s.type], R = bossR(w, h), lx = s.tx * w, ly = s.ty * h;
   if (A.dead) { boom(lx, ly, am.color, 12, .5); return; }
-  const hit = Math.hypot(lx - A.x * w, ly - A.y * h) < R * (.85 + (am.blast || 0));
-  boom(lx, ly, am.color, hit ? 46 : 16, hit ? 1 : .5);
+  // rakieta: liczy się też jej duży wybuch (osiem punktów na jego brzegu)
+  const hit = onBoss(lx, ly) || (!!am.blast && [0, 1, 2, 3, 4, 5, 6, 7].some(i => onBoss(lx + Math.cos(i * .785) * R * am.blast, ly + Math.sin(i * .785) * R * am.blast)));
   if (hit) {
+    boom(lx, ly, am.color, 46, 1);
     B.hp--; S.hits++; A.hurt = .55; A.flash = 1; A.shake = 1;
     if (am.freeze) { A.frozen = 4; const sp = Math.hypot(A.vx, A.vy) || 1, k = .045 / sp; A.vx = (A.vx || .03) * k; A.vy *= k; }
     pop('Trafienie!', lx, ly - 34, '#ffffff'); setXP(5); renderHP();
@@ -2206,14 +2212,20 @@ function resolve(s, w, h) {
     const r = cv.getBoundingClientRect(); burst(r.left + lx, r.top + ly, false);
     if (B.hp <= 0) { A.mode = 'idle'; A.dead = .001; A.wonT = 1.1; boom(A.x * w, A.y * h, '#ff4d2e', 120, 1.6); bossSay('Nieee…'); renderAmmo(); return; }
     bossSay(pick(LINES.hit));
-  } else { A.laugh = 1; pop('Pudło!', lx, ly - 28, '#ff9a8a'); bossSay(pick(LINES.miss)); }
+  } else { flyBy(s, w, h); A.laugh = 1; pop('Pudło!', lx, ly - 28, '#ff9a8a'); bossSay(s.dodged ? 'Ha! Unik!' : pick(LINES.miss)); }
   if (!ammoTotal() && !A.shots.length) shootDone(); else renderNeed();
 }
 
+// pudło: pocisk nie wybucha, tylko leci dalej obok Grawitora i gaśnie w głębi
+function flyBy(s, w, h) {
+  const a = shotPos(s, .96), b = shotPos(s, 1), k = .6 / (.04 * s.T);
+  A.flyby.push({ x: b.x * w, y: b.y * h, x0: b.x * w, y0: b.y * h, vx: (b.x - a.x) * w * k, vy: (b.y - a.y) * h * k, t: 0, color: AMMO[s.type].color,
+    r: Math.max(5, 22 * gunScale(w, h)) * b.sc * s.size });
+}
 function arenaStep(dt, w, h) {
   const R = bossR(w, h);
   if (!A.dead) {
-    const sp = B && B.extra ? .05 : .085; // w dogrywce wolniej
+    const sp = B && B.extra ? .05 : .1; // w dogrywce wolniej
     if (A.frozen > 0) A.frozen -= dt;
     else if ((A.turn -= dt) <= 0) { const a = Math.random() * Math.PI * 2; A.vx = Math.cos(a) * sp; A.vy = Math.sin(a) * sp * .7; A.turn = 1.6 + Math.random() * 1.8; }
     A.x += A.vx * dt; A.y += A.vy * dt * (w / h);
@@ -2224,13 +2236,14 @@ function arenaStep(dt, w, h) {
     if (A.y < mt || A.y > mb) { A.vy = -A.vy; A.y = Math.max(mt, Math.min(mb, A.y)); }
   } else A.dead += dt;
   if (A.wonT > 0 && (A.wonT -= dt) <= 0) won();
-  A.hurt = Math.max(0, A.hurt - dt); A.laugh = Math.max(0, A.laugh - dt); A.talk = Math.max(0, A.talk - dt);
+  A.dodge = Math.max(0, A.dodge - dt); A.hurt = Math.max(0, A.hurt - dt); A.laugh = Math.max(0, A.laugh - dt); A.talk = Math.max(0, A.talk - dt);
   A.blink = Math.max(0, A.blink - dt); if ((A.blinkT -= dt) <= 0) { A.blink = .15; A.blinkT = 2.5 + Math.random() * 3; } A.flash = Math.max(0, A.flash - dt * 3);
   A.shake = Math.max(0, A.shake - dt * 2); A.quake = Math.max(0, A.quake - dt * 2.5);
   A.kick = Math.max(0, A.kick - dt * 5); A.cool = Math.max(0, A.cool - dt);
   if (A.charging) A.charge = Math.min(1, A.charge + dt / 1.2);
   for (const r of ROCKS) { r.x -= r.v * dt; r.a += dt * .3; if (r.x < -.1) r.x = 1.1; }
   for (let i = A.shots.length - 1; i >= 0; i--) { const s = A.shots[i]; s.t += dt; if (s.t >= s.T) { A.shots.splice(i, 1); resolve(s, w, h); } }
+  for (let i = A.flyby.length - 1; i >= 0; i--) { const f = A.flyby[i]; f.t += dt; f.x += f.vx * dt; f.y += f.vy * dt; if (f.t > .8) A.flyby.splice(i, 1); }
   for (let i = A.parts.length - 1; i >= 0; i--) { const p = A.parts[i]; p.life += dt; if (p.life > p.max) { A.parts.splice(i, 1); continue; } p.vy += 220 * dt; p.x += p.vx * dt; p.y += p.vy * dt; }
   for (let i = A.pops.length - 1; i >= 0; i--) if ((A.pops[i].t += dt) > 1.2) A.pops.splice(i, 1);
 }
@@ -2243,6 +2256,11 @@ function arenaFrame(t, dt) {
   for (const r of ROCKS) {
     rockPath(ctx, r.x * w, r.y * h, r.r * w, r.pts, r.a);
     ctx.fillStyle = '#2b1a1f'; ctx.fill(); ctx.strokeStyle = 'rgba(255,77,46,.28)'; ctx.lineWidth = 2; ctx.stroke();
+  }
+  if (A.dodge > 0 && !A.dead) {
+    const R = bossR(w, h), bx = A.x * w, by = A.y * h, dir = Math.sign(A.vx) || 1;
+    ctx.strokeStyle = `rgba(255,154,60,${A.dodge})`; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    for (const k of [-.5, 0, .5]) { ctx.beginPath(); ctx.moveTo(bx - dir * R * 1.9, by + k * R); ctx.lineTo(bx - dir * R * 3.1, by + k * R); ctx.stroke(); }
   }
   drawBoss(ctx, w, h, t);
   drawShots(ctx, w, h);
@@ -2285,6 +2303,7 @@ function drawBossSpr(ctx, w, h, t) {
     if (A.flash) { ctx.globalAlpha = fade * A.flash * .75; ctx.drawImage(tn.white, dx, dy, dw, dh); }
     ctx.globalAlpha = fade;
   };
+  A.tf = { x, y, rot, sx, sy, ix, iy, sw, sh, parts, fists: [] };
   if (!parts) part('boss', ix, iy, sw, sh);
   else part(faceKey(), ix, iy, sw, sh);
   const n = HP_MAX - (B ? Math.max(0, B.hp) : HP_MAX);
@@ -2298,6 +2317,7 @@ function drawBossSpr(ctx, w, h, t) {
   if (parts) for (const k of ['fistL', 'fistR']) {
     const F = FISTS[k], m = fistMove(F.side, t), fw = F.w * sw, fh = F.h * sh;
     const cx = ix + (F.x + F.w / 2) * sw + m.dx * sw, cy = iy + (F.y + F.h / 2) * sh + m.dy * sw;
+    A.tf.fists.push({ k, cx, cy, rot: m.rot, fw, fh });
     ctx.save(); ctx.translate(cx, cy); ctx.rotate(m.rot); ctx.globalAlpha = fade * m.alpha;
     part(k, -fw / 2, -fh / 2, fw, fh);
     ctx.restore();
@@ -2308,6 +2328,37 @@ function drawBossSpr(ctx, w, h, t) {
 function faceKey() {
   const k = A.dead || A.hurt > 0 ? 'auc' : A.laugh > 0 ? 'smiech' : A.blink > 0 && A.frozen <= 0 ? 'mrug' : 'body';
   return sprOk(k) ? k : 'body';
+}
+// maski kształtu (alfa) części Grawitora: trafienie liczy się tam, gdzie naprawdę jest skała, a nie poświata
+const MASK = {};
+function maskOf(k) {
+  if (MASK[k] !== undefined) return MASK[k];
+  if (!sprOk(k)) return null;
+  try {
+    const im = SPR[k], c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+    const x = c.getContext('2d'); x.drawImage(im, 0, 0);
+    const d = x.getImageData(0, 0, c.width, c.height).data, a = new Uint8Array(c.width * c.height);
+    for (let i = 0; i < a.length; i++) a[i] = d[i * 4 + 3];
+    MASK[k] = { w: c.width, h: c.height, a };
+  } catch { MASK[k] = null; } // strona otwarta z dysku (file://): przeglądarka nie da odczytać pikseli, zostaje koło
+  return MASK[k];
+}
+const solid = (m, u, v) => { const x = Math.floor(u * m.w), y = Math.floor(v * m.h); return x >= 0 && y >= 0 && x < m.w && y < m.h && m.a[y * m.w + x] > 150; };
+// czy punkt sceny (px, py) leży na skale Grawitora: ciało, kolce i pięści w ostatnio narysowanej klatce (A.tf)
+function onBoss(px, py) {
+  if (A.dead) return false;
+  const T = A.tf;
+  if (!T) return Math.hypot(px - A.x * A.w, py - A.y * A.h) < bossR(A.w, A.h) * .95;
+  const c = Math.cos(-T.rot), sn = Math.sin(-T.rot), dx = px - T.x, dy = py - T.y;
+  const lx = (c * dx - sn * dy) / T.sx, ly = (sn * dx + c * dy) / T.sy;
+  for (const f of T.fists) {
+    const m = maskOf(f.k); if (!m) continue;
+    const c2 = Math.cos(-f.rot), s2 = Math.sin(-f.rot), fx = lx - f.cx, fy = ly - f.cy;
+    if (solid(m, (c2 * fx - s2 * fy + f.fw / 2) / f.fw, (s2 * fx + c2 * fy + f.fh / 2) / f.fh)) return true;
+  }
+  const m = maskOf(T.parts ? 'body' : 'boss');
+  if (!m) return Math.hypot(lx, ly) < bossR(A.w, A.h) * .95;
+  return solid(m, (lx - T.ix) / T.sw, (ly - T.iy) / T.sh);
 }
 // ruch pięści (przesunięcie w ułamkach szerokości obrazka, obrót): unoszą się; gdy Grawitor mówi, prawa wygraża;
 // śmiech = walenie pięściami o siebie; trafienie = odlatują na boki; pocisk w drodze = zasłania się; zamrożony = stoją
@@ -2329,6 +2380,7 @@ function fistMove(side, t) {
 }
 function drawBoss(ctx, w, h, t) {
   if (sprOk('boss')) return drawBossSpr(ctx, w, h, t);
+  A.tf = null;
   const R0 = bossR(w, h), fade = A.dead ? Math.max(0, 1 - A.dead * 1.4) : 1;
   if (!fade) return;
   const R = R0 * (A.dead ? 1 + A.dead * .6 : 1);
@@ -2383,6 +2435,17 @@ function drawBoss(ctx, w, h, t) {
 }
 function drawShots(ctx, w, h) {
   const s0 = gunScale(w, h);
+  for (const f of A.flyby) {
+    // krążek w miejscu, którędy pocisk minął Grawitora, i pocisk lecący dalej ze smugą
+    const k = 1 - f.t / .8, r = f.r * (1 - f.t * .8);
+    ctx.globalAlpha = k * .8; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.arc(f.x0, f.y0, f.r * (1.2 + f.t * 2.5), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.globalAlpha = k * .7; ctx.strokeStyle = f.color; ctx.lineWidth = Math.max(3, r * 1.2); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(f.x0, f.y0); ctx.lineTo(f.x, f.y); ctx.stroke();
+    ctx.globalAlpha = k; ctx.fillStyle = f.color; ctx.shadowColor = f.color; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(f.x, f.y, Math.max(2, r), 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+  }
+  ctx.globalAlpha = 1;
   for (const s of A.shots) {
     const am = AMMO[s.type], u = s.t / s.T, p = shotPos(s, u), x = p.x * w, y = p.y * h, r = Math.max(5, 22 * s0) * p.sc * s.size;
     // smuga z kilku wcześniejszych położeń
@@ -2423,8 +2486,10 @@ function drawAim(ctx, w, h) {
     ctx.globalAlpha = 1; ctx.strokeStyle = am.color; ctx.lineWidth = 3;
     const ly = s.ty * h; ctx.beginPath(); ctx.moveTo(x - 10, ly - 10); ctx.lineTo(x + 10, ly + 10); ctx.moveTo(x + 10, ly - 10); ctx.lineTo(x - 10, ly + 10); ctx.stroke();
   }
+  const ty = am.arc ? Math.min(.95, A.aim.y + DROP) * h : y; // tam spadnie pocisk
   ctx.strokeStyle = am.color; ctx.lineWidth = 3; ctx.shadowColor = am.color; ctx.shadowBlur = 8;
   ctx.beginPath(); ctx.arc(x, y, 22, 0, Math.PI * 2); ctx.stroke();
+  if (onBoss(x, ty)) { ctx.fillStyle = am.color; ctx.beginPath(); ctx.arc(x, ty, 7, 0, Math.PI * 2); ctx.fill(); }
   ctx.beginPath(); ctx.moveTo(x - 34, y); ctx.lineTo(x - 14, y); ctx.moveTo(x + 14, y); ctx.lineTo(x + 34, y); ctx.moveTo(x, y - 34); ctx.lineTo(x, y - 14); ctx.moveTo(x, y + 14); ctx.lineTo(x, y + 34); ctx.stroke();
   if (A.charging) { ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(x, y, 30, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * A.charge); ctx.stroke(); }
   ctx.shadowBlur = 0;
