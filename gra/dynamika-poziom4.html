@@ -171,10 +171,7 @@ ul.clean { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
 .src { font-size: 14px; color: var(--ash); }
 
 /* słowniczek: karta pojęcia = definicja do zeszytu + po prostu + przykład */
-.glos-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; }
-.glos-head p { flex: 1 1 260px; }
 .defs { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, max(340px, 23%)), 1fr)); align-items: start; }
-.defs-sub { grid-column: 1 / -1; margin-top: 8px; }
 .def { background: var(--veil-2); border-radius: 16px; overflow: hidden; }
 .def summary { list-style: none; cursor: pointer; padding: 12px 18px; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
 .def summary::-webkit-details-marker { display: none; }
@@ -186,6 +183,45 @@ ul.clean { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
 .def-row i { font-style: normal; font-weight: 800; font-size: 14px; color: var(--accent); }
 .def-row.formal p { border-left: 4px solid var(--accent); padding-left: 12px; }
 .def-row.simple p { font-size: 19px; font-weight: 700; }
+/* słowniczek w osobnym oknie: na górze wyszukiwarka, niżej każdy moduł jako rozwijana sekcja
+   w kolorze swojego świata (--mod), po rozwinięciu karty pojęć */
+.glos-dlg { position: fixed; inset: 0; z-index: 5; display: grid; place-items: start center; padding: max(16px, 5dvh) 16px 16px; background: rgba(10,5,18,.74); backdrop-filter: blur(6px); }
+.glos-box { width: min(1000px, 100%); max-height: calc(100dvh - max(16px, 5dvh) - 16px); display: flex; flex-direction: column; gap: 14px; padding: clamp(18px, 2.6vw, 30px);
+  border-radius: 26px; background: rgba(20,10,30,.95); box-shadow: inset 0 0 0 2px var(--accent), 0 20px 60px rgba(0,0,0,.6); }
+.glos-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.glos-head p { color: var(--ash); font-size: 15px; margin-right: auto; }
+.glos-x { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.1); color: var(--white); font-size: 20px; cursor: pointer; }
+.glos-x:hover { background: var(--accent); color: var(--plum); }
+.glos-search { display: flex; align-items: center; gap: 10px; padding: 0 18px; border-radius: 999px; background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 2px rgba(255,255,255,.18); }
+.glos-search:focus-within { box-shadow: inset 0 0 0 2px var(--accent); }
+.glos-search svg { flex: none; width: 22px; height: 22px; fill: none; stroke: var(--ash); stroke-width: 2.4; stroke-linecap: round; }
+.glos-search input { flex: 1; min-width: 0; border: 0; background: none; color: var(--white); font: inherit; font-weight: 700; font-size: 18px; padding: 12px 0; outline: none; }
+.glos-search input::placeholder { color: var(--ash); opacity: .8; }
+.glos-list { overflow-y: auto; display: grid; gap: 12px; align-content: start; padding-right: 4px; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.3) transparent; }
+.glos-mod { border-radius: 18px; background: rgba(255,255,255,.05); box-shadow: inset 6px 0 0 var(--mod); }
+.glos-mod[open] { background: rgba(255,255,255,.08); }
+.glos-mod > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px 16px; padding: 12px 18px 12px 22px; }
+.glos-mod > summary::-webkit-details-marker { display: none; }
+.glos-mod > summary img { width: 52px; height: 52px; border-radius: 50%; box-shadow: 0 0 0 2px var(--mod), 0 0 16px color-mix(in srgb, var(--mod) 55%, transparent); }
+.gm-t { display: grid; gap: 2px; min-width: 0; }
+.gm-t small { font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--mod); }
+.gm-t b { font-family: var(--f-display); font-size: clamp(18px, 1.8vw, 24px); line-height: 1.15; }
+.gm-c { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; color: var(--ash); white-space: nowrap; }
+.gm-c::after { content: "▾"; font-size: 22px; line-height: 1; color: var(--mod); transition: transform .25s; }
+.glos-mod[open] .gm-c::after { transform: rotate(180deg); }
+.glos-mod .defs { padding: 4px 18px 18px 22px; }
+.glos-mod .def-row i { color: var(--mod); }
+.glos-mod .def-row.formal p { border-left-color: var(--mod); }
+.glos-mod .def.hit { box-shadow: inset 0 0 0 2px var(--mod); }
+.glos-none { color: var(--ash); text-align: center; padding: 18px; }
+body.glos-open { overflow: hidden; }
+@media (max-width: 560px) {
+  .glos-mod > summary { grid-template-columns: auto minmax(0, 1fr); padding-left: 18px; }
+  .glos-mod > summary img { width: 42px; height: 42px; grid-row: span 2; }
+  .gm-c { grid-column: 2; }
+  .glos-head p { display: none; }
+}
 /* sztuczki: bohater w dymku pyta „pokazać Ci…?”, po kliknięciu okno z animacją krok po kroku */
 .tip-ask { display: flex; align-items: center; gap: 12px; justify-self: start; text-align: left; border: 0; padding: 4px 0; background: none; font-weight: 700; }
 .tip-ask svg { flex: none; filter: drop-shadow(0 4px 8px rgba(0,0,0,.45)); }
@@ -455,16 +491,6 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
     </div>
   </header>
 
-  <section id="glossary" hidden>
-    <div class="glos-head">
-      <h2>Słowniczek</h2>
-      <p>Kliknij pojęcie, żeby je rozwinąć. Definicję warto zapisać w zeszycie.</p>
-      <button class="btn ghost" id="glosClose">Zamknij</button>
-    </div>
-    <div class="defs" id="glosList"></div>
-    <p class="src">Spotkania z fizyką 7, temat 26, s. 174–178</p>
-  </section>
-
   <main>
     <!-- START -->
     <section id="scr-start" class="split fill">
@@ -676,6 +702,21 @@ a.node:hover { box-shadow: inset 0 0 0 2px var(--white); }
      </div>
     </section>
   </main>
+</div>
+
+<!-- Słowniczek: osobne okno (przycisk w HUD); przed oknem sztuczki, żeby sztuczka otwarta ze Słowniczka była na wierzchu -->
+<div class="glos-dlg" id="glossary" role="dialog" aria-modal="true" aria-labelledby="glosTitle" hidden>
+  <div class="glos-box">
+    <div class="glos-head">
+      <h2 id="glosTitle">Słowniczek</h2>
+      <p>Definicję warto zapisać w zeszycie.</p>
+      <button class="glos-x" id="glosClose" aria-label="Zamknij Słowniczek">✕</button>
+    </div>
+    <label class="glos-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+      <input id="glosSearch" type="search" placeholder="Szukaj pojęcia, np. siła" autocomplete="off" aria-label="Szukaj pojęcia"></label>
+    <div class="glos-list" id="glosList"></div>
+    <p class="glos-none" id="glosNone" hidden>Nic nie znaleziono. Spróbuj krótszego słowa.</p>
+  </div>
 </div>
 
 <!-- okno sztuczki (otwiera dymek bohatera na karcie pojęcia albo w Słowniczku) -->
@@ -1563,21 +1604,73 @@ function defCard(g, open, status) {
   if (status === 'weak') { const s = d.querySelector('summary span'); s.textContent = 'do powtórki'; s.className = 'st-weak'; }
   return d;
 }
+function glosGroups() {
+  const all = prevTerms();
+  return [{ n: MOD, glos: GLOS, status: g => S.terms[g.id] }].concat(PREV.map(p =>
+    ({ n: p.n, glos: p.glos, status: g => S.terms[p.pre + g.id] || (all[g.id] && all[g.id].temat === p.temat && all[g.id].status) })));
+}
+// moduły w Słowniczku: najpierw bieżący, potem wcześniejsze; kolor sekcji = kolor świata modułu
+const MOD_INFO = {
+  1: { name: 'I zasada dynamiki Newtona', src: 'temat 24, s. 162–168' },
+  2: { name: 'II zasada dynamiki Newtona', src: 'temat 25, s. 169–173' },
+  3: { name: 'III zasada dynamiki Newtona', src: 'temat 27, s. 179–182' },
+  4: { name: 'Swobodne spadanie', src: 'temat 26, s. 174–178' },
+  5: { name: 'Opory ruchu', src: 'temat 28, s. 183–188' } };
+const glosOpen = new Set([MOD]); // rozwinięte moduły; po wyczyszczeniu wyszukiwania wracają te same
+const plPojec = n => n === 1 ? 'pojęcie' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'pojęcia' : 'pojęć';
+const norm = s => s.toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const glosQ = () => norm($('#glosSearch').value.trim());
 function renderGlossary() {
   const box = $('#glosList'); box.innerHTML = '';
-  GLOS.forEach(g => box.append(defCard(g, false, S.terms[g.id])));
-  const all = prevTerms();
-  PREV.forEach(p => {
-    const h = document.createElement('h3'); h.className = 'defs-sub'; h.textContent = 'Z modułu ' + p.n; box.append(h);
-    p.glos.forEach(g => box.append(defCard(g, false, S.terms[p.pre + g.id] || (all[g.id] && all[g.id].temat === p.temat && all[g.id].status))));
+  glosGroups().forEach(gr => {
+    const d = document.createElement('details'), info = MOD_INFO[gr.n];
+    d.className = 'glos-mod'; d.dataset.n = gr.n; d.open = glosOpen.has(gr.n);
+    d.style.setProperty('--mod', THEMES[gr.n].accent);
+    d.innerHTML = '<summary><img alt=""><span class="gm-t"><small></small><b></b></span><span class="gm-c"></span></summary><div class="defs"></div>';
+    d.querySelector('img').src = 'img/ikona-m' + gr.n + '.jpg';
+    d.querySelector('small').textContent = 'Moduł ' + gr.n + (gr.n === MOD ? ' · ten moduł' : '') + ' · ' + info.src;
+    d.querySelector('b').textContent = info.name;
+    const weak = gr.glos.filter(g => gr.status(g) === 'weak').length;
+    d.dataset.c = gr.glos.length + ' ' + plPojec(gr.glos.length) + (weak ? ' · ' + weak + ' do powtórki' : '');
+    const list = d.querySelector('.defs');
+    gr.glos.forEach(g => {
+      const c = defCard(g, false, gr.status(g));
+      c.dataset.t = norm(g.term); c.dataset.q = norm([g.term, g.formal, g.simple, g.example].join(' '));
+      list.append(c);
+    });
+    d.addEventListener('toggle', () => { if (!glosQ()) d.open ? glosOpen.add(gr.n) : glosOpen.delete(gr.n); });
+    box.append(d);
   });
+  glosFilter();
 }
+// szukanie we wszystkich modułach naraz: nazwa pojęcia, definicja, „po prostu” i przykład; bez polskich znaków też działa
+function glosFilter() {
+  const q = glosQ(); let hits = 0;
+  document.querySelectorAll('#glosList .glos-mod').forEach(m => {
+    let n = 0;
+    m.querySelectorAll('.def').forEach(c => {
+      const ok = !q || c.dataset.q.includes(q);
+      c.hidden = !ok; c.classList.toggle('hit', !!q && c.dataset.t.includes(q)); if (ok) n++;
+    });
+    hits += n; m.hidden = !!q && !n;
+    m.open = q ? n > 0 : glosOpen.has(+m.dataset.n);
+    m.querySelector('.gm-c').textContent = q ? 'znaleziono: ' + n : m.dataset.c;
+  });
+  $('#glosNone').hidden = !q || hits > 0;
+}
+$('#glosSearch').addEventListener('input', glosFilter);
 function toggleGlos(open) {
   $('#glossary').hidden = !open; $('#glosBtn').setAttribute('aria-expanded', open);
-  if (open) $('#glossary').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.body.classList.toggle('glos-open', open);
+  if (!open) return;
+  if (!RM) gsap.fromTo('#glossary .glos-box', { y: 40, scale: .94, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: .4, ease: 'back.out(1.6)', clearProps: 'transform,opacity' });
+  if (matchMedia('(pointer: fine)').matches) $('#glosSearch').focus({ preventScroll: true });
 }
 $('#glosBtn').addEventListener('click', () => toggleGlos($('#glossary').hidden));
 $('#glosClose').addEventListener('click', () => toggleGlos(false));
+$('#glossary').addEventListener('click', e => { if (e.target === e.currentTarget) toggleGlos(false); });
+// Esc zamyka Słowniczek, ale gdy otwarta jest sztuczka, najpierw tylko ją (stąd faza przechwytywania)
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#glossary').hidden && !document.body.classList.contains('tip-open')) toggleGlos(false); }, true);
 
 // ---------- bohater ----------
 // teksty bohatera bez form zależnych od płci; imię zawsze w mianowniku
